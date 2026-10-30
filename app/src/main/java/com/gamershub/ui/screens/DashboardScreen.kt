@@ -2,9 +2,11 @@ package com.gamershub.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,14 +34,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import com.gamershub.R
 import com.gamershub.core.boost.BoostState
 import com.gamershub.core.overlay.FloatingWidgetService
 import com.gamershub.core.record.RecorderController
@@ -65,12 +63,12 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
     val stats by container.monitor.stats.collectAsStateWithLifecycle()
     val boostState by container.boost.state.collectAsStateWithLifecycle()
     val shizukuStatus by container.shizuku.status.collectAsStateWithLifecycle()
+    val shizukuDetail by container.shizuku.statusDetail.collectAsStateWithLifecycle()
     val shellReady by container.shizuku.shellReady.collectAsStateWithLifecycle()
     val recState by container.recorder.state.collectAsStateWithLifecycle()
     val history by container.analytics.history.collectAsStateWithLifecycle()
     val widgetRunning by FloatingWidgetService.isRunning.collectAsStateWithLifecycle()
 
-    // Recorder events as toasts
     LaunchedEffect(Unit) {
         container.recorder.events.collect { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -78,11 +76,11 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
     }
 
     // Android 13+: notification permission for engine/capture status
-    val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
     ) { }
     LaunchedEffect(Unit) {
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= 33) {
             notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -96,52 +94,44 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
     ) {
         // ---------------- header
         Row(
-            Modifier.fillMaxWidth().padding(top = 18.dp),
+            Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "GamersHub",
-                style = MaterialTheme.typography.headlineLarge,
-                color = g.text
-            )
+            Column {
+                Text("GamersHub", style = MaterialTheme.typography.headlineLarge, color = g.text)
+                Text(
+                    "boost · scale · capture · stream",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+            }
             Spacer(Modifier.weight(1f))
             GlassChip(text = "Settings", selected = false) { nav.navigate(Routes.SETTINGS) }
         }
 
-        // ---------------- hero banner
-        GlassCard(highlight = true, corner = 24.dp) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(16.dp))
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.gh_banner),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+        // ---------------- engine hero panel
+        Spacer(Modifier.height(12.dp))
+        GlassCard(highlight = true, corner = 26.dp) {
+            Column {
+                Text(
+                    "Performance, tuned live",
+                    style = MaterialTheme.typography.headlineMedium, color = g.text
                 )
-                Column(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(14.dp)
-                ) {
-                    Text(
-                        "EVERY FRAME. MAXED.",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
-                    )
-                    Text(
-                        "Real-time FPS boost · Thermal AI · 4K capture",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xCCFFFFFF)
-                    )
+                Text(
+                    "Every engine below is running against the real system — " +
+                            "Shizuku shell access, no root.",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+                Spacer(Modifier.height(14.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GlassChip("⚡ Boost", selected = false) { nav.navigate(Routes.BOOST) }
+                    GlassChip("🎚 Scaling", selected = false) { nav.navigate(Routes.SCALING) }
+                    GlassChip("⏺ Record", selected = false) { nav.navigate(Routes.RECORD) }
+                    GlassChip("📡 Live", selected = false) { nav.navigate(Routes.STREAM) }
                 }
             }
         }
 
-        // ---------------- shizuku status
+        // ---------------- shizuku status + reconnect
         Spacer(Modifier.height(14.dp))
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -163,34 +153,28 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
                         when (shizukuStatus) {
                             ShizukuManager.Status.READY ->
                                 if (shellReady) "Shizuku connected" else "Shizuku ready"
-                            ShizukuManager.Status.PERMISSION_NEEDED -> "Grant Shizuku permission"
-                            ShizukuManager.Status.NOT_RUNNING -> "Shizuku is not running"
+                            ShizukuManager.Status.PERMISSION_NEEDED -> "Permission needed"
+                            ShizukuManager.Status.NOT_RUNNING -> "Shizuku not running"
                             ShizukuManager.Status.NOT_INSTALLED -> "Shizuku not installed"
                         },
                         style = MaterialTheme.typography.titleMedium, color = g.text
                     )
-                    Text(
-                        when (shizukuStatus) {
-                            ShizukuManager.Status.READY ->
-                                if (shellReady) "Deep system optimizations unlocked"
-                                else "Binding privileged shell…"
-                            ShizukuManager.Status.PERMISSION_NEEDED ->
-                                "Tap Allow to let GamersHub use Shizuku"
-                            ShizukuManager.Status.NOT_RUNNING ->
-                                "Start Shizuku via wireless debugging or root"
-                            ShizukuManager.Status.NOT_INSTALLED ->
-                                "Install Shizuku to unlock system-level boosting"
-                        },
-                        style = MaterialTheme.typography.labelSmall, color = g.textDim
-                    )
+                    Text(shizukuDetail, style = MaterialTheme.typography.labelSmall, color = g.textDim)
                 }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (shizukuStatus) {
                     ShizukuManager.Status.PERMISSION_NEEDED ->
                         GlassChip("Allow", selected = true) { container.shizuku.requestPermission() }
                     ShizukuManager.Status.NOT_RUNNING, ShizukuManager.Status.NOT_INSTALLED ->
-                        GlassChip("Setup", selected = false) { nav.navigate(Routes.SETTINGS) }
-                    ShizukuManager.Status.READY ->
-                        GlassChip("Rebind", selected = false) { container.shizuku.refreshState() }
+                        GlassChip("Setup guide", selected = true) { nav.navigate(Routes.SETTINGS) }
+                    else -> Unit
+                }
+                // The manual fix for any stale connection state:
+                GlassChip("Reconnect", selected = false) {
+                    container.shizuku.reconnect()
+                    Toast.makeText(context, "Rebinding Shizuku shell…", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -241,11 +225,9 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
         Spacer(Modifier.height(16.dp))
         val boosting = boostState is BoostState.Active
         GlassButton(
-            text = if (boosting) "RESTORE SYSTEM" else "⚡ BOOST NOW",
+            text = if (boosting) "Restore system" else "Boost now",
             onClick = {
-                scope.launch {
-                    container.boost.toggleBoost(container.boost.defaultPlan())
-                }
+                scope.launch { container.boost.toggleBoost(container.boost.defaultPlan()) }
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -276,18 +258,18 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
                     )
                 }
             }) {
-                Text("🎛 Floating Widget", style = MaterialTheme.typography.titleMedium, color = g.text)
+                Text("Floating widget", style = MaterialTheme.typography.titleMedium, color = g.text)
                 Text(
                     if (widgetRunning) "Active — tap to stop"
-                    else if (Settings.canDrawOverlays(context)) "Start the in-game pop-up"
+                    else if (Settings.canDrawOverlays(context)) "Start the in-game tools"
                     else "Grant overlay permission",
                     style = MaterialTheme.typography.labelSmall, color = g.textDim
                 )
             }
-            GlassCard(modifier = Modifier.weight(1f), onClick = { nav.navigate(Routes.STREAM) }) {
-                Text("📡 Go Live", style = MaterialTheme.typography.titleMedium, color = g.text)
+            GlassCard(modifier = Modifier.weight(1f), onClick = { nav.navigate(Routes.UNLOCK) }) {
+                Text("Game unlock", style = MaterialTheme.typography.titleMedium, color = g.text)
                 Text(
-                    "YouTube · Facebook · Instagram",
+                    "Max graphics + FPS configs",
                     style = MaterialTheme.typography.labelSmall, color = g.textDim
                 )
             }
@@ -322,6 +304,6 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
             }
         }
 
-        Spacer(Modifier.height(110.dp)) // bottom-bar clearance
+        Spacer(Modifier.height(110.dp))
     }
 }

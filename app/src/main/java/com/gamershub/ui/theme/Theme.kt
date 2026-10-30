@@ -16,43 +16,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 // ---------------------------------------------------------------------------
-// GamersHub design tokens — neon gaming palette over glass surfaces.
+// GamersHub design tokens — pure liquid glass.
+//
+// The look: frosted translucent panels floating over soft depth gradients,
+// hairline edges, restrained accents. No neon, no glow, no cyber.
 // ---------------------------------------------------------------------------
 
 object GhColors {
-    // Dark
-    val DarkBg = Color(0xFF070A14)
-    val DarkBg2 = Color(0xFF0B1020)
-    val DarkSurface = Color(0xFF121829)
-    val DarkGlass = Color(0x14FFFFFF)      // 8% white glass
-    val DarkGlassHi = Color(0x24FFFFFF)    // 14% white glass
-    val DarkStroke = Color(0x33FFFFFF)     // 20% white border
-    val DarkText = Color(0xFFF1F5FF)
-    val DarkTextDim = Color(0x99E2E8F0)
+    // ---- Dark (deep graphite glass) ----
+    val DarkBg = Color(0xFF0B0D12)
+    val DarkBg2 = Color(0xFF10131A)
+    val DarkSurface = Color(0xFF161A22)
+    val DarkGlass = Color(0x0FFFFFFF)      // 6% frosted white
+    val DarkGlassHi = Color(0x1AFFFFFF)    // 10% highlight layer
+    val DarkStroke = Color(0x21FFFFFF)     // hairline edge
+    val DarkText = Color(0xFFECEFF4)
+    val DarkTextDim = Color(0x99B7BDC7)
 
-    // Light
-    val LightBg = Color(0xFFEFF2FB)
-    val LightBg2 = Color(0xFFE4E9F7)
-    val LightSurface = Color(0xFFFFFFFF)
-    val LightGlass = Color(0x99FFFFFF)     // 60% white glass
-    val LightGlassHi = Color(0xCFFFFFFF)
-    val LightStroke = Color(0x330B1020)    // 20% ink border
-    val LightText = Color(0xFF111827)
-    val LightTextDim = Color(0x99111827)
+    // ---- Light (soft porcelain glass) ----
+    val LightBg = Color(0xFFEEF1F6)
+    val LightBg2 = Color(0xFFE3E8F0)
+    val LightSurface = Color(0xFFF8FAFC)
+    val LightGlass = Color(0xB8FFFFFF)     // 72% frosted white
+    val LightGlassHi = Color(0xE6FFFFFF)
+    val LightStroke = Color(0x1F1B2430)    // hairline edge
+    val LightText = Color(0xFF141821)
+    val LightTextDim = Color(0x994A5261)
 
-    // Accents
-    val Cyber = Color(0xFF22D3EE)          // electric cyan
-    val Violet = Color(0xFF8B5CF6)
-    val Magenta = Color(0xFFF472B6)
-    val Lime = Color(0xFFA3E635)
-    val Amber = Color(0xFFF59E0B)
-    val Red = Color(0xFFEF4444)
-    val Green = Color(0xFF34D399)
+    // ---- Restrained liquid accents (dark-bg versions) ----
+    val Cyber = Color(0xFF6E9BD2)          // ink blue (primary accent)
+    val Violet = Color(0xFF8E86C4)         // mist violet (secondary)
+    val Magenta = Color(0xFFC4899F)        // dusty rose (tertiary)
+    val Lime = Color(0xFF7FB69E)           // sage
+    val Amber = Color(0xFFD2A15E)          // soft amber
+    val Red = Color(0xFFD27070)            // muted red
+    val Green = Color(0xFF6FBF97)          // soft green
 
-    // Light-theme variants (darker for contrast)
-    val CyberLight = Color(0xFF0E7490)
-    val VioletLight = Color(0xFF6D28D9)
-    val MagentaLight = Color(0xFFBE185D)
+    // ---- Light-bg accent variants (slightly deeper for contrast) ----
+    val CyberLight = Color(0xFF3E6B9E)
+    val VioletLight = Color(0xFF6A62A6)
+    val MagentaLight = Color(0xFFA4637B)
 }
 
 /** Per-theme glass parameters consumed by the components layer. */
@@ -76,7 +79,7 @@ data class GlassThemeColors(
     }
 
     fun fpsColor(fps: Float, target: Float = 60f): Color = when {
-        fps < 0 -> textDim
+        fps < 0f -> textDim
         fps >= target * 0.95f -> GhColors.Green
         fps >= target * 0.75f -> GhColors.Amber
         else -> GhColors.Red
@@ -88,33 +91,34 @@ val LocalGlass = staticCompositionLocalOf<GlassThemeColors> {
         GhColors.DarkBg, GhColors.DarkBg2, GhColors.DarkGlass, GhColors.DarkGlassHi,
         GhColors.DarkStroke, GhColors.DarkText, GhColors.DarkTextDim,
         GhColors.Cyber, GhColors.Violet,
-        Brush.linearGradient(listOf(GhColors.Cyber, GhColors.Violet, GhColors.Magenta))
+        Brush.verticalGradient(listOf(GhColors.Cyber, GhColors.Violet))
     )
 }
 
-fun glassColors(dark: Boolean, accentKey: String = "CYBER"): GlassThemeColors {
+/** Accent palettes — all muted liquid tones. */
+fun glassColors(dark: Boolean, accentKey: String = "GRAPHITE"): GlassThemeColors {
     val (a1, a2) = when (accentKey.uppercase()) {
-        "VIOLET" -> GhColors.Violet to GhColors.Magenta
-        "MAGMA" -> GhColors.Magenta to GhColors.Amber
-        "LIME" -> GhColors.Lime to GhColors.Cyber
-        else -> GhColors.Cyber to GhColors.Violet
+        "TEAL" -> GhColors.Lime to GhColors.Cyber
+        "PLUM" -> GhColors.Violet to GhColors.Magenta
+        "ROSE" -> GhColors.Magenta to GhColors.Amber
+        else -> GhColors.Cyber to GhColors.Violet // GRAPHITE
     }
     return if (dark) {
         GlassThemeColors(
             GhColors.DarkBg, GhColors.DarkBg2, GhColors.DarkGlass, GhColors.DarkGlassHi,
             GhColors.DarkStroke, GhColors.DarkText, GhColors.DarkTextDim,
-            a1, a2, Brush.linearGradient(listOf(a1, a2, GhColors.Magenta))
+            a1, a2, Brush.verticalGradient(listOf(a1, a2))
         )
     } else {
         GlassThemeColors(
             GhColors.LightBg, GhColors.LightBg2, GhColors.LightGlass, GhColors.LightGlassHi,
             GhColors.LightStroke, GhColors.LightText, GhColors.LightTextDim,
-            if (accentKey == "CYBER") GhColors.CyberLight else a1,
-            if (accentKey == "CYBER") GhColors.VioletLight else a2,
-            Brush.linearGradient(
+            if (accentKey == "GRAPHITE") GhColors.CyberLight else a1,
+            if (accentKey == "GRAPHITE") GhColors.VioletLight else a2,
+            Brush.verticalGradient(
                 listOf(
-                    if (accentKey == "CYBER") GhColors.CyberLight else a1,
-                    if (accentKey == "CYBER") GhColors.VioletLight else a2
+                    if (accentKey == "GRAPHITE") GhColors.CyberLight else a1,
+                    if (accentKey == "GRAPHITE") GhColors.VioletLight else a2
                 )
             )
         )
@@ -124,18 +128,18 @@ fun glassColors(dark: Boolean, accentKey: String = "CYBER"): GlassThemeColors {
 private val GhTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = 0.5.sp
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 29.sp, lineHeight = 35.sp, letterSpacing = 0.2.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp, lineHeight = 30.sp, letterSpacing = 0.3.sp
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 23.sp, lineHeight = 29.sp, letterSpacing = 0.1.sp
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = 0.2.sp
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp, lineHeight = 21.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
@@ -144,20 +148,20 @@ private val GhTypography = Typography(
     ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp, letterSpacing = 0.8.sp
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp, letterSpacing = 0.4.sp
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp, letterSpacing = 0.4.sp
+        fontWeight = FontWeight.Normal,
+        fontSize = 11.sp, letterSpacing = 0.2.sp
     )
 )
 
 @Composable
 fun GamersHubTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    accent: String = "CYBER",
+    accent: String = "GRAPHITE",
     content: @Composable () -> Unit
 ) {
     val glass = glassColors(darkTheme, accent)
@@ -169,7 +173,7 @@ fun GamersHubTheme(
             surface = GhColors.DarkSurface,
             onBackground = glass.text,
             onSurface = glass.text,
-            onPrimary = Color(0xFF04121A)
+            onPrimary = Color(0xFF0B0D12)
         )
     } else {
         lightColorScheme(

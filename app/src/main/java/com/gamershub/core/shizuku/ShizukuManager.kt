@@ -16,10 +16,15 @@ import rikka.shizuku.Shizuku
 /**
  * Central gateway to every privileged operation in GamersHub.
  *
- * Uses the official Shizuku user-service API. The [GamersHubShellService] AIDL stub
- * runs inside the Shizuku server process, so shell commands execute as
- * shell (UID 2000, started through adb / wireless debugging) or root (UID 0, Sui /
- * rooted Shizuku). No root is required on the device itself.
+ * Connection lifecycle (verified against the Shizuku API contract):
+ *  1. [Shizuku.pingBinder]      — is the Shizuku service alive at all?
+ *  2. [Shizuku.checkSelfPermission] — did the user allow THIS app?
+ *  3. bind the AIDL user-service ([GamersHubShellService]) that executes
+ *     commands as shell (UID 2000) or root (UID 0 via Sui).
+ *
+ * Every transition is pushed to [status] / [shellReady] in real time so the UI
+ * never shows a stale connection state. [reconnect] resets the whole listener
+ * chain + user-service binding — the manual fix for "it says not connected".
  */
 class ShizukuManager(private val context: Context) {
 
@@ -30,7 +35,7 @@ class ShizukuManager(private val context: Context) {
         NOT_RUNNING,
         /** Running but the user has not granted GamersHub permission yet. */
         PERMISSION_NEEDED,
-        /** Binder alive + permission granted. All systems go. */
+        /** Binder alive + permission granted. Shell bound and executing. */
         READY
     }
 
@@ -42,6 +47,10 @@ class ShizukuManager(private val context: Context) {
     private val _status = MutableStateFlow(Status.NOT_RUNNING)
     val status: StateFlow<Status> = _status.asStateFlow()
 
+    /** One-line human description of the current state, for UI display. */
+    private val _statusDetail = MutableStateFlow("Starting…")
+    val statusDetail: StateFlow<String> = _statusDetail.asStateFlow()
+
     /** True when the backing identity is root (Sui / rooted Shizuku). */
     private val _isRoot = MutableStateFlow(false)
     val isRoot: StateFlow<Boolean> = _isRoot.asStateFlow()
@@ -50,12 +59,11 @@ class ShizukuManager(private val context: Context) {
     private val _shellReady = MutableStateFlow(false)
     val shellReady: StateFlow<Boolean> = _shellReady.asStateFlow()
 
-    private val hasPermission get() =
-        Shizuku.isPreV11() ||
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-
     @Volatile
     private var shell: IGamersHubShell? = null
+
+    @Volatile
+    private var bound = false
 
     private val userServiceArgs = Shizuku.UserServiceArgs(
         ComponentName(context.packageName, GamersHubShellService::class.java.name)
@@ -69,75 +77,170 @@ class ShizukuManager(private val context: Context) {
         override fun onServiceConnected(name: ComponentName, binder: IBinder?) {
             if (binder != null && binder.pingBinder()) {
                 shell = IGamersHubShell.Stub.asInterface(binder)
+                bound = true
                 _shellReady.value = true
+                _status.value = Status.READY
+                _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" : " (shell)"}"
+            } else {
+                _statusDetail.value = "Shell binder died on connect"
+                _shellReady.value = false
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             shell = null
+            bound = false
             _shellReady.value = false
+            // binder vanished (Shizuku killed) — refresh so UI reflects it immediately
+            refreshState()
         }
     }
 
-    private val binderReceivedListener = Shizuku.OnBinderReceivedListener { refreshState() }
-    private val binderDeadListener = Shizuku.OnBinderDeadListener {
-        _shellReady.value = false
-        shell = null
-        refreshState()
-    }
-    private val permissionListener = Shizuku.OnRequestPermissionResultListener { _, grant ->
-        if (grant == PackageManager.PERMISSION_GRANTED) refreshState() else refreshState()
-    }
+    // ---- listeners: kept in fields so reconnect can remove & re-add them ----
+
+    private var binderReceivedListener: Shizuku.OnBinderReceivedListener? = null
+    private var binderDeadListener: Shizuku.OnBinderDeadListener? = null
+    private var permissionListener: Shizuku.OnRequestPermissionResultListener? = null
 
     fun init() {
+        registerListeners()
+        refreshState()
+    }
+
+    private fun registerListeners() {
         runCatching {
-            Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
-            Shizuku.addBinderDeadListener(binderDeadListener)
-            Shizuku.addRequestPermissionResultListener(permissionListener)
+            val received = Shizuku.OnBinderReceivedListener {
+                _statusDetail.value = "Shizuku binder received"
+                refreshState()
+            }
+            val dead = Shizuku.OnBinderDeadListener {
+                shell = null
+                bound = false
+                _shellReady.value = false
+                _statusDetail.value = "Shizuku binder lost"
+                refreshState()
+            }
+            val perm = Shizuku.OnRequestPermissionResultListener { _, grant ->
+                _statusDetail.value =
+                    if (grant == PackageManager.PERMISSION_GRANTED) "Permission granted"
+                    else "Permission denied"
+                refreshState()
+            }
+            binderReceivedListener = received
+            binderDeadListener = dead
+            permissionListener = perm
+            Shizuku.addBinderReceivedListenerSticky(received)
+            Shizuku.addBinderDeadListener(dead)
+            Shizuku.addRequestPermissionResultListener(perm)
         }
+    }
+
+    private fun unregisterListeners() {
+        runCatching { binderReceivedListener?.let(Shizuku::removeBinderReceivedListener) }
+        runCatching { binderDeadListener?.let(Shizuku::removeBinderDeadListener) }
+        runCatching { permissionListener?.let(Shizuku::removeRequestPermissionResultListener) }
+        binderReceivedListener = null
+        binderDeadListener = null
+        permissionListener = null
+    }
+
+    /**
+     * Manual recovery: tears down the listener chain and user-service binding,
+     * then rebuilds both and re-evaluates state. Wired to the Reconnect button.
+     */
+    fun reconnect() {
+        _statusDetail.value = "Reconnecting…"
+        runCatching {
+            if (bound) Shizuku.unbindUserService(userServiceArgs, connection, /*remove=*/true)
+        }
+        bound = false
+        shell = null
+        _shellReady.value = false
+        unregisterListeners()
+        registerListeners()
         refreshState()
     }
 
     /** Re-evaluates [Status] and (re)binds the user service if possible. */
     fun refreshState() {
-        val installed = isShizukuInstalled()
-        if (!installed) {
+        if (!isShizukuInstalled()) {
             _status.value = Status.NOT_INSTALLED
+            _statusDetail.value = "Shizuku not installed"
             return
         }
+        // 1. is the Shizuku binder alive?
         val alive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
         if (!alive) {
             _status.value = Status.NOT_RUNNING
             _isRoot.value = false
+            _statusDetail.value = "Shizuku is not running — open Shizuku and start it"
             return
         }
-        if (!hasPermission) {
+        // 2. did the user grant this app permission?
+        val granted = runCatching {
+            Shizuku.isPreV11() ||
+                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        }.getOrDefault(false)
+        if (!granted) {
             _status.value = Status.PERMISSION_NEEDED
+            _statusDetail.value = "Tap Allow to grant GamersHub Shizuku access"
             return
         }
+        // 3. bind the privileged shell
         _status.value = Status.READY
         _isRoot.value = runCatching { Shizuku.getUid() == 0 }.getOrDefault(false)
-        bindShell()
+        if (!_shellReady.value) {
+            _statusDetail.value = "Binding shell…"
+            bindShell()
+        } else {
+            _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" : " (shell)"}"
+        }
     }
 
     /** Show the Shizuku permission dialog. Safe to call from anywhere. */
     fun requestPermission() {
         runCatching {
+            if (!Shizuku.pingBinder()) {
+                _statusDetail.value = "Shizuku is not running"
+                refreshState()
+                return
+            }
             if (!Shizuku.isPreV11() &&
                 Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED
             ) {
                 Shizuku.requestPermission(REQUEST_CODE)
+            } else {
+                refreshState()
             }
+        }.onFailure {
+            _statusDetail.value = "Permission request failed: ${it.message}"
         }
     }
 
     fun bindShell() {
-        runCatching { Shizuku.bindUserService(userServiceArgs, connection) }
+        runCatching {
+            if (bound) return
+            Shizuku.bindUserService(userServiceArgs, connection)
+        }.onFailure {
+            _statusDetail.value = "Shell bind failed: ${it.message}"
+        }
     }
 
-    /** Execute a command through the privileged shell service. */
+    /**
+     * Execute a command through the privileged shell service.
+     * Auto-recovers once if the binding was lost (rebind + retry), so a dropped
+     * binder does not permanently break every engine.
+     */
     suspend fun exec(command: String): ShellResult = withContext(Dispatchers.IO) {
-        val service = shell ?: return@withContext ShellResult(-1, "shell service not bound")
+        var service = shell
+        if (service == null || !runCatching { service.asBinder().pingBinder() }.getOrDefault(false)) {
+            // binder stale — rebuild once
+            shell = null
+            bound = false
+            refreshState()
+            service = shell
+        }
+        if (service == null) return@withContext ShellResult(-1, "shell service not bound")
         return@withContext try {
             val raw = service.exec(command) ?: ""
             val marker = raw.indexOf(EXIT_MARKER)

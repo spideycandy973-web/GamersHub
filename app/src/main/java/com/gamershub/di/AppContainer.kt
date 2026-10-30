@@ -5,17 +5,19 @@ import com.gamershub.core.analytics.AnalyticsEngine
 import com.gamershub.core.battery.BatteryManager
 import com.gamershub.core.boost.BoostEngine
 import com.gamershub.core.boost.ThermalManager
-import com.gamershub.core.cloud.CloudSyncManager
 import com.gamershub.core.launcher.GameLibrary
 import com.gamershub.core.monitor.HardwareMonitor
 import com.gamershub.core.notifications.NotificationHelper
 import com.gamershub.core.profiles.GameProfileStore
 import com.gamershub.core.record.RecorderController
+import com.gamershub.core.scaling.FrameGenEngine
+import com.gamershub.core.scaling.LosslessScalingEngine
 import com.gamershub.core.settings.SettingsRepository
 import com.gamershub.core.shizuku.ShizukuManager
 import com.gamershub.core.spoof.DeviceSpoofer
 import com.gamershub.core.stream.StreamEngine
 import com.gamershub.core.stream.chat.ChatHub
+import com.gamershub.core.unlock.GameConfigUnlocker
 
 /**
  * Lightweight manual dependency container. Keeps the app fast to start and free
@@ -31,13 +33,15 @@ class AppContainer(private val app: Application) {
     val boost = BoostEngine(app, shizuku, settings, monitor)
     val spoofer = DeviceSpoofer(app, shizuku, settings)
     val battery = BatteryManager(shizuku)
+    val unlocker = GameConfigUnlocker(app, shizuku)
+    val scaling = LosslessScalingEngine(shizuku)
+    val frameGen = FrameGenEngine(shizuku)
     val profiles = GameProfileStore(app)
     val games = GameLibrary(app, profiles)
     val analytics = AnalyticsEngine(app, monitor)
     val recorder = RecorderController(app, settings, analytics)
     val stream = StreamEngine(app, settings)
     val chat = ChatHub(settings)
-    val cloud = CloudSyncManager(app, settings, profiles)
 
     fun init() {
         notifications.createChannels()

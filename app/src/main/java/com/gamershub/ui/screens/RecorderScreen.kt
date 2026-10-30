@@ -52,7 +52,7 @@ fun RecorderScreen(container: AppContainer) {
     val fps by container.settings.recFps.collectAsStateWithLifecycle(60)
     val codec by container.settings.recCodec.collectAsStateWithLifecycle("H264")
     val bitrate by container.settings.recBitrateMbps.collectAsStateWithLifecycle(0)
-    val mic by container.settings.recMic.collectAsStateWithLifecycle(true)
+    val mic by container.settings.recMic.collectAsStateWithLifecycle(false)
     val state by container.recorder.state.collectAsStateWithLifecycle()
 
     val micPermission = rememberLauncherForActivityResult(
@@ -170,12 +170,18 @@ fun RecorderScreen(container: AppContainer) {
             )
 
             GlassSwitchRow(
-                "Microphone audio", "Record commentary with the game",
+                "Microphone audio", "Record commentary with the game (off by default)",
                 mic
             ) { on ->
                 scope.launch { container.settings.setRecMic(on) }
                 if (on) micPermission.launch(Manifest.permission.RECORD_AUDIO)
             }
+            Spacer(Modifier.height(8.dp))
+            val fg by container.settings.recFrameGen.collectAsStateWithLifecycle(false)
+            GlassSwitchRow(
+                "Frame generation", "Real GPU-interpolated frames at 2× output rate",
+                fg
+            ) { on -> scope.launch { container.settings.setRecFrameGen(on) } }
         }
 
         Spacer(Modifier.height(16.dp))

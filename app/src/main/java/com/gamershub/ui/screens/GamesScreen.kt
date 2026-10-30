@@ -1,7 +1,6 @@
 package com.gamershub.ui.screens
 
 import android.graphics.Bitmap
-import android.graphics.Canvas as AndroidCanvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
@@ -20,7 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -33,21 +34,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamershub.core.launcher.GameEntry
-import com.gamershub.core.profiles.GameProfile
-import com.gamershub.core.spoof.DeviceSpoofer
 import com.gamershub.di.AppContainer
+import com.gamershub.ui.components.GlassButton
 import com.gamershub.ui.components.GlassCard
 import com.gamershub.ui.components.GlassChip
 import com.gamershub.ui.components.GlassSwitchRow
@@ -59,9 +59,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun GamesScreen(container: AppContainer) {
     val g = LocalGlass.current
+    val scope = rememberCoroutineScope()
     val games by container.games.games.collectAsStateWithLifecycle()
+    val allApps by container.games.allApps.collectAsStateWithLifecycle()
+    val pinned by container.games.pinned.collectAsStateWithLifecycle()
+
     var editing by remember { mutableStateOf<GameEntry?>(null) }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var showPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { container.games.refresh() }
 
@@ -71,15 +75,22 @@ fun GamesScreen(container: AppContainer) {
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
-        Text(
-            "Game Launcher",
-            style = MaterialTheme.typography.headlineLarge,
-            color = g.text, modifier = Modifier.padding(top = 18.dp)
-        )
-        Text(
-            "${games.size} games · tap to launch · ⚙ binds a per-game profile",
-            style = MaterialTheme.typography.labelSmall, color = g.textDim
-        )
+        Row(
+            Modifier.fillMaxWidth().padding(top = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Game Launcher", style = MaterialTheme.typography.headlineLarge, color = g.text)
+                Text(
+                    "${games.size} apps · tap to launch · ⚙ binds a profile",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+            }
+            GlassChip("+ Add app", selected = true) {
+                scope.launch { container.games.refresh() }
+                showPicker = true
+            }
+        }
 
         Spacer(Modifier.height(14.dp))
         LazyVerticalGrid(
@@ -99,14 +110,98 @@ fun GamesScreen(container: AppContainer) {
     }
 
     editing?.let { game ->
-        ProfileEditorSheet(
-            container = container,
-            game = game,
-            onDismiss = {
-                editing = null
-                scope.launch { container.games.refresh() }
-            }
+        ProfileEditorSheet(container = container, game = game, onDismiss = {
+            editing = null
+            scope.launch { container.games.refresh() }
+        })
+    }
+
+    if (showPicker) {
+        AppPickerSheet(
+            apps = allApps,
+            pinned = pinned,
+            onToggle = { pkg ->
+                val next = if (pkg in pinned) pinned - pkg else pinned + pkg
+                container.games.setPinned(next)
+            },
+            onDismiss = { showPicker = false }
         )
+    }
+}
+
+/** App selector: every launchable app, searchable, pinnable into the library. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppPickerSheet(
+    apps: List<GameEntry>,
+    pinned: Set<String>,
+    onToggle: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val g = LocalGlass.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var query by remember { mutableStateOf("") }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = g.bg2) {
+        Column(
+            Modifier
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 40.dp)
+                .height(560.dp)
+        ) {
+            Text("App selector", style = MaterialTheme.typography.headlineMedium, color = g.text)
+            Text(
+                "Add ANY app or game to your library — not just what Android calls a game.",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim
+            )
+            Spacer(Modifier.height(12.dp))
+            GlassTextField(query, { query = it }, "Search apps…")
+            Spacer(Modifier.height(10.dp))
+            val filtered = apps.filter {
+                query.isBlank() || it.label.contains(query, true) ||
+                        it.packageName.contains(query, true)
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(filtered, key = { it.packageName }) { app ->
+                    val isPinned = app.packageName in pinned
+                    GlassCard(
+                        corner = 16.dp,
+                        highlight = isPinned,
+                        onClick = { onToggle(app.packageName) }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val bmp = remember(app.packageName) { app.icon?.toImageBitmap() }
+                            if (bmp != null) {
+                                Image(
+                                    bmp, app.label,
+                                    Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text("◻", style = MaterialTheme.typography.titleMedium)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    app.label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = g.text, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    if (isPinned) "In library ✓" else if (app.isGame) "Game" else "App",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isPinned) g.accent else g.textDim
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -127,7 +222,7 @@ private fun GameTile(game: GameEntry, onLaunch: () -> Unit, onEdit: () -> Unit) 
                         modifier = Modifier.size(52.dp), contentScale = ContentScale.Crop
                     )
                 } else {
-                    Text("🎮", style = MaterialTheme.typography.headlineMedium)
+                    Text("◻", style = MaterialTheme.typography.headlineMedium, color = g.textDim)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -151,7 +246,6 @@ private fun GameTile(game: GameEntry, onLaunch: () -> Unit, onEdit: () -> Unit) 
 @Composable
 private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismiss: () -> Unit) {
     val g = LocalGlass.current
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val existing = container.profiles.profileFor(game.packageName)
@@ -166,21 +260,18 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
             Modifier
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 40.dp)
-                .verticalScroll(rememberScrollStateCompat())
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 "Profile: ${game.label}",
                 style = MaterialTheme.typography.headlineMedium, color = g.text
             )
-            Text(
-                game.packageName,
-                style = MaterialTheme.typography.labelSmall, color = g.textDim
-            )
+            Text(game.packageName, style = MaterialTheme.typography.labelSmall, color = g.textDim)
             Spacer(Modifier.height(14.dp))
 
             GlassSwitchRow(
                 "Auto-boost on launch",
-                "GamersHub engine applies this profile when the game opens",
+                "Applies this profile when the app opens",
                 profile.boostEnabled
             ) { profile = profile.copy(boostEnabled = it) }
 
@@ -215,9 +306,10 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
             Text("Thermal profile", style = MaterialTheme.typography.titleMedium, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("COOL", "BALANCED", "BEAST", "EXTREME").forEach { tp ->
-                    GlassChip(tp.lowercase().replaceFirstChar { it.uppercase() }, profile.thermalProfile == tp) {
-                        profile = profile.copy(thermalProfile = tp)
-                    }
+                    GlassChip(
+                        tp.lowercase().replaceFirstChar { it.uppercase() },
+                        profile.thermalProfile == tp
+                    ) { profile = profile.copy(thermalProfile = tp) }
                 }
             }
 
@@ -227,7 +319,7 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
                 GlassChip("None", profile.spoofPresetId == null) {
                     profile = profile.copy(spoofPresetId = null)
                 }
-                DeviceSpoofer.PRESETS.take(3).forEach { p ->
+                com.gamershub.core.spoof.DeviceSpoofer.PRESETS.take(3).forEach { p ->
                     GlassChip(
                         p.displayName.substringBefore(" ").ifBlank { p.brand },
                         profile.spoofPresetId == p.id
@@ -236,23 +328,22 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
             }
 
             Spacer(Modifier.height(12.dp))
-            GlassSwitchRow(
-                "Show FPS HUD", "Floating telemetry while this game runs",
-                profile.showHud
-            ) { profile = profile.copy(showHud = it) }
+            GlassSwitchRow("Show FPS HUD", "Floating telemetry while this app runs", profile.showHud) {
+                profile = profile.copy(showHud = it)
+            }
             Spacer(Modifier.height(8.dp))
-            GlassSwitchRow(
-                "Kill background on launch", "", profile.killBackground
-            ) { profile = profile.copy(killBackground = it) }
+            GlassSwitchRow("Kill background on launch", "", profile.killBackground) {
+                profile = profile.copy(killBackground = it)
+            }
             Spacer(Modifier.height(8.dp))
-            GlassSwitchRow(
-                "Block notifications", "", profile.blockNotifications
-            ) { profile = profile.copy(blockNotifications = it) }
+            GlassSwitchRow("Block notifications", "", profile.blockNotifications) {
+                profile = profile.copy(blockNotifications = it)
+            }
 
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                com.gamershub.ui.components.GlassButton(
-                    "SAVE PROFILE",
+                GlassButton(
+                    "Save profile",
                     onClick = {
                         container.profiles.upsert(profile)
                         onDismiss()
@@ -260,8 +351,8 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
                     modifier = Modifier.weight(1f)
                 )
                 if (container.profiles.profiles.value.containsKey(game.packageName)) {
-                    com.gamershub.ui.components.GlassButton(
-                        "DELETE", primary = false,
+                    GlassButton(
+                        "Delete", primary = false,
                         onClick = {
                             container.profiles.remove(game.packageName)
                             onDismiss()
@@ -274,16 +365,13 @@ private fun ProfileEditorSheet(container: AppContainer, game: GameEntry, onDismi
     }
 }
 
-@Composable
-private fun rememberScrollStateCompat() = androidx.compose.foundation.rememberScrollState()
-
 private fun Drawable.toImageBitmap(): ImageBitmap? {
     return try {
         if (this is BitmapDrawable && bitmap != null) return bitmap.asImageBitmap()
         val bmp = Bitmap.createBitmap(
             maxOf(1, intrinsicWidth), maxOf(1, intrinsicHeight), Bitmap.Config.ARGB_8888
         )
-        val canvas = AndroidCanvas(bmp)
+        val canvas = android.graphics.Canvas(bmp)
         setBounds(0, 0, canvas.width, canvas.height)
         draw(canvas)
         bmp.asImageBitmap()

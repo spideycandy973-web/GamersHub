@@ -1,0 +1,66 @@
+name: Build & Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Create CI keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore gamershub.jks -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias gamershub -storepass gamershub -keypass gamershub \
+            -dname "CN=GamersHub, OU=App, O=GamersHub, C=US"
+
+      - name: Build signed release APK
+        run: |
+          ./gradlew assembleRelease --stacktrace \
+            -Pandroid.injected.signing.store.file="$PWD/gamershub.jks" \
+            -Pandroid.injected.signing.store.password=gamershub \
+            -Pandroid.injected.signing.key.alias=gamershub \
+            -Pandroid.injected.signing.key.password=gamershub
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/GamersHub-${GITHUB_REF_NAME:-dev}.apk"
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GamersHub-apk
+          path: dist/*.apk
+
+      - name: Create GitHub Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          generate_release_notes: true
+
+      - name: Publish nightly (manual run)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "GamersHub — latest build"
+          prerelease: true
+          files: dist/*.apk

@@ -72,13 +72,15 @@ class RecorderController(
         if (micPref && !micGranted) {
             _events.tryEmit("Mic permission not granted — capturing without microphone audio")
         }
+        val frameGen = settings.recFrameGen.first()
         return RecorderConfig(
             verticalResolution = res,
             fps = fps,
             codec = codec,
             bitrateMbps = bitrate,
             withMic = micPref && micGranted,
-            mode = mode
+            mode = mode,
+            frameGen = frameGen
         )
     }
 

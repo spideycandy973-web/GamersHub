@@ -8,6 +8,7 @@ import android.media.MediaFormat
 import android.media.projection.MediaProjection
 import android.util.Log
 import android.view.Surface
+import com.gamershub.core.scaling.FrameGenStage
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -15,9 +16,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The capture pipeline: MediaProjection -> VirtualDisplay -> hardware H.264/HEVC
  * encoder -> [FrameConsumer]s (file muxer + RTMP fan-out).
  *
- * Frames never touch the app CPU as pixels: the display compositor renders
- * directly into the encoder's input Surface - the same zero-copy path Game
- * Recorder apps use - which is why recording adds almost no load.
+ * Two paths:
+ *  - **Zero-copy** (default): the display compositor renders directly into the
+ *    encoder's input Surface — the same path Game Recorder apps use, so
+ *    recording adds almost no load.
+ *  - **FrameGen** (optional): the VirtualDisplay renders into a GPU
+ *    [FrameGenStage] which synthesises real motion-compensated mid-frames and
+ *    feeds the encoder at 2× the captured frame rate. All on the GPU.
  */
 class CapturePipeline(
     private val config: RecorderConfig,
@@ -32,6 +37,11 @@ class CapturePipeline(
     private var virtualDisplay: VirtualDisplay? = null
     private var drainThread: Thread? = null
     private var audio: MicAudioPipeline? = null
+    private var frameGen: FrameGenStage? = null
+
+    /** True when the GPU frame-generation stage took over the feed. */
+    var frameGenActive = false
+        private set
 
     val actualWidth: Int
     val actualHeight: Int
@@ -47,7 +57,9 @@ class CapturePipeline(
         if (!running.compareAndSet(false, true)) return
 
         val mime = config.codec.mime
-        val bitrate = config.autoBitrateBps(actualWidth, actualHeight).toInt()
+        // FrameGen outputs 2× frames, so the encoder targets double the rate.
+        val encodeFps = if (config.frameGen) config.fps * 2 else config.fps
+        val bitrate = config.autoBitrateBps(actualWidth, actualHeight, encodeFps).toInt()
 
         val format = MediaFormat.createVideoFormat(mime, actualWidth, actualHeight).apply {
             setInteger(
@@ -55,7 +67,7 @@ class CapturePipeline(
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
             )
             setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, config.fps)
+            setInteger(MediaFormat.KEY_FRAME_RATE, encodeFps)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
             runCatching {
                 setInteger(
@@ -71,18 +83,32 @@ class CapturePipeline(
         codec.start()
         encoder = codec
 
+        // Optional GPU frame generation between display and encoder.
+        var displaySurface = inputSurface
+        if (config.frameGen) {
+            val stage = FrameGenStage.create(inputSurface, actualWidth, actualHeight)
+            if (stage != null) {
+                frameGen = stage
+                frameGenActive = true
+                displaySurface = stage.renderSurface
+                Log.i(TAG, "FrameGen active: real interpolated frames at ${encodeFps}fps")
+            } else {
+                Log.w(TAG, "FrameGen unavailable — falling back to zero-copy")
+            }
+        }
+
         virtualDisplay = projection.createVirtualDisplay(
             "GamersHub",
             actualWidth, actualHeight, densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            inputSurface, null, null
+            displaySurface, null, null
         )
 
         // Mic track (optional)
         if (config.withMic) {
             audio = MicAudioPipeline(consumer).also {
-                runCatching { it.start() }.onFailure {
-                    Log.w(TAG, "mic pipeline unavailable: ${it.message}")
+                runCatching { it.start() }.onFailure { e ->
+                    Log.w(TAG, "mic pipeline unavailable: ${e.message}")
                 }
             }
         }
@@ -122,6 +148,8 @@ class CapturePipeline(
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
+        runCatching { frameGen?.stop() }
+        frameGen = null
         runCatching { encoder?.signalEndOfInputStream() }
         runCatching { drainThread?.join(2500) }
         runCatching { audio?.stop() }
@@ -131,6 +159,7 @@ class CapturePipeline(
         runCatching { consumer.onSessionEnded() }
         encoder = null
         virtualDisplay = null
+        frameGenActive = false
     }
 
     companion object {

@@ -96,17 +96,4 @@ class GameProfileStore(private val context: Context) {
         val raw = json.encodeToString(_profiles.value)
         context.profileStore.edit { it[key] = raw }
     }
-
-    /** Used by cloud sync. */
-    suspend fun exportJson(): String = json.encodeToString(_profiles.value)
-
-    suspend fun importJson(raw: String) {
-        mutex.withLock {
-            runCatching { json.decodeFromString<Map<String, GameProfile>>(raw) }
-                .onSuccess {
-                    _profiles.value = it
-                    persist()
-                }
-        }
-    }
 }

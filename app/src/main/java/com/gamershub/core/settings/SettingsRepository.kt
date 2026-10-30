@@ -42,19 +42,18 @@ class SettingsRepository(private val context: Context) {
         val REC_CODEC = stringPreferencesKey("rec_codec")
         val REC_BITRATE_MBPS = intPreferencesKey("rec_bitrate_mbps")
         val REC_MIC = booleanPreferencesKey("rec_mic")
+        val REC_FRAME_GEN = booleanPreferencesKey("rec_frame_gen")
+
+        val SCALE_MODE = stringPreferencesKey("scale_mode")
+        val SCALE_CUSTOM_PCT = intPreferencesKey("scale_custom_pct")
+        val FRAMEGEN_DISPLAY = booleanPreferencesKey("framegen_display")
+        val FRAMEGEN_CAPTURE = booleanPreferencesKey("framegen_capture")
 
         val STREAM_KEY_PREFIX = "stream_key_"      // + platform id
         val STREAM_ENABLED_PREFIX = "stream_on_"   // + platform id
         val STREAM_CHAT_PREFIX = "stream_chat_"    // + platform id
         val YT_API_KEY = stringPreferencesKey("yt_api_key")
         val YT_LIVE_CHAT_ID = stringPreferencesKey("yt_live_chat_id")
-
-        val CLOUD_BACKEND = stringPreferencesKey("cloud_backend") // off | folder | rest
-        val CLOUD_REST_ENDPOINT = stringPreferencesKey("cloud_rest_endpoint")
-        val CLOUD_REST_TOKEN = stringPreferencesKey("cloud_rest_token")
-        val CLOUD_FOLDER_URI = stringPreferencesKey("cloud_folder_uri")
-        val CLOUD_AUTO_SYNC = booleanPreferencesKey("cloud_auto_sync")
-        val DEVICE_ID = stringPreferencesKey("device_id")
 
         val SPOOF_PRESET = stringPreferencesKey("spoof_preset")
         val SPOOF_APPLIED = booleanPreferencesKey("spoof_applied")
@@ -77,7 +76,7 @@ class SettingsRepository(private val context: Context) {
         runCatching { ThemeMode.valueOf(it) }.getOrDefault(ThemeMode.SYSTEM)
     }
 
-    val accent: Flow<String> = flow(K.ACCENT, "CYBER")
+    val accent: Flow<String> = flow(K.ACCENT, "GRAPHITE")
     suspend fun setAccent(value: String) = context.dataStore.edit { it[K.ACCENT] = value }
 
     val amoledDark: Flow<Boolean> = flow(K.OVERRIDE_DARK_AMOLED, false)
@@ -130,8 +129,20 @@ class SettingsRepository(private val context: Context) {
     suspend fun setRecCodec(v: String) = context.dataStore.edit { it[K.REC_CODEC] = v }
     val recBitrateMbps: Flow<Int> = flow(K.REC_BITRATE_MBPS, 0) // 0 = auto
     suspend fun setRecBitrateMbps(v: Int) = context.dataStore.edit { it[K.REC_BITRATE_MBPS] = v }
-    val recMic: Flow<Boolean> = flow(K.REC_MIC, true)
+    val recMic: Flow<Boolean> = flow(K.REC_MIC, false)
     suspend fun setRecMic(v: Boolean) = context.dataStore.edit { it[K.REC_MIC] = v }
+    val recFrameGen: Flow<Boolean> = flow(K.REC_FRAME_GEN, false)
+    suspend fun setRecFrameGen(v: Boolean) = context.dataStore.edit { it[K.REC_FRAME_GEN] = v }
+
+    // ---------- lossless scaling / frame generation ----------
+    val scaleMode: Flow<String> = flow(K.SCALE_MODE, "NATIVE")
+    suspend fun setScaleMode(v: String) = context.dataStore.edit { it[K.SCALE_MODE] = v }
+    val scaleCustomPct: Flow<Int> = flow(K.SCALE_CUSTOM_PCT, 85)
+    suspend fun setScaleCustomPct(v: Int) = context.dataStore.edit { it[K.SCALE_CUSTOM_PCT] = v }
+    val frameGenDisplay: Flow<Boolean> = flow(K.FRAMEGEN_DISPLAY, false)
+    suspend fun setFrameGenDisplay(v: Boolean) = context.dataStore.edit { it[K.FRAMEGEN_DISPLAY] = v }
+    val frameGenCapture: Flow<Boolean> = flow(K.FRAMEGEN_CAPTURE, false)
+    suspend fun setFrameGenCapture(v: Boolean) = context.dataStore.edit { it[K.FRAMEGEN_CAPTURE] = v }
 
     // ---------- streaming ----------
     fun streamKey(platform: String): Flow<String> =
@@ -153,26 +164,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun setYtApiKey(v: String) = context.dataStore.edit { it[K.YT_API_KEY] = v }
     val ytLiveChatId: Flow<String> = flow(K.YT_LIVE_CHAT_ID, "")
     suspend fun setYtLiveChatId(v: String) = context.dataStore.edit { it[K.YT_LIVE_CHAT_ID] = v }
-
-    // ---------- cloud ----------
-    val cloudBackend: Flow<String> = flow(K.CLOUD_BACKEND, "off")
-    suspend fun setCloudBackend(v: String) = context.dataStore.edit { it[K.CLOUD_BACKEND] = v }
-    val cloudRestEndpoint: Flow<String> = flow(K.CLOUD_REST_ENDPOINT, "")
-    suspend fun setCloudRestEndpoint(v: String) = context.dataStore.edit { it[K.CLOUD_REST_ENDPOINT] = v }
-    val cloudRestToken: Flow<String> = flow(K.CLOUD_REST_TOKEN, "")
-    suspend fun setCloudRestToken(v: String) = context.dataStore.edit { it[K.CLOUD_REST_TOKEN] = v }
-    val cloudFolderUri: Flow<String> = flow(K.CLOUD_FOLDER_URI, "")
-    suspend fun setCloudFolderUri(v: String) = context.dataStore.edit { it[K.CLOUD_FOLDER_URI] = v }
-    val cloudAutoSync: Flow<Boolean> = flow(K.CLOUD_AUTO_SYNC, true)
-    suspend fun setCloudAutoSync(v: Boolean) = context.dataStore.edit { it[K.CLOUD_AUTO_SYNC] = v }
-
-    suspend fun deviceId(): String {
-        val prefs = context.dataStore.data.first()
-        prefs[K.DEVICE_ID]?.let { return it }
-        val id = java.util.UUID.randomUUID().toString().take(8)
-        context.dataStore.edit { it[K.DEVICE_ID] = id }
-        return id
-    }
 
     // ---------- spoofing ----------
     val spoofPreset: Flow<String> = flow(K.SPOOF_PRESET, "")
@@ -202,11 +193,11 @@ class SettingsRepository(private val context: Context) {
     }
     val totalRecordings: Flow<Int> = flow(K.STATS_TOTAL_RECORDINGS, 0)
 
-    /** Raw snapshot used for cloud sync export. */
-    suspend fun snapshot(): Map<String, String> {
+    suspend fun deviceId(): String {
         val prefs = context.dataStore.data.first()
-        val out = mutableMapOf<String, String>()
-        prefs.asMap().forEach { (key, value) -> out[key.name] = value.toString() }
-        return out
+        prefs[stringPreferencesKey("device_id")]?.let { return it }
+        val id = java.util.UUID.randomUUID().toString().take(8)
+        context.dataStore.edit { it[stringPreferencesKey("device_id")] = id }
+        return id
     }
 }

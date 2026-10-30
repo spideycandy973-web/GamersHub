@@ -4,8 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,10 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -57,14 +52,14 @@ fun SettingsScreen(container: AppContainer) {
         Text(
             "Settings",
             style = MaterialTheme.typography.headlineLarge,
-            color = g.text, modifier = Modifier.padding(top = 18.dp)
+            color = g.text, modifier = Modifier.padding(top = 20.dp)
         )
 
         // ------------------------------------------------------- appearance
         SectionTitle("APPEARANCE")
         GlassCard {
             val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
-            val accent by container.settings.accent.collectAsStateWithLifecycle("CYBER")
+            val accent by container.settings.accent.collectAsStateWithLifecycle("GRAPHITE")
             Text("Theme", style = MaterialTheme.typography.titleMedium, color = g.text)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -79,7 +74,7 @@ fun SettingsScreen(container: AppContainer) {
             Text("Accent", style = MaterialTheme.typography.titleMedium, color = g.text)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("CYBER", "VIOLET", "MAGMA", "LIME").forEach { a ->
+                listOf("GRAPHITE", "TEAL", "PLUM", "ROSE").forEach { a ->
                     GlassChip(
                         a.lowercase().replaceFirstChar { it.uppercase() },
                         accent == a
@@ -119,7 +114,7 @@ fun SettingsScreen(container: AppContainer) {
 
             Spacer(Modifier.height(12.dp))
             if (!Settings.canDrawOverlays(context)) {
-                GlassButton("GRANT OVERLAY PERMISSION", onClick = {
+                GlassButton("Grant overlay permission", onClick = {
                     context.startActivity(
                         Intent(
                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -134,10 +129,12 @@ fun SettingsScreen(container: AppContainer) {
         SectionTitle("SHIZUKU / WIRELESS DEBUGGING")
         GlassCard {
             val status by container.shizuku.status.collectAsStateWithLifecycle()
+            val detail by container.shizuku.statusDetail.collectAsStateWithLifecycle()
             Text(
                 "Status: ${status.name}",
                 style = MaterialTheme.typography.titleMedium, color = g.accent
             )
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = g.textDim)
             Text(
                 "1. Install Shizuku from Play Store/GitHub.\n" +
                         "2. Android 11+: enable Wireless Debugging in Developer Options, open " +
@@ -152,99 +149,16 @@ fun SettingsScreen(container: AppContainer) {
                 GlassChip("Request permission", selected = true) {
                     container.shizuku.requestPermission()
                 }
+                GlassChip("Reconnect", selected = false) {
+                    container.shizuku.reconnect()
+                    Toast.makeText(context, "Rebinding Shizuku shell…", Toast.LENGTH_SHORT).show()
+                }
                 GlassChip("Open Shizuku", selected = false) {
                     val i = context.packageManager
                         .getLaunchIntentForPackage("moe.shizuku.privileged.api")
                     if (i != null) context.startActivity(i)
                     else Toast.makeText(context, "Shizuku not installed", Toast.LENGTH_SHORT).show()
                 }
-                GlassChip("Refresh", selected = false) { container.shizuku.refreshState() }
-            }
-        }
-
-        // --------------------------------------------------------- cloud
-        SectionTitle("CLOUD SYNC")
-        GlassCard {
-            val backend by container.settings.cloudBackend.collectAsStateWithLifecycle("off")
-            val syncState by container.cloud.state.collectAsStateWithLifecycle()
-            Text("Backend", style = MaterialTheme.typography.titleMedium, color = g.text)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("off", "folder", "rest").forEach { b ->
-                    GlassChip(b, backend == b) {
-                        scope.launch { container.settings.setCloudBackend(b) }
-                    }
-                }
-            }
-
-            if (backend == "folder") {
-                Spacer(Modifier.height(10.dp))
-                val folderUri by container.settings.cloudFolderUri.collectAsStateWithLifecycle("")
-                val createDoc = rememberLauncherForActivityResult(
-                    ActivityResultContracts.CreateDocument("application/json")
-                ) { uri: Uri? ->
-                    if (uri != null) {
-                        runCatching {
-                            context.contentResolver.takePersistableUriPermission(
-                                uri,
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            )
-                        }
-                        scope.launch { container.settings.setCloudFolderUri(uri.toString()) }
-                    }
-                }
-                Text(
-                    if (folderUri.isBlank()) "Pick a sync file inside a Drive/Dropbox/Nextcloud-synced folder"
-                    else "Sync file: $folderUri",
-                    style = MaterialTheme.typography.labelSmall, color = g.textDim
-                )
-                Spacer(Modifier.height(8.dp))
-                GlassButton("CHOOSE SYNC FILE", primary = false, onClick = {
-                    createDoc.launch("gamershub_sync.json")
-                })
-            }
-
-            if (backend == "rest") {
-                Spacer(Modifier.height(10.dp))
-                val endpoint by container.settings.cloudRestEndpoint.collectAsStateWithLifecycle("")
-                val token by container.settings.cloudRestToken.collectAsStateWithLifecycle("")
-                var ep by remember { mutableStateOf<String?>(null) }
-                var tk by remember { mutableStateOf<String?>(null) }
-                com.gamershub.ui.screens.GlassTextField(
-                    ep ?: endpoint, { ep = it }, "REST endpoint (https://…/gamershub)"
-                )
-                Spacer(Modifier.height(8.dp))
-                com.gamershub.ui.screens.GlassTextField(
-                    tk ?: token, { tk = it }, "Bearer token", password = true
-                )
-                Spacer(Modifier.height(8.dp))
-                GlassButton("SAVE", primary = false, onClick = {
-                    scope.launch {
-                        ep?.let { container.settings.setCloudRestEndpoint(it) }
-                        tk?.let { container.settings.setCloudRestToken(it) }
-                    }
-                })
-            }
-
-            Spacer(Modifier.height(10.dp))
-            if (backend != "off") {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GlassChip("⇪ Upload", selected = false) {
-                        scope.launch { container.cloud.upload() }
-                    }
-                    GlassChip("⇩ Download", selected = false) {
-                        scope.launch { container.cloud.download() }
-                    }
-                    GlassChip("⇅ Sync now", selected = true) {
-                        scope.launch { container.cloud.syncNow() }
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "${syncState.status}: ${syncState.message}",
-                    style = MaterialTheme.typography.labelSmall, color = g.textDim
-                )
             }
         }
 
@@ -274,8 +188,8 @@ fun SettingsScreen(container: AppContainer) {
                 style = MaterialTheme.typography.titleMedium, color = g.text
             )
             Text(
-                "FPS booster · thermal governor · 4K capture · multi-platform live · " +
-                        "Shizuku-powered. No root required.",
+                "FPS boost · game unlock · lossless scaling · frame generation · " +
+                        "4K capture · multi-platform live — all through Shizuku, no root.",
                 style = MaterialTheme.typography.labelSmall, color = g.textDim
             )
         }
@@ -288,10 +202,10 @@ fun SettingsScreen(container: AppContainer) {
 private fun ActionChips(current: GestureAction, onPick: (GestureAction) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         GlassChip("None", current == GestureAction.NONE) { onPick(GestureAction.NONE) }
-        GlassChip("Record ⏺", current == GestureAction.TOGGLE_RECORD) {
+        GlassChip("Record", current == GestureAction.TOGGLE_RECORD) {
             onPick(GestureAction.TOGGLE_RECORD)
         }
-        GlassChip("Boost ⚡", current == GestureAction.TOGGLE_BOOST) {
+        GlassChip("Boost", current == GestureAction.TOGGLE_BOOST) {
             onPick(GestureAction.TOGGLE_BOOST)
         }
         GlassChip("Panel", current == GestureAction.OPEN_PANEL) { onPick(GestureAction.OPEN_PANEL) }

@@ -12,8 +12,10 @@ data class RecorderConfig(
     val codec: Codec = Codec.H264,
     /** 0 = auto */
     val bitrateMbps: Int = 0,
-    val withMic: Boolean = true,
-    val mode: Mode = Mode.RECORD
+    val withMic: Boolean = false,
+    val mode: Mode = Mode.RECORD,
+    /** Real GPU frame generation (2× output via motion interpolation). */
+    val frameGen: Boolean = false
 ) : Parcelable {
     enum class Codec(val mime: String) {
         H264("video/avc"),
@@ -44,10 +46,10 @@ data class RecorderConfig(
         return w to h
     }
 
-    /** Sensible default bitrate for the given canvas. */
-    fun autoBitrateBps(width: Int, height: Int): Long {
+    /** Sensible default bitrate for the given canvas and encode rate. */
+    fun autoBitrateBps(width: Int, height: Int, encodeFps: Int = fps): Long {
         val bpp = if (codec == Codec.HEVC) 0.075 else 0.10
-        val raw = (width.toLong() * height * fps * bpp).toLong()
+        val raw = (width.toLong() * height * encodeFps * bpp).toLong()
         val capMbps = if (bitrateMbps > 0) bitrateMbps.toLong() * 1_000_000 else Long.MAX_VALUE
         val floor = 2_000_000L
         val ceiling = minOf(capMbps, 80_000_000L)

@@ -54,10 +54,11 @@ import com.gamershub.ui.screens.DashboardScreen
 import com.gamershub.ui.screens.GamesScreen
 import com.gamershub.ui.screens.MoreScreen
 import com.gamershub.ui.screens.RecorderScreen
+import com.gamershub.ui.screens.ScalingScreen
 import com.gamershub.ui.screens.SettingsScreen
-import com.gamershub.ui.screens.SpoofScreen
 import com.gamershub.ui.screens.StreamScreen
 import com.gamershub.ui.screens.ThermalScreen
+import com.gamershub.ui.screens.UnlockScreen
 import com.gamershub.ui.theme.GamersHubTheme
 import com.gamershub.ui.theme.LocalGlass
 
@@ -68,7 +69,8 @@ object Routes {
     const val RECORD = "record"
     const val MORE = "more"
     const val THERMAL = "thermal"
-    const val SPOOF = "spoof"
+    const val UNLOCK = "unlock"
+    const val SCALING = "scaling"
     const val STREAM = "stream"
     const val ANALYTICS = "analytics"
     const val SETTINGS = "settings"
@@ -87,7 +89,7 @@ private val TABS = listOf(
 @Composable
 fun GamersHubRoot(container: AppContainer) {
     val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
-    val accent by container.settings.accent.collectAsStateWithLifecycle("CYBER")
+    val accent by container.settings.accent.collectAsStateWithLifecycle("GRAPHITE")
     val dark = when (themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
@@ -140,7 +142,8 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
         composable(Routes.RECORD) { RecorderScreen(container) }
         composable(Routes.MORE) { MoreScreen(nav) }
         composable(Routes.THERMAL) { ThermalScreen(container) }
-        composable(Routes.SPOOF) { SpoofScreen(container) }
+        composable(Routes.UNLOCK) { UnlockScreen(container) }
+        composable(Routes.SCALING) { ScalingScreen(container) }
         composable(Routes.STREAM) { StreamScreen(container) }
         composable(Routes.ANALYTICS) { AnalyticsScreen(container) }
         composable(Routes.SETTINGS) { SettingsScreen(container) }

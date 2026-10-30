@@ -25,13 +25,14 @@ import com.gamershub.ui.theme.LocalGlass
 fun MoreScreen(nav: NavHostController) {
     val g = LocalGlass.current
 
-    val items = listOf(
-        Triple("🌡", "Thermal Control", "Anti-throttle profiles & governor") to Routes.THERMAL,
-        Triple("🎭", "Device Spoof", "Flagship identity for max graphics") to Routes.SPOOF,
-        Triple("📡", "Live Streaming", "YouTube · Facebook · Instagram + chat") to Routes.STREAM,
-        Triple("📊", "Analytics", "FPS, thermals & session history") to Routes.ANALYTICS,
-        Triple("⚙️", "Settings", "Theme, gestures, cloud sync, Shizuku") to Routes.SETTINGS,
-    )
+        val items = listOf(
+            Triple("🔓", "Game Unlock", "Max graphics + FPS in your games") to Routes.UNLOCK,
+            Triple("🎚", "Lossless Scaling", "Upscaling + real frame generation") to Routes.SCALING,
+            Triple("🌡", "Thermal Control", "Anti-throttle profiles & governor") to Routes.THERMAL,
+            Triple("📡", "Live Streaming", "YouTube · Facebook · Instagram + chat") to Routes.STREAM,
+            Triple("📊", "Analytics", "FPS, thermals & session history") to Routes.ANALYTICS,
+            Triple("⚙️", "Settings", "Theme, gestures, Shizuku, engine") to Routes.SETTINGS,
+        )
 
     Column(
         Modifier

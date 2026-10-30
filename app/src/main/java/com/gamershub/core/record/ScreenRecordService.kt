@@ -11,7 +11,6 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
-import android.os.Parcelable
 import android.util.DisplayMetrics
 import android.view.Display
 import androidx.core.app.ServiceCompat
@@ -52,21 +51,32 @@ class ScreenRecordService : Service() {
             ACTION_STOP -> stopCapture()
             ACTION_START -> {
                 val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-                val data: Intent? = intent.parcelable(EXTRA_RESULT_DATA)
-                val config = intent.parcelable<RecorderConfig>(EXTRA_CONFIG)
-                    ?: RecorderConfig()
-                startCapture(code, data, config)
+                // Typed reads: the projection token is an Intent, the config is a
+                // RecorderConfig — mixing the classes up returns null on API 33+.
+                val data: Intent? = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
+                val config: RecorderConfig? = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(EXTRA_CONFIG, RecorderConfig::class.java)
+                } else {
+                    @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_CONFIG)
+                }
+                if (data == null) {
+                    container.recorder.pushState(
+                        RecorderController.State.Error("Missing projection token")
+                    )
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                startCapture(code, data, config ?: RecorderConfig())
             }
         }
         return START_STICKY
     }
 
-    private fun startCapture(resultCode: Int, data: Intent?, config: RecorderConfig) {
-        if (data == null) {
-            container.recorder.pushState(RecorderController.State.Error("Missing projection token"))
-            stopSelf()
-            return
-        }
+    private fun startCapture(resultCode: Int, data: Intent, config: RecorderConfig) {
         currentMode = config.mode
 
         ServiceCompat.startForeground(
@@ -90,7 +100,7 @@ class ScreenRecordService : Service() {
         projection = mp
         mp.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
-                this@ScreenRecordService.onStop()
+                this@ScreenRecordService.onProjectionStopped()
             }
         }, null)
 
@@ -105,11 +115,15 @@ class ScreenRecordService : Service() {
         serviceScope.launch {
             val consumers = mutableListOf<FrameConsumer>()
             var targetsDesc: List<String> = emptyList()
+            var micActive = false
 
             if (config.mode == RecorderConfig.Mode.RECORD || config.mode == RecorderConfig.Mode.BOTH) {
                 val file = newOutputFile()
                 outputFile = file
-                consumers += RecordingSink(file, config.withMic)
+                // Build the sink with the real mic decision (permission + setting).
+                val sink = RecordingSink(file, config.withMic)
+                consumers += sink
+                micActive = config.withMic
             }
             if (config.mode == RecorderConfig.Mode.STREAM || config.mode == RecorderConfig.Mode.BOTH) {
                 val dims = config.dimensions(nativeW, nativeH)
@@ -132,6 +146,13 @@ class ScreenRecordService : Service() {
                     targetsDesc = session.targetNames
                 }
             }
+            if (consumers.isEmpty()) {
+                container.recorder.pushState(
+                    RecorderController.State.Error("Nothing to record — no sink configured")
+                )
+                stopSelf()
+                return@launch
+            }
 
             try {
                 val pipe = CapturePipeline(
@@ -145,15 +166,21 @@ class ScreenRecordService : Service() {
                         config.mode, System.currentTimeMillis(), targetsDesc
                     )
                 )
+                container.recorder.pushEvent(
+                    if (micActive) "Capturing with microphone audio"
+                    else "Capturing (no mic)"
+                )
                 container.analytics.onSessionStarted(config)
             } catch (t: Throwable) {
-                container.recorder.pushState(RecorderController.State.Error("Encoder error: ${t.message}"))
-                onStop()
+                container.recorder.pushState(
+                    RecorderController.State.Error("Encoder error: ${t.message}")
+                )
+                stopCapture()
             }
         }
     }
 
-    private fun onStop() {
+    private fun onProjectionStopped() {
         container.recorder.pushEvent("Capture stopped by the system")
         stopCapture()
     }
@@ -171,13 +198,21 @@ class ScreenRecordService : Service() {
         container.analytics.onSessionEnded()
 
         if (file != null && (mode == RecorderConfig.Mode.RECORD || mode == RecorderConfig.Mode.BOTH)) {
+            val size = runCatching { file.length() }.getOrDefault(0L)
             MediaScannerConnection.scanFile(
                 this, arrayOf(file.absolutePath), arrayOf("video/mp4"), null
             )
-            container.recorder.pushEvent("Saved: ${file.name}")
-            serviceScope.launch { container.settings.incrementRecordings() }
+            if (size > 0) {
+                container.recorder.pushEvent(
+                    "Saved: ${file.name} (%.1f MB)".format(size / 1048576f)
+                )
+                serviceScope.launch { container.settings.incrementRecordings() }
+            } else {
+                container.recorder.pushEvent("Recording failed — output file was empty")
+            }
         }
 
+        outputFile = null
         container.recorder.pushState(RecorderController.State.Idle)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -207,15 +242,5 @@ class ScreenRecordService : Service() {
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_CONFIG = "config"
-
-        @Suppress("UNCHECKED_CAST")
-        private fun <T : Parcelable> Intent.parcelable(key: String): T? {
-            return if (Build.VERSION.SDK_INT >= 33) {
-                getParcelableExtra(key, RecorderConfig::class.java) as? T
-            } else {
-                @Suppress("DEPRECATION")
-                getParcelableExtra(key) as? T
-            }
-        }
     }
 }
