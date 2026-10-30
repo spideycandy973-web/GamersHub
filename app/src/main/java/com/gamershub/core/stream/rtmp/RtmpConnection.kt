@@ -465,7 +465,7 @@ class RtmpConnection(
                     }
                 }
                 TYPE_ACK -> { /* ignore */ }
-                else -> maybeAck(); return InMessage(h.type, payload, h.ts)
+                else -> { maybeAck(); return InMessage(h.type, payload, h.ts) }
             }
             maybeAck()
         }

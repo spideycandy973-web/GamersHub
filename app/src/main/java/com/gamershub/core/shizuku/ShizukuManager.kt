@@ -80,7 +80,7 @@ class ShizukuManager(private val context: Context) {
                 bound = true
                 _shellReady.value = true
                 _status.value = Status.READY
-                _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" : " (shell)"}"
+                _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" else " (shell)"}"
             } else {
                 _statusDetail.value = "Shell binder died on connect"
                 _shellReady.value = false
@@ -193,7 +193,7 @@ class ShizukuManager(private val context: Context) {
             _statusDetail.value = "Binding shell…"
             bindShell()
         } else {
-            _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" : " (shell)"}"
+            _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" else " (shell)"}"
         }
     }
 

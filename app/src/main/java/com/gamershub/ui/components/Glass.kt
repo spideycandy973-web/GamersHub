@@ -119,9 +119,9 @@ fun GlassButton(
             .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
             .shadow(if (primary) 6.dp else 2.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f))
             .clip(shape)
-            .background(
-                if (primary) g.accent
-                else Brush.verticalGradient(listOf(g.glassHi, g.glass))
+            .then(
+                if (primary) Modifier.background(g.accent)
+                else Modifier.background(Brush.verticalGradient(listOf(g.glassHi, g.glass)))
             )
             .border(1.dp, if (primary) Color.Transparent else g.stroke, shape)
             .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)
@@ -143,8 +143,8 @@ fun GlassButton(
 @Composable
 fun GlassSwitch(
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     val g = LocalGlass.current
     val knobOffset by animateDpAsState(
@@ -205,7 +205,7 @@ fun GlassSwitchRow(
                 )
             }
         }
-        GlassSwitch(checked, onCheckedChange)
+        GlassSwitch(checked) { onCheckedChange(it) }
     }
 }
 
