@@ -214,8 +214,8 @@ fun GlassSwitchRow(
 fun GlassChip(
     text: String,
     selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     val g = LocalGlass.current
     val bg by animateColorAsState(
