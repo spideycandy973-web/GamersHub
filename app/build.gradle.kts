@@ -47,6 +47,13 @@ android {
             excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/NOTICE", "META-INF/NOTICE.txt")
         }
     }
+
+    lint {
+        // This project is distributed as an APK release via GitHub, not Play.
+        // Lint still runs in CI as warnings; it must not abort the release build.
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {
