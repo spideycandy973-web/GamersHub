@@ -1,0 +1,28 @@
+package com.gamershub.core.service
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import com.gamershub.GamersHubApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+
+/** Restarts the game-boost engine after boot when the user opted in. */
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val app = context.applicationContext as? GamersHubApp ?: return@launch
+                if (app.container.settings.startOnBoot.first()) {
+                    GamersHubCoreService.start(context)
+                }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+}

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Networking: cloud sync, RTMP streaming, chat polling -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Floating pop-up widget / monitoring HUD / chat overlay -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Foreground services -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Mic for recording / streaming commentary -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Keep CPU awake while boosting / streaming -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Auto start companion services after boot (optional, user controlled) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Lets us toggle system brightness / timeout for the gaming session -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+
+    <!-- Killing background apps during Game Boost -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+
+    <!-- Needed to enumerate installed games for the built-in launcher.
+         Play policy note: replace with <queries> + app picker if you target Play. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <!-- Shizuku permission is handled at runtime through the Shizuku API -->
+
+    <application
+        android:name=".GamersHubApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GamersHub"
+        tools:targetApi="34">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- One-pixel trampoline for MediaProjection consent from the widget -->
+        <activity
+            android:name=".core.record.ProjectionPermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.GamersHub.Transparent" />
+
+        <!-- This provider is required by Shizuku. Do not remove. -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <!-- Core engine: keeps boost applied, watches the foreground game, feeds analytics -->
+        <service
+            android:name=".core.service.GamersHubCoreService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_boost_and_hardware_monitor" />
+        </service>
+
+        <!-- Floating pop-up widget, monitoring HUD, gestures and stream chat overlay -->
+        <service
+            android:name=".core.overlay.FloatingWidgetService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_game_tools_widget" />
+        </service>
+
+        <!-- Screen recorder / multi-platform live streamer (MediaProjection) -->
+        <service
+            android:name=".core.record.ScreenRecordService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <!-- Auto-restart after boot when enabled in settings -->
+        <receiver
+            android:name=".core.service.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
