@@ -31,11 +31,19 @@ jobs:
 
       - name: Build signed release APK
         run: |
+          set -o pipefail
           ./gradlew assembleRelease --stacktrace \
             -Pandroid.injected.signing.store.file="$PWD/gamershub.jks" \
             -Pandroid.injected.signing.store.password=gamershub \
             -Pandroid.injected.signing.key.alias=gamershub \
-            -Pandroid.injected.signing.key.password=gamershub
+            -Pandroid.injected.signing.key.password=gamershub 2>&1 | tee build.log
+
+      - name: Report errors as annotations
+        if: failure()
+        run: |
+          grep -E "(^e: |error:|What went wrong|Could not|FAILURE:|Execution failed|R8:|Missing class)" build.log | head -25 | while IFS= read -r line; do
+            echo "::error::${line:0:240}"
+          done
 
       - name: Rename APK
         run: |
