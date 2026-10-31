@@ -129,10 +129,11 @@ fun EnhanceScreen(container: AppContainer) {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val m = com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode
                 listOf(
-                    "Off" to m.NATIVE, "1.25×" to m.SUPER_125,
-                    "1.5×" to m.SUPER_150, "2× (8K)" to m.SUPER_200
+                    "Off" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.NATIVE,
+                    "1.25×" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.SUPER_125,
+                    "1.5×" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.SUPER_150,
+                    "2× (8K)" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.SUPER_200
                 ).forEach { (label, mode) ->
                     GlassChip(label, scalingState.mode == mode) {
                         if (!requireEngine(container, context)) return@GlassChip
