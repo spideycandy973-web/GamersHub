@@ -65,7 +65,7 @@ class BoostEngine(
     private val settings: SettingsRepository,
     private val monitor: HardwareMonitor
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("boost")
 
     private val _state = MutableStateFlow<BoostState>(BoostState.Idle)
     val state: StateFlow<BoostState> = _state.asStateFlow()
@@ -197,12 +197,16 @@ class BoostEngine(
         scope.launch {
             combine(monitor.stats, thermal.activeProfile) { stats, profile -> stats to profile }
                 .collect { (stats, profile) ->
-                    val active = _state.value as? BoostState.Active ?: return@collect
-                    val target = thermal.targetTempFor(profile, stats.foregroundPackage)
-                    val temp = stats.batteryTempC
-                    if (temp <= 0f) return@collect
-                    if (temp > target + 0.5f) softThrottle(true)
-                    else if (temp < target - 1.5f) softThrottle(false)
+                    try {
+                        val active = _state.value as? BoostState.Active ?: return@collect
+                        val target = thermal.targetTempFor(profile, stats.foregroundPackage)
+                        val temp = stats.batteryTempC
+                        if (temp <= 0f) return@collect
+                        if (temp > target + 0.5f) softThrottle(true)
+                        else if (temp < target - 1.5f) softThrottle(false)
+                    } catch (t: Throwable) {
+                        // governor keeps running no matter what one tick throws
+                    }
                 }
         }
     }

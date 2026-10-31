@@ -34,7 +34,7 @@ import java.util.Locale
  */
 class ScreenRecordService : Service() {
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serviceScope = com.gamershub.core.util.SafeScopes.io("recorder")
     private lateinit var container: AppContainer
     private var projection: MediaProjection? = null
     private var pipeline: CapturePipeline? = null

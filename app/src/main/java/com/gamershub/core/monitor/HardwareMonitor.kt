@@ -51,7 +51,7 @@ class HardwareMonitor(
         val timestamp: Long = System.currentTimeMillis()
     )
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = com.gamershub.core.util.SafeScopes.default("monitor")
 
     private val _stats = MutableStateFlow(HardwareStats())
     val stats: StateFlow<HardwareStats> = _stats.asStateFlow()
@@ -70,18 +70,23 @@ class HardwareMonitor(
         // Fast sensors (all readable without special privileges)
         scope.launch {
             while (isActive) {
-                val prev = _stats.value
-                _stats.value = prev.copy(
-                    cpuUsagePct = readCpuUsage(),
-                    cpuFreqMhz = readCpuMaxFreqMhz(),
-                    cpuTempC = readZoneTemp(listOf("soc", "cpu", "ap", "big", "mtktsAP")),
-                    gpuTempC = readZoneTemp(listOf("gpu")),
-                    batteryTempC = readBatteryTempC(),
-                    memUsedMb = memoryInfo().first,
-                    memTotalMb = memoryInfo().second,
-                    refreshRateHz = currentRefreshRate(),
-                    timestamp = System.currentTimeMillis()
-                )
+                try {
+                    val prev = _stats.value
+                    _stats.value = prev.copy(
+                        cpuUsagePct = readCpuUsage(),
+                        cpuFreqMhz = readCpuMaxFreqMhz(),
+                        cpuTempC = readZoneTemp(listOf("soc", "cpu", "ap", "big", "mtktsAP")),
+                        gpuTempC = readZoneTemp(listOf("gpu")),
+                        batteryTempC = readBatteryTempC(),
+                        memUsedMb = memoryInfo().first,
+                        memTotalMb = memoryInfo().second,
+                        refreshRateHz = currentRefreshRate(),
+                        timestamp = System.currentTimeMillis()
+                    )
+                } catch (t: Throwable) {
+                    // one bad read must never kill telemetry or the app
+                    android.util.Log.w("GamersHub", "monitor tick failed", t)
+                }
                 delay(1000)
             }
         }
@@ -89,18 +94,22 @@ class HardwareMonitor(
         // Slow privileged path: foreground app + fps + thermal status
         scope.launch {
             while (isActive) {
-                if (shizuku.canUseShell) {
-                    val fg = readForegroundPackage()
-                    if (fg.isNotBlank()) {
-                        val fps = readForegroundFps(fg)
-                        _stats.value = _stats.value.copy(foregroundPackage = fg, fps = fps)
+                try {
+                    if (shizuku.canUseShell) {
+                        val fg = readForegroundPackage()
+                        if (fg.isNotBlank()) {
+                            val fps = readForegroundFps(fg)
+                            _stats.value = _stats.value.copy(foregroundPackage = fg, fps = fps)
+                        }
+                        val ts = readThermalStatus()
+                        if (ts >= 0) _stats.value = _stats.value.copy(thermalStatus = ts)
+                        if (gpuModelCache == null) {
+                            gpuModelCache = readGpuModel()
+                            _stats.value = _stats.value.copy(gpuModel = gpuModelCache.orEmpty())
+                        }
                     }
-                    val ts = readThermalStatus()
-                    if (ts >= 0) _stats.value = _stats.value.copy(thermalStatus = ts)
-                    if (gpuModelCache == null) {
-                        gpuModelCache = readGpuModel()
-                        _stats.value = _stats.value.copy(gpuModel = gpuModelCache.orEmpty())
-                    }
+                } catch (t: Throwable) {
+                    android.util.Log.w("GamersHub", "privileged monitor tick failed", t)
                 }
                 delay(2500)
             }
@@ -227,12 +236,19 @@ class HardwareMonitor(
 
     // -------------------------------------------- Privileged (Shizuku) reads
     private suspend fun readForegroundPackage(): String {
-        val res = shizuku.exec("dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | head -n 2")
-        if (!res.ok) return ""
-        // mCurrentFocus=Window{... u0 com.game.pkg/com.game.MainActivity}
-        val regex = Regex("([a-zA-Z0-9_.]+)/[a-zA-Z0-9_$.]+}")
-        val match = regex.find(res.output)
-        return match?.groupValues?.getOrNull(1) ?: ""
+        return try {
+            val res = shizuku.exec("dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | head -n 2")
+            if (!res.ok) return ""
+            // mCurrentFocus=Window{... u0 com.game.pkg/com.game.MainActivity}
+            // NOTE: this pattern must stay valid for ICU regex — Android's
+            // java.util.regex is ICU-backed on many devices (MIUI etc.) and
+            // throws PatternSyntaxException for patterns the OpenJDK engine
+            // tolerates (e.g. a stray '}'), which used to crash the app.
+            val regex = Regex("([a-zA-Z0-9_.]+)/[a-zA-Z0-9_$.]+")
+            regex.find(res.output)?.groupValues?.getOrNull(1) ?: ""
+        } catch (t: Throwable) {
+            ""
+        }
     }
 
     /**

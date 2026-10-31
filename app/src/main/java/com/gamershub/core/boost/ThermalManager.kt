@@ -54,7 +54,7 @@ class ThermalManager(
     private val monitor: HardwareMonitor,
     private val settings: SettingsRepository
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("thermal")
 
     /** Currently enforced profile. */
     private val _activeProfile = MutableStateFlow(ThermalProfile.BEAST)

@@ -59,7 +59,7 @@ class GameLibrary(
     val pinned: StateFlow<Set<String>> = _pinned.asStateFlow()
 
     init {
-        CoroutineScope(Dispatchers.IO).launch {
+        com.gamershub.core.util.SafeScopes.io("library").launch {
             val raw = context.dataStore.data.first()[PINNED_KEY].orEmpty()
             _pinned.value = raw.split(',').filter { it.isNotBlank() }.toSet()
             refresh()
@@ -69,7 +69,7 @@ class GameLibrary(
     /** Persists + applies the pinned set, then refreshes the library. */
     fun setPinned(pkgs: Set<String>) {
         _pinned.value = pkgs
-        CoroutineScope(Dispatchers.IO).launch {
+        com.gamershub.core.util.SafeScopes.io("library").launch {
             context.dataStore.edit { it[PINNED_KEY] = pkgs.joinToString(",") }
             refresh()
         }

@@ -48,7 +48,7 @@ class EngineCoordinator(
     private val enhancer: GraphicsEnhancer
 ) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("engine")
 
     private val _enabled = MutableStateFlow(true)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()

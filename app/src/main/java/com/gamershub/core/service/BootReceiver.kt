@@ -14,13 +14,16 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         val pending = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        com.gamershub.core.util.SafeScopes.io("boot").launch {
             try {
                 val app = context.applicationContext as? GamersHubApp ?: return@launch
                 val settings = app.container.settings
                 if (settings.startOnBoot.first() && settings.engineEnabled.first()) {
                     GamersHubCoreService.start(context)
                 }
+            } catch (t: Throwable) {
+                // boot-time start must never crash the receiver
+                runCatching { android.util.Log.w("GamersHub", "boot start failed", t) }
             } finally {
                 pending.finish()
             }

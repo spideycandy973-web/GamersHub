@@ -55,7 +55,7 @@ class StreamEngine(
     val liveSinceMs: StateFlow<Long?> = _liveSinceMs.asStateFlow()
 
     @Volatile private var session: StreamSession? = null
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("stream")
 
     companion object {
         val PLATFORMS = listOf(

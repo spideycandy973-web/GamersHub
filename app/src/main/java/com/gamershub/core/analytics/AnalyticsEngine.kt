@@ -47,7 +47,7 @@ class AnalyticsEngine(
         val samples: Int
     )
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = com.gamershub.core.util.SafeScopes.default("analytics")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val buffer = ArrayDeque<StatsSample>(HISTORY_CAPACITY + 16)
@@ -70,34 +70,42 @@ class AnalyticsEngine(
         loadSessions()
         scope.launch {
             monitor.stats.collect { s ->
-                if (s.timestamp == 0L) return@collect
-                val sample = StatsSample(
-                    ts = s.timestamp,
-                    fps = s.fps,
-                    cpuPct = s.cpuUsagePct,
-                    cpuTempC = s.cpuTempC,
-                    gpuTempC = s.gpuTempC,
-                    batteryTempC = s.batteryTempC,
-                    memPct = if (s.memTotalMb > 0) s.memUsedMb * 100f / s.memTotalMb else 0f,
-                    foreground = s.foregroundPackage
-                )
-                while (buffer.size >= HISTORY_CAPACITY) buffer.removeFirst()
-                buffer.addLast(sample)
+                try {
+                    if (s.timestamp == 0L) return@collect
+                    val sample = StatsSample(
+                        ts = s.timestamp,
+                        fps = s.fps,
+                        cpuPct = s.cpuUsagePct,
+                        cpuTempC = s.cpuTempC,
+                        gpuTempC = s.gpuTempC,
+                        batteryTempC = s.batteryTempC,
+                        memPct = if (s.memTotalMb > 0) s.memUsedMb * 100f / s.memTotalMb else 0f,
+                        foreground = s.foregroundPackage
+                    )
+                    while (buffer.size >= HISTORY_CAPACITY) buffer.removeFirst()
+                    buffer.addLast(sample)
 
-                if (sessionStart > 0) {
-                    if (s.fps >= 0) {
-                        fpsSum += s.fps; fpsCount++
-                        if (s.fps > maxFps) maxFps = s.fps
+                    if (sessionStart > 0) {
+                        if (s.fps >= 0) {
+                            fpsSum += s.fps; fpsCount++
+                            if (s.fps > maxFps) maxFps = s.fps
+                        }
+                        if (s.batteryTempC > maxBatt) maxBatt = s.batteryTempC
+                        if (s.cpuTempC > maxCpuT) maxCpuT = s.cpuTempC
                     }
-                    if (s.batteryTempC > maxBatt) maxBatt = s.batteryTempC
-                    if (s.cpuTempC > maxCpuT) maxCpuT = s.cpuTempC
+                } catch (t: Throwable) {
+                    // sampling must survive anything one stats tick can throw
                 }
             }
         }
         // Publish history snapshots ~1/s
         scope.launch {
             while (true) {
-                _history.value = buffer.toList()
+                try {
+                    _history.value = buffer.toList()
+                } catch (t: Throwable) {
+                    // keep publishing
+                }
                 kotlinx.coroutines.delay(1000)
             }
         }

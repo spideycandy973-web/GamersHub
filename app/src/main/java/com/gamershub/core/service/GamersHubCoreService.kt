@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
  */
 class GamersHubCoreService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = com.gamershub.core.util.SafeScopes.default("core")
     private lateinit var container: AppContainer
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -69,38 +69,42 @@ class GamersHubCoreService : Service() {
             container.games.refresh()
             var boostedPkg: String? = null
             container.monitor.stats.collect { stats ->
-                val fg = stats.foregroundPackage
-                if (fg == boostedPkg) return@collect
+                try {
+                    val fg = stats.foregroundPackage
+                    if (fg == boostedPkg) return@collect
 
-                val autoBoost = container.settings.autoBoost.first()
-                if (!autoBoost) return@collect
+                    val autoBoost = container.settings.autoBoost.first()
+                    if (!autoBoost) return@collect
 
-                val profile = if (fg.isNotBlank()) container.profiles.profiles.value[fg] else null
+                    val profile = if (fg.isNotBlank()) container.profiles.profiles.value[fg] else null
 
-                if (profile != null && boostedPkg == null) {
-                    // Entering a profiled game -> apply its plan
-                    boostedPkg = fg
-                    val plan = BoostPlan(
-                        performanceMode = true,
-                        refreshRateHz = profile.refreshRate,
-                        resolutionScale = profile.resolutionScale,
-                        killBackground = profile.killBackground,
-                        blockNotifications = profile.blockNotifications
-                    )
-                    runCatching { ThermalProfile.valueOf(profile.thermalProfile) }
-                        .getOrNull()?.let { container.thermal.setProfile(it) }
-                    container.thermal.enforceNow()
-                    container.boost.applyBoost(plan, gamePackage = fg)
-                    profile.spoofPresetId?.let { id ->
-                        DeviceSpoofer.presetById(id)?.let { container.spoofer.apply(it) }
+                    if (profile != null && boostedPkg == null) {
+                        // Entering a profiled game -> apply its plan
+                        boostedPkg = fg
+                        val plan = BoostPlan(
+                            performanceMode = true,
+                            refreshRateHz = profile.refreshRate,
+                            resolutionScale = profile.resolutionScale,
+                            killBackground = profile.killBackground,
+                            blockNotifications = profile.blockNotifications
+                        )
+                        runCatching { ThermalProfile.valueOf(profile.thermalProfile) }
+                            .getOrNull()?.let { container.thermal.setProfile(it) }
+                        container.thermal.enforceNow()
+                        container.boost.applyBoost(plan, gamePackage = fg)
+                        profile.spoofPresetId?.let { id ->
+                            DeviceSpoofer.presetById(id)?.let { container.spoofer.apply(it) }
+                        }
+                        updateNotification("Boosting ${profile.label.ifBlank { fg }}")
+                    } else if (profile == null && boostedPkg != null) {
+                        // Left the game -> restore
+                        boostedPkg = null
+                        container.boost.restoreBoost()
+                        container.spoofer.remove()
+                        updateNotification("Game boost engine ready")
                     }
-                    updateNotification("Boosting ${profile.label.ifBlank { fg }}")
-                } else if (profile == null && boostedPkg != null) {
-                    // Left the game -> restore
-                    boostedPkg = null
-                    container.boost.restoreBoost()
-                    container.spoofer.remove()
-                    updateNotification("Game boost engine ready")
+                } catch (t: Throwable) {
+                    // watcher must survive any single tick failure
                 }
             }
         }
@@ -108,12 +112,16 @@ class GamersHubCoreService : Service() {
         // Keep notification fresh while boosted
         scope.launch {
             container.boost.state.collect { s ->
-                if (s is BoostState.Active) {
-                    val stats = container.monitor.stats.value
-                    updateNotification(
-                        "Boost active · ${stats.fps.takeIf { it >= 0 }?.toInt() ?: "--"} FPS · " +
-                                "${stats.batteryTempC.takeIf { it > 0 } ?: "--"}°C"
-                    )
+                try {
+                    if (s is BoostState.Active) {
+                        val stats = container.monitor.stats.value
+                        updateNotification(
+                            "Boost active · ${stats.fps.takeIf { it >= 0 }?.toInt() ?: "--"} FPS · " +
+                                    "${stats.batteryTempC.takeIf { it > 0 } ?: "--"}°C"
+                        )
+                    }
+                } catch (t: Throwable) {
+                    // notification refresh must never kill the service
                 }
             }
         }

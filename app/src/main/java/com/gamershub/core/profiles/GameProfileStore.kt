@@ -46,7 +46,7 @@ data class GameProfile(
 class GameProfileStore(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("profiles")
     private val mutex = Mutex()
 
     private val _profiles = MutableStateFlow<Map<String, GameProfile>>(emptyMap())

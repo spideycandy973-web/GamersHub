@@ -46,7 +46,7 @@ class YouTubeLiveChatClient(
     override val platformId = "youtube"
     override val messages = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 128)
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = com.gamershub.core.util.SafeScopes.io("chat")
     private val client = OkHttpClient.Builder()
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
@@ -123,7 +123,7 @@ class InfoChatClient(
 /** Aggregates chat from all platforms into one ordered flow for the overlay. */
 class ChatHub(private val settings: SettingsRepository) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = com.gamershub.core.util.SafeScopes.default("chat-poll")
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 

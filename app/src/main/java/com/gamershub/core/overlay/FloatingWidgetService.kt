@@ -82,7 +82,7 @@ import kotlinx.coroutines.launch
  */
 class FloatingWidgetService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val scope = com.gamershub.core.util.SafeScopes.main("widget")
     private lateinit var container: AppContainer
     private lateinit var wm: WindowManager
     private val density by lazy { resources.displayMetrics.density }
