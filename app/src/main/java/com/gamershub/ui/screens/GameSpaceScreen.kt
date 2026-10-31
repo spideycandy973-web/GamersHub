@@ -3,7 +3,6 @@ package com.gamershub.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +50,7 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
 
     val widgetRunning by FloatingWidgetService.isRunning.collectAsStateWithLifecycle()
     val shellReady by container.shizuku.shellReady.collectAsStateWithLifecycle()
-    val engineOn by container.settings.engineEnabled.collectAsStateWithLifecycle()
+    val engineOn by container.engine.enabled.collectAsStateWithLifecycle()
     var hasOverlay by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
 
     fun overlaySettings() {
@@ -68,7 +67,6 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(GhColors.BgDeep)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
