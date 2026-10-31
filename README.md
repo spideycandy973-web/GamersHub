@@ -24,6 +24,8 @@ Everything runs through the [Shizuku](https://shizuku.rikka.app/) service (adb /
 | 📡 **Live streaming** | **simultaneous** YouTube + Facebook + Instagram via a hand-rolled RTMP/RTMPS client (AMF0, chunking, FLV tags, ping/ack), per-target stats | — |
 | 💬 **Stream chat** | in-game chat overlay — YouTube Live Chat polling built in | API keys |
 | 📈 **Analytics** | rolling FPS/thermal/CPU charts, capture-session history, all-time counters | local |
+| ✨ **Graphics Enhancer** | real GPU unsharp-mask **sharpening** in the frame pipeline (Off/Soft/Balanced/Sharp), force-GPU-rendering + vivid-colour switches (read-back verified), sharpened game configs, vendor display-prop probe | Shizuku (shell) |
+| 🎚️ **Master switch** | one ON/OFF switch for the whole app — OFF stops everything **instantly** and restores the phone to stock (display, refresh, thermal, spoof, MEMC, bypass charging, game configs rolled back from backups) | — |
 
 ## 📦 Get the APK
 
@@ -46,10 +48,11 @@ install it on your phone, done. The `nightly` prerelease always carries the late
    - Android 11+: *Developer options → Wireless debugging*, then Shizuku → *Start via wireless debugging*.
    - PC: `adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh`
    - Rooted: Shizuku/Sui starts directly (full identity spoof + root battery nodes unlock).
-2. Open GamersHub → tap **Allow** on the Shizuku prompt. If the state looks stale, hit **Reconnect** (it resets the binder listeners and rebinds the shell service).
+2. Open GamersHub — it automatically shows the **real Shizuku permission dialog**; tap *Allow*. If the state looks stale, hit **Reconnect** (it resets the binder listeners and rebinds the shell service). Nothing is applied to the device before the permission is granted.
 3. Grant **Display over other apps** (floating widget) and **Notifications**.
-4. **Game Unlock** → pick your game → *Unlock max*. Launch the game — the new graphics/FPS options are in its settings.
+4. **Game Unlock** → pick any game/app → *Unlock max*. Launch the game — the new graphics/FPS options are in its settings.
 5. **Lossless Scaling** → pick a render scale (½ is pixel-perfect integer scaling) → everything in-game renders faster while the compositor keeps the picture full-screen.
+6. **Master switch** (top of Dashboard & Settings): turning it OFF restores the whole device to stock immediately.
 
 ## 🧠 Architecture
 
