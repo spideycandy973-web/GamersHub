@@ -26,6 +26,7 @@ fun MoreScreen(nav: NavHostController) {
     val g = LocalGlass.current
 
         val items = listOf(
+            Triple("🎮", "Game Space", "ROG-style in-game overlay panel") to Routes.GAMESPACE,
             Triple("🔓", "Game Unlock", "Max graphics + FPS in your games") to Routes.UNLOCK,
             Triple("🎚", "Lossless Scaling", "Upscaling + real frame generation") to Routes.SCALING,
             Triple("✨", "Graphics Enhancer", "Sharpness, GPU pipeline & colours") to Routes.ENHANCE,

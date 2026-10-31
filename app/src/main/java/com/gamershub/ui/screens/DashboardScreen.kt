@@ -279,26 +279,12 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
         SectionTitle("QUICK ACCESS")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GlassCard(modifier = Modifier.weight(1f), onClick = {
-                if (widgetRunning) {
-                    FloatingWidgetService.stop(context)
-                } else if (!requireEngine(container, context)) {
-                    // engine off → told the user, do nothing
-                } else if (Settings.canDrawOverlays(context)) {
-                    FloatingWidgetService.start(context)
-                } else {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
-                        )
-                    )
-                }
+                nav.navigate(Routes.GAMESPACE)
             }) {
-                Text("Floating widget", style = MaterialTheme.typography.titleMedium, color = g.text)
+                Text("Game Space", style = MaterialTheme.typography.titleMedium, color = g.text)
                 Text(
-                    if (widgetRunning) "Active — tap to stop"
-                    else if (Settings.canDrawOverlays(context)) "Start the in-game tools"
-                    else "Grant overlay permission",
+                    if (widgetRunning) "Overlay active — open panel"
+                    else "Start the in-game overlay",
                     style = MaterialTheme.typography.labelSmall, color = g.textDim
                 )
             }

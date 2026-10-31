@@ -20,12 +20,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,17 +101,32 @@ class FloatingWidgetService : Service() {
 
     private val panelVisible = MutableStateFlow(false)
 
-    /** Shows/hides the control panel and makes its window touchable only when shown. */
+    /**
+     * Shows/hides the control panel. The panel WINDOW is created on open and
+     * REMOVED on close — add/remove is bulletproof where a
+     * FLAG_NOT_TOUCHABLE flip silently failed on MIUI (panel showed but every
+     * tap — including its own ✕ — passed through to the app behind it).
+     * When hidden there is no panel window at all: zero touch interference.
+     */
     private fun setPanelVisible(on: Boolean) {
         panelVisible.value = on
-        val v = panelView ?: return
-        val lp = v.layoutParams as? WindowManager.LayoutParams ?: return
-        lp.flags = if (on) {
-            lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        if (on) {
+            if (panelView == null) {
+                val lp = baseLp().apply {
+                    width = WindowManager.LayoutParams.MATCH_PARENT
+                    height = WindowManager.LayoutParams.MATCH_PARENT
+                    gravity = Gravity.CENTER
+                }
+                runCatching {
+                    panelView = newComposeView { PanelContent() }.also { wm.addView(it, lp) }
+                }.onFailure {
+                    panelView = null
+                }
+            }
         } else {
-            lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            panelView?.let { v -> runCatching { wm.removeView(v) } }
+            panelView = null
         }
-        runCatching { wm.updateViewLayout(v, lp) }
     }
 
     override fun onCreate() {
@@ -137,6 +155,13 @@ class FloatingWidgetService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lifecycleOwner.onServiceStart()
+        // OPEN_PANEL: open the Game-Space panel immediately — the guaranteed
+        // entry point from the app's Game Space screen when gestures are flaky.
+        if (intent?.action == ACTION_OPEN_PANEL) {
+            runCatching { ensureWindows() }
+            setPanelVisible(true)
+            return START_STICKY
+        }
         runCatching { ensureWindows() }
             .onFailure {
                 removeAll()
@@ -195,19 +220,8 @@ class FloatingWidgetService : Service() {
             }
             hudView = newComposeView { HudContent() }.also { wm.addView(it, lp) }
         }
-        if (panelView == null) {
-            val lp = baseLp().apply {
-                gravity = Gravity.CENTER
-                // NO FLAG_BLUR_BEHIND here: on MIUI an overlay window with
-                // blurBehindRadius blurs the ENTIRE screen behind it (the
-                // "everything gets blurry when the popup shows" bug) and costs
-                // GPU frame time. The panel fakes glass with translucent
-                // backgrounds instead. The window is also non-touchable while
-                // hidden so it can never eat game touches.
-                flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            }
-            panelView = newComposeView { PanelContent() }.also { wm.addView(it, lp) }
-        }
+        // NOTE: the panel window is intentionally NOT created here — it is
+        // added on open and removed on close (see setPanelVisible).
         if (chatView == null) {
             val lp = baseLp(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE).apply {
                 gravity = Gravity.BOTTOM or Gravity.START
@@ -215,24 +229,50 @@ class FloatingWidgetService : Service() {
             }
             chatView = newComposeView { ChatOverlayContent() }.also { wm.addView(it, lp) }
         }
-        // Game-space edge gesture zones (ROG Game-Genie style): thin invisible
-        // strips on both screen edges — swipe inward to open the control panel.
+        // Game-space edge gesture zones (ROG Game-Genie style): invisible strips
+        // on both screen edges — swipe inward to open the control panel.
+        // NOTE: on MIUI the system back-gesture swallows touches in the outer
+        // edge band unless we claim it with setSystemGestureExclusionRects.
         if (edgeLView == null) {
             val lp = baseLp().apply {
-                width = (22 * density).toInt()
+                width = (34 * density).toInt()
                 height = WindowManager.LayoutParams.MATCH_PARENT
                 x = 0; y = 0
             }
-            edgeLView = newComposeView { EdgeSwipeZone(inward = 1f) }.also { wm.addView(it, lp) }
+            edgeLView = newComposeView { EdgeSwipeZone(inward = 1f) }.also {
+                wm.addView(it, lp)
+                claimSystemGestures(it)
+            }
         }
         if (edgeRView == null) {
             val lp = baseLp().apply {
-                width = (22 * density).toInt()
+                width = (34 * density).toInt()
                 height = WindowManager.LayoutParams.MATCH_PARENT
-                x = resources.displayMetrics.widthPixels - (22 * density).toInt()
+                x = resources.displayMetrics.widthPixels - (34 * density).toInt()
                 y = 0
             }
-            edgeRView = newComposeView { EdgeSwipeZone(inward = -1f) }.also { wm.addView(it, lp) }
+            edgeRView = newComposeView { EdgeSwipeZone(inward = -1f) }.also {
+                wm.addView(it, lp)
+                claimSystemGestures(it)
+            }
+        }
+    }
+
+    /**
+     * Keeps the system back-gesture from stealing our edge swipes (API 29+).
+     * Without this, MIUI's gesture nav consumes every swipe starting in the
+     * outer band and the Game-Space panel never opens.
+     */
+    private fun claimSystemGestures(view: android.view.View) {
+        if (Build.VERSION.SDK_INT < 29) return
+        runCatching {
+            view.post {
+                runCatching {
+                    view.systemGestureExclusionRects = listOf(
+                        android.graphics.Rect(0, 0, view.width, view.height)
+                    )
+                }
+            }
         }
     }
 
@@ -402,41 +442,60 @@ class FloatingWidgetService : Service() {
         val thermalProfile by container.thermal.activeProfile.collectAsStateWithLifecycle()
         val bypass by container.battery.bypassEnabled.collectAsStateWithLifecycle()
 
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) +
-                    scaleIn(spring(stiffness = Spring.StiffnessMedium), initialScale = 0.85f),
-            exit = fadeOut() + scaleOut(targetScale = 0.9f)
+        // Full-screen scrim: tap anywhere outside the card closes the panel —
+        // a close path that cannot fail. (The old ✕ relied on a window flag
+        // flip that silently passed taps through on MIUI.)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { setPanelVisible(false) },
+            contentAlignment = Alignment.Center
         ) {
-            Column(
-                Modifier
-                    .widthIn(max = 320.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xD90D1322))
-                    .border(
-                        1.dp,
-                        Brush.verticalGradient(
-                            listOf(Color(0x66FFFFFF), Color(0x14FFFFFF))
-                        ),
-                        RoundedCornerShape(24.dp)
-                    )
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) +
+                        scaleIn(spring(stiffness = Spring.StiffnessMedium), initialScale = 0.85f),
+                exit = fadeOut() + scaleOut(targetScale = 0.9f)
             ) {
+                Column(
+                    Modifier
+                        .widthIn(max = 320.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xD90D1322))
+                        .border(
+                            1.dp,
+                            Brush.verticalGradient(
+                                listOf(Color(0x66FFFFFF), Color(0x14FFFFFF))
+                            ),
+                            RoundedCornerShape(24.dp)
+                        )
+                        // consume taps on the card body so only the scrim closes
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { }
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "GAMERSHUB",
+                        "GAMERSHUB · GAME SPACE",
                         style = MaterialTheme.typography.labelLarge,
                         color = GhColors.Cyber
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "✕",
-                        color = Color(0x99FFFFFF),
+                        "✕ Close",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xE6FFFFFF),
                         modifier = Modifier
-                            .clip(CircleShape)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x33FFFFFF))
                             .clickable { setPanelVisible(false) }
-                            .padding(6.dp)
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -585,8 +644,20 @@ class FloatingWidgetService : Service() {
                         )
                     }
                 }
+
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PanelButton("✕ Close panel", active = true) {
+                        setPanelVisible(false)
+                    }
+                }
             }
         }
+        } // scrim Box
     }
 
     @Composable
@@ -698,8 +769,28 @@ class FloatingWidgetService : Service() {
 
     companion object {
         private const val ID = 48152
+        const val ACTION_OPEN_PANEL = "com.gamershub.action.OPEN_PANEL"
 
         val isRunning = MutableStateFlow(false)
+
+        /**
+         * Opens the Game-Space control panel right now. Safe no-op without the
+         * overlay permission (the caller checks and routes to settings).
+         */
+        fun openPanel(context: Context) {
+            if (!android.provider.Settings.canDrawOverlays(context)) return
+            val intent = Intent(context, FloatingWidgetService::class.java)
+                .setAction(ACTION_OPEN_PANEL)
+            val started = runCatching {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                true
+            }.getOrDefault(false)
+            if (!started) isRunning.value = false
+        }
 
         fun start(context: Context) {
             if (isRunning.value) return
