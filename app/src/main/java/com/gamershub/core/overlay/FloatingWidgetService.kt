@@ -108,16 +108,25 @@ class FloatingWidgetService : Service() {
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .setSilent(true)
             .build()
-        ServiceCompat.startForeground(
-            this, ID, notif,
-            if (Build.VERSION.SDK_INT >= 34)
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-        )
+        runCatching {
+            ServiceCompat.startForeground(
+                this, ID, notif,
+                if (Build.VERSION.SDK_INT >= 34)
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
+            )
+        }.onFailure {
+            // If the platform refuses the FGS, never crash the app — just stop.
+            stopSelf()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lifecycleOwner.onServiceStart()
-        ensureWindows()
+        runCatching { ensureWindows() }
+            .onFailure {
+                removeAll()
+                stopSelf()
+            }
         return START_STICKY
     }
 
@@ -150,6 +159,12 @@ class FloatingWidgetService : Service() {
     }
 
     private fun ensureWindows() {
+        // addView on an overlay window without SYSTEM_ALERT_WINDOW throws
+        // BadTokenException and used to take the whole app down with it.
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            stopSelf()
+            return
+        }
         if (bubbleView == null) {
             val lp = baseLp().apply {
                 x = (16 * density).toInt()
@@ -565,14 +580,23 @@ class FloatingWidgetService : Service() {
 
         fun start(context: Context) {
             if (isRunning.value) return
-            isRunning.value = true
-            if (Build.VERSION.SDK_INT >= 26) {
-                context.startForegroundService(
-                    Intent(context, FloatingWidgetService::class.java)
-                )
-            } else {
-                context.startService(Intent(context, FloatingWidgetService::class.java))
+            if (!android.provider.Settings.canDrawOverlays(context)) {
+                isRunning.value = false
+                return
             }
+            isRunning.value = true
+            val started = runCatching {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    context.startForegroundService(
+                        Intent(context, FloatingWidgetService::class.java)
+                    )
+                } else {
+                    context.startService(Intent(context, FloatingWidgetService::class.java))
+                }
+                true
+            }.getOrDefault(false)
+            // Android 12+ blocks FGS starts from the background — never crash.
+            if (!started) isRunning.value = false
         }
 
         fun stop(context: Context) {

@@ -1,5 +1,9 @@
 # GamersHub ProGuard rules
 
+# Keep names readable — obfuscation breaks the Shizuku user-service (loaded by
+# class name inside the Shizuku daemon) and makes crash reports unhelpful.
+-dontobfuscate
+
 # Shizuku AIDL service stub must stay intact (it is instantiated reflectively by the Shizuku server)
 -keep class com.gamershub.core.shizuku.** { *; }
 -keep class rikka.shizuku.** { *; }

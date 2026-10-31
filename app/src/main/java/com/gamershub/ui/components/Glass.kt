@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,7 +52,7 @@ fun GlassCard(
     corner: Dp = 22.dp,
     highlight: Boolean = false,
     onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
     val g = LocalGlass.current
     val shape = RoundedCornerShape(corner)
@@ -66,7 +67,9 @@ fun GlassCard(
         if (pressed) 1.dp else 5.dp, tween(180), label = "card-elev"
     )
 
-    Box(
+    // Content lives in a COLUMN: card children stack vertically like a normal
+    // list. (A Box host would pile every child on top of the previous one.)
+    Column(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(elevation, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.10f))

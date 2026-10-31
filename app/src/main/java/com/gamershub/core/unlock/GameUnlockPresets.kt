@@ -31,6 +31,33 @@ object GameUnlockPresets {
         )
     }
 
+    /**
+     * Same as [forAnyPackage] but with the sharpening / AA-quality overrides
+     * merged into every patch (used by the Graphics Enhancer switch).
+     */
+    fun forAnyPackageSharpened(packageName: String, label: String): GameUnlockPreset =
+        sharpened(forAnyPackage(packageName, label))
+
+    /** Returns a copy of this preset with post-process sharpening overrides. */
+    fun sharpened(preset: GameUnlockPreset): GameUnlockPreset = preset.copy(
+        id = "${preset.id}+sharp",
+        notes = preset.notes + " + AA/post-process sharpening overrides",
+        patchFor = { file ->
+            val p = preset.patchFor(file)
+            if (p == null) {
+                null
+            } else if (p.transform != null) {
+                val base = p.transform
+                p.copy(
+                    description = "${p.description} + sharpen",
+                    transform = { body -> mergeIniSections(base!!.invoke(body), SHARP_OVERRIDES) }
+                )
+            } else {
+                p
+            }
+        }
+    )
+
     init {
         // ---- PUBG family -------------------------------------------------
         listOf(
@@ -379,4 +406,23 @@ private val UE_USER_CUSTOM_APPEND = """
 +CVars=r.MobileHDR=1
 +CVars=r.MaterialQualityLevel=1
 +CVars=r.ShadowQuality=3
+""".trimIndent()
+
+/**
+ * AA / post-process sharpening overrides merged into game configs when the
+ * Graphics Enhancer "sharpen game configs" switch is on.
+ */
+private val SHARP_OVERRIDES = """
+[ScalabilityGroups]
+sg.AntiAliasingQuality=3
+sg.PostProcessQuality=3
+sg.EffectsQuality=3
+
+[/Script/Engine.GameUserSettings]
+bUseVSync=0
+
+[SystemSettings]
+r.PostProcessAAQuality=6
+r.TemporalAAUpsampling=1
+r.ScreenPercentage=100
 """.trimIndent()

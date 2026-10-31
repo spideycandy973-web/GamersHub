@@ -134,6 +134,7 @@ fun BoosterScreen(container: AppContainer) {
             GlassButton(
                 text = if (active == null) "APPLY BOOST" else "RESTORE",
                 onClick = {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
                     if (!shellReady) {
                         Toast.makeText(context, "Shizuku shell not ready", Toast.LENGTH_SHORT).show()
                         return@GlassButton
@@ -158,6 +159,7 @@ fun BoosterScreen(container: AppContainer) {
                 text = "AUTO ENGINE",
                 primary = false,
                 onClick = {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
                     com.gamershub.core.service.GamersHubCoreService.start(context)
                     Toast.makeText(
                         context, "Auto-boost engine started — game profiles applied automatically",

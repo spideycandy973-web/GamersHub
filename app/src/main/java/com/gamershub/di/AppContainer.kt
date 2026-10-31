@@ -5,6 +5,8 @@ import com.gamershub.core.analytics.AnalyticsEngine
 import com.gamershub.core.battery.BatteryManager
 import com.gamershub.core.boost.BoostEngine
 import com.gamershub.core.boost.ThermalManager
+import com.gamershub.core.engine.EngineCoordinator
+import com.gamershub.core.enhance.GraphicsEnhancer
 import com.gamershub.core.launcher.GameLibrary
 import com.gamershub.core.monitor.HardwareMonitor
 import com.gamershub.core.notifications.NotificationHelper
@@ -42,6 +44,11 @@ class AppContainer(private val app: Application) {
     val recorder = RecorderController(app, settings, analytics)
     val stream = StreamEngine(app, settings)
     val chat = ChatHub(settings)
+    val enhancer = GraphicsEnhancer(shizuku)
+    val engine = EngineCoordinator(
+        app, settings, shizuku, boost, thermal, spoofer,
+        scaling, frameGen, unlocker, battery, enhancer
+    )
 
     fun init() {
         notifications.createChannels()

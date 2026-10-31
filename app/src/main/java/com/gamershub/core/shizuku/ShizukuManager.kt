@@ -73,26 +73,38 @@ class ShizukuManager(private val context: Context) {
         .debuggable(BuildConfig.DEBUG)
         .version(BuildConfig.VERSION_CODE)
 
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder?) {
-            if (binder != null && binder.pingBinder()) {
-                shell = IGamersHubShell.Stub.asInterface(binder)
-                bound = true
-                _shellReady.value = true
-                _status.value = Status.READY
-                _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" else " (shell)"}"
-            } else {
-                _statusDetail.value = "Shell binder died on connect"
-                _shellReady.value = false
+            // Binder callbacks can arrive on non-main threads — marshal to main
+            // and never let an exception escape into the Shizuku server.
+            mainHandler.post {
+                runCatching {
+                    if (binder != null && binder.pingBinder()) {
+                        shell = IGamersHubShell.Stub.asInterface(binder)
+                        bound = true
+                        _shellReady.value = true
+                        _status.value = Status.READY
+                        _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" else " (shell)"}"
+                    } else {
+                        _statusDetail.value = "Shell binder died on connect"
+                        _shellReady.value = false
+                    }
+                }
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
-            shell = null
-            bound = false
-            _shellReady.value = false
-            // binder vanished (Shizuku killed) — refresh so UI reflects it immediately
-            refreshState()
+            mainHandler.post {
+                runCatching {
+                    shell = null
+                    bound = false
+                    _shellReady.value = false
+                    // binder vanished (Shizuku killed) — refresh so UI reflects it immediately
+                    refreshState()
+                }
+            }
         }
     }
 
@@ -110,21 +122,33 @@ class ShizukuManager(private val context: Context) {
     private fun registerListeners() {
         runCatching {
             val received = Shizuku.OnBinderReceivedListener {
-                _statusDetail.value = "Shizuku binder received"
-                refreshState()
+                mainHandler.post {
+                    runCatching {
+                        _statusDetail.value = "Shizuku binder received"
+                        refreshState()
+                    }
+                }
             }
             val dead = Shizuku.OnBinderDeadListener {
-                shell = null
-                bound = false
-                _shellReady.value = false
-                _statusDetail.value = "Shizuku binder lost"
-                refreshState()
+                mainHandler.post {
+                    runCatching {
+                        shell = null
+                        bound = false
+                        _shellReady.value = false
+                        _statusDetail.value = "Shizuku binder lost"
+                        refreshState()
+                    }
+                }
             }
             val perm = Shizuku.OnRequestPermissionResultListener { _, grant ->
-                _statusDetail.value =
-                    if (grant == PackageManager.PERMISSION_GRANTED) "Permission granted"
-                    else "Permission denied"
-                refreshState()
+                mainHandler.post {
+                    runCatching {
+                        _statusDetail.value =
+                            if (grant == PackageManager.PERMISSION_GRANTED) "Permission granted"
+                            else "Permission denied"
+                        refreshState()
+                    }
+                }
             }
             binderReceivedListener = received
             binderDeadListener = dead

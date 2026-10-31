@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,9 +48,11 @@ import com.gamershub.ui.Routes
 import com.gamershub.ui.components.GlassButton
 import com.gamershub.ui.components.GlassCard
 import com.gamershub.ui.components.GlassChip
+import com.gamershub.ui.components.GlassSwitch
 import com.gamershub.ui.components.LineChart
 import com.gamershub.ui.components.RadialGauge
 import com.gamershub.ui.components.SectionTitle
+import com.gamershub.ui.requireEngine
 import com.gamershub.ui.theme.GhColors
 import com.gamershub.ui.theme.LocalGlass
 import kotlinx.coroutines.launch
@@ -68,6 +71,7 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
     val recState by container.recorder.state.collectAsStateWithLifecycle()
     val history by container.analytics.history.collectAsStateWithLifecycle()
     val widgetRunning by FloatingWidgetService.isRunning.collectAsStateWithLifecycle()
+    val engineOn by container.engine.enabled.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         container.recorder.events.collect { msg ->
@@ -108,6 +112,30 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
             GlassChip(text = "Settings", selected = false) { nav.navigate(Routes.SETTINGS) }
         }
 
+        // ---------------- master engine switch (the one big ON/OFF)
+        Spacer(Modifier.height(10.dp))
+        GlassCard(highlight = true) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (engineOn) "Engine ON" else "Engine OFF — device is stock",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (engineOn) g.accent else g.textDim
+                    )
+                    Text(
+                        "Master switch · OFF stops everything instantly and restores the phone",
+                        style = MaterialTheme.typography.labelSmall, color = g.textDim
+                    )
+                }
+                GlassSwitch(engineOn) { on ->
+                    scope.launch {
+                        val log = container.engine.setEnabled(on)
+                        Toast.makeText(context, log.lastOrNull() ?: "", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
         // ---------------- engine hero panel
         Spacer(Modifier.height(12.dp))
         GlassCard(highlight = true, corner = 26.dp) {
@@ -122,11 +150,15 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
                     style = MaterialTheme.typography.labelSmall, color = g.textDim
                 )
                 Spacer(Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState())
+                ) {
                     GlassChip("⚡ Boost", selected = false) { nav.navigate(Routes.BOOST) }
                     GlassChip("🎚 Scaling", selected = false) { nav.navigate(Routes.SCALING) }
                     GlassChip("⏺ Record", selected = false) { nav.navigate(Routes.RECORD) }
                     GlassChip("📡 Live", selected = false) { nav.navigate(Routes.STREAM) }
+                    GlassChip("✨ Enhance", selected = false) { nav.navigate(Routes.ENHANCE) }
                 }
             }
         }
@@ -227,6 +259,7 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
         GlassButton(
             text = if (boosting) "Restore system" else "Boost now",
             onClick = {
+                if (!requireEngine(container, context)) return@GlassButton
                 scope.launch { container.boost.toggleBoost(container.boost.defaultPlan()) }
             },
             modifier = Modifier.fillMaxWidth()
@@ -246,9 +279,12 @@ fun DashboardScreen(container: AppContainer, nav: NavHostController) {
         SectionTitle("QUICK ACCESS")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GlassCard(modifier = Modifier.weight(1f), onClick = {
-                if (Settings.canDrawOverlays(context)) {
-                    if (widgetRunning) FloatingWidgetService.stop(context)
-                    else FloatingWidgetService.start(context)
+                if (widgetRunning) {
+                    FloatingWidgetService.stop(context)
+                } else if (!requireEngine(container, context)) {
+                    // engine off → told the user, do nothing
+                } else if (Settings.canDrawOverlays(context)) {
+                    FloatingWidgetService.start(context)
                 } else {
                     context.startActivity(
                         Intent(

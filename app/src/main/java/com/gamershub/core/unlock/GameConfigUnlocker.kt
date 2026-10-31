@@ -163,6 +163,29 @@ class GameConfigUnlocker(
         UnlockReport(preset.displayName, ok, lines).also { _lastReport.value = it }
     }
 
+    /**
+     * Restores EVERY `*.ghbak` backup under /sdcard/Android/data — the global
+     * rollback used by the master engine switch. Returns how many files were
+     * put back.
+     */
+    suspend fun restoreAllBackups(): Int = withContext(Dispatchers.IO) {
+        if (!shizuku.canUseShell) return@withContext 0
+        try {
+            val baks = shizuku.exec(
+                "find '/sdcard/Android/data' -type f -name '*.ghbak' 2>/dev/null | head -80"
+            ).output.lines().map { it.trim() }.filter { it.startsWith("/") }
+            var count = 0
+            for (bak in baks) {
+                val orig = bak.removeSuffix(".ghbak")
+                val r = shizuku.exec("cp '$bak' '$orig' && rm '$bak'")
+                if (r.ok) count++
+            }
+            count
+        } catch (t: Throwable) {
+            0
+        }
+    }
+
     // ------------------------------------------------------------- shell I/O
 
     private suspend fun findFiles(base: String, suffix: String = ".ini"): List<String> {

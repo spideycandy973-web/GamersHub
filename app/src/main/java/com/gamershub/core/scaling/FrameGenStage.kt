@@ -315,6 +315,8 @@ class FrameGenStage private constructor(
         GLES30.glUniform1i(GLES30.glGetUniformLocation(progCopy, "uTexOes"), 0)
         GLES30.glUniform1i(uTex, 1)
         GLES30.glUniform1i(uIsOes, 1)
+        // No sharpening on the raw capture copy — sharpening happens on output.
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(progCopy, "uSharpen"), 0f)
         GLES30.glUniformMatrix4fv(uMatrix, 1, false, mtx, 0)
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
     }
@@ -331,6 +333,11 @@ class FrameGenStage private constructor(
         GLES30.glUniform1i(GLES30.glGetUniformLocation(progPassthrough, "uTexOes"), 0)
         GLES30.glUniform1i(uTex, 1)
         GLES30.glUniform1i(uIsOes, 0)
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(progPassthrough, "uSharpen"), sharpen)
+        GLES30.glUniform2f(
+            GLES30.glGetUniformLocation(progPassthrough, "uSharpTexel"),
+            1f / width, 1f / height
+        )
         GLES30.glUniformMatrix4fv(uMatrix, 1, false, IDENTITY, 0)
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
     }
@@ -365,6 +372,7 @@ class FrameGenStage private constructor(
             GLES30.glGetUniformLocation(progInterp, "uTexel"),
             1f / width, 1f / height
         )
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(progInterp, "uSharpen"), sharpen)
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
     }
 
@@ -372,6 +380,14 @@ class FrameGenStage private constructor(
 
     @Volatile
     var frameGenEnabled = true
+
+    /**
+     * Unsharp-mask strength for the output pass (0 = off, 0.9 = max).
+     * Driven by the Graphics Enhancer screen — real pixel-level sharpening of
+     * every frame this stage emits (record / stream / frame-generation).
+     */
+    @Volatile
+    var sharpen = 0f
 
     fun start() {
         if (!running.compareAndSet(false, true)) return
@@ -471,7 +487,8 @@ void main() {
 }
 """
 
-/** Copies a texture (OES or 2D) into the current render target. */
+/** Copies a texture (OES or 2D) into the current render target; the 2D path
+ *  applies an unsharp mask when [FrameGenStage.sharpen] is active. */
 private const val FS_COPY = """#version 300 es
 #extension GL_OES_EGL_image_external_essl3 : require
 precision mediump float;
@@ -480,13 +497,25 @@ uniform sampler2D uTex;
 uniform samplerExternalOES uTexOes;
 uniform int uIsOes;
 uniform mat4 uTexMatrix;
+uniform float uSharpen;
+uniform vec2 uSharpTexel;
 out vec4 fragColor;
 void main() {
     if (uIsOes == 1) {
         vec2 uv = (uTexMatrix * vec4(vUv, 0.0, 1.0)).xy;
         fragColor = texture(uTexOes, uv);
     } else {
-        fragColor = texture(uTex, vUv);
+        vec3 c = texture(uTex, vUv).rgb;
+        if (uSharpen > 0.001) {
+            vec3 blur = (
+                texture(uTex, vUv + vec2(uSharpTexel.x, 0.0)).rgb +
+                texture(uTex, vUv - vec2(uSharpTexel.x, 0.0)).rgb +
+                texture(uTex, vUv + vec2(0.0, uSharpTexel.y)).rgb +
+                texture(uTex, vUv - vec2(0.0, uSharpTexel.y)).rgb
+            ) * 0.25;
+            c = clamp(c + (c - blur) * uSharpen, 0.0, 1.0);
+        }
+        fragColor = vec4(c, 1.0);
     }
 }
 """
@@ -544,16 +573,31 @@ uniform sampler2D uPrev;
 uniform sampler2D uCur;
 uniform sampler2D uMotion;
 uniform vec2 uTexel;
+uniform float uSharpen;
 out vec4 fragColor;
 
 const float RANGE = 16.0;
+
+vec3 blendAt(vec2 uv, vec2 mvUv) {
+    vec3 a = texture(uPrev, uv - mvUv * 0.5).rgb;
+    vec3 b = texture(uCur,  uv + mvUv * 0.5).rgb;
+    return mix(a, b, 0.5);
+}
 
 void main() {
     vec2 enc = texture(uMotion, vUv).rg;
     vec2 mv = (enc * 2.0 - 1.0) * RANGE;      // px
     vec2 mvUv = mv * uTexel;
-    vec3 a = texture(uPrev, vUv - mvUv * 0.5).rgb;
-    vec3 b = texture(uCur,  vUv + mvUv * 0.5).rgb;
-    fragColor = vec4(mix(a, b, 0.5), 1.0);
+    vec3 outc = blendAt(vUv, mvUv);
+    if (uSharpen > 0.001) {
+        vec3 blur = (
+            blendAt(vUv + vec2(uTexel.x, 0.0), mvUv) +
+            blendAt(vUv - vec2(uTexel.x, 0.0), mvUv) +
+            blendAt(vUv + vec2(0.0, uTexel.y), mvUv) +
+            blendAt(vUv - vec2(0.0, uTexel.y), mvUv)
+        ) * 0.25;
+        outc = clamp(outc + (outc - blur) * uSharpen, 0.0, 1.0);
+    }
+    fragColor = vec4(outc, 1.0);
 }
 """

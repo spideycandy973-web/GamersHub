@@ -151,6 +151,9 @@ fun StreamScreen(container: AppContainer) {
         GlassButton(
             text = if (isStreaming) "■  END STREAM" else "🔴  GO LIVE EVERYWHERE",
             onClick = {
+                if (!isStreaming && !com.gamershub.ui.requireEngine(container, context)) {
+                    return@GlassButton
+                }
                 scope.launch {
                     if (isStreaming) {
                         container.recorder.stop()

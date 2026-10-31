@@ -55,6 +55,30 @@ fun SettingsScreen(container: AppContainer) {
             color = g.text, modifier = Modifier.padding(top = 20.dp)
         )
 
+        // ------------------------------------------------- master switch
+        SectionTitle("MASTER ENGINE SWITCH")
+        GlassCard(highlight = true) {
+            val engineOn by container.engine.enabled.collectAsStateWithLifecycle()
+            GlassSwitchRow(
+                "Engine active",
+                if (engineOn) "All engines live — boost, scaling, unlock, enhancer, widget"
+                else "Everything is OFF and restored — the phone is back to stock",
+                engineOn
+            ) { on ->
+                scope.launch {
+                    val log = container.engine.setEnabled(on)
+                    Toast.makeText(context, log.lastOrNull() ?: "", Toast.LENGTH_LONG).show()
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Turning this OFF stops every engine immediately: display, refresh " +
+                        "rate, thermal, spoofing, frame generation and game configs are " +
+                        "all restored to stock.",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim
+            )
+        }
+
         // ------------------------------------------------------- appearance
         SectionTitle("APPEARANCE")
         GlassCard {

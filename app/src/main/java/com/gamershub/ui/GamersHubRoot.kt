@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,11 +47,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.gamershub.core.settings.ThemeMode
+import com.gamershub.core.shizuku.ShizukuManager
 import com.gamershub.di.AppContainer
 import com.gamershub.ui.components.GlassDivider
 import com.gamershub.ui.screens.AnalyticsScreen
 import com.gamershub.ui.screens.BoosterScreen
 import com.gamershub.ui.screens.DashboardScreen
+import com.gamershub.ui.screens.EnhanceScreen
 import com.gamershub.ui.screens.GamesScreen
 import com.gamershub.ui.screens.MoreScreen
 import com.gamershub.ui.screens.RecorderScreen
@@ -74,6 +77,7 @@ object Routes {
     const val STREAM = "stream"
     const val ANALYTICS = "analytics"
     const val SETTINGS = "settings"
+    const val ENHANCE = "enhance"
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -99,6 +103,18 @@ fun GamersHubRoot(container: AppContainer) {
     GamersHubTheme(darkTheme = dark, accent = accent) {
         val nav = rememberNavController()
         val g = LocalGlass.current
+
+        // Real Shizuku permission flow: as soon as the app opens and the Shizuku
+        // service is alive but not yet granted, show the system-level permission
+        // dialog automatically — the engines only go live once it is granted.
+        val shizukuStatus by container.shizuku.status.collectAsStateWithLifecycle()
+        LaunchedEffect(shizukuStatus) {
+            if (shizukuStatus == ShizukuManager.Status.PERMISSION_NEEDED) {
+                container.shizuku.requestPermission()
+            } else if (shizukuStatus == ShizukuManager.Status.READY) {
+                container.shizuku.bindShell()
+            }
+        }
 
         Box(
             Modifier
@@ -147,6 +163,7 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
         composable(Routes.STREAM) { StreamScreen(container) }
         composable(Routes.ANALYTICS) { AnalyticsScreen(container) }
         composable(Routes.SETTINGS) { SettingsScreen(container) }
+        composable(Routes.ENHANCE) { EnhanceScreen(container) }
     }
 }
 

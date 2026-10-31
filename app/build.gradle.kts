@@ -14,8 +14,8 @@ android {
         applicationId = "com.gamershub"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -25,9 +25,13 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
+            // Shrink dead code, but do NOT run the aggressive optimizer and do
+            // not obfuscate: both have a history of breaking Shizuku user-service
+            // reflection and kotlinx-serialization on real devices (random
+            // crashes after Shizuku connects). Stability > ~200 KB of APK size.
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
 

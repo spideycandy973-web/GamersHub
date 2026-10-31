@@ -17,7 +17,8 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as? GamersHubApp ?: return@launch
-                if (app.container.settings.startOnBoot.first()) {
+                val settings = app.container.settings
+                if (settings.startOnBoot.first() && settings.engineEnabled.first()) {
                     GamersHubCoreService.start(context)
                 }
             } finally {

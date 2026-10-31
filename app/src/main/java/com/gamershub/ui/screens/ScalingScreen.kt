@@ -125,12 +125,14 @@ fun ScalingScreen(container: AppContainer) {
         GlassCard {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassChip("Native", scaleState.mode == LosslessScalingEngine.ScaleMode.NATIVE) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
                     scope.launch {
                         val out = container.scaling.apply(LosslessScalingEngine.ScaleMode.NATIVE)
                         Toast.makeText(context, out.lastOrNull() ?: "Reset", Toast.LENGTH_SHORT).show()
                     }
                 }
                 GlassChip("¾", scaleState.mode == LosslessScalingEngine.ScaleMode.THREE_QUARTERS) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
                     scope.launch {
                         val out = container.scaling.apply(
                             LosslessScalingEngine.ScaleMode.THREE_QUARTERS, refreshHz = refreshPick
@@ -139,6 +141,7 @@ fun ScalingScreen(container: AppContainer) {
                     }
                 }
                 GlassChip("⅔", scaleState.mode == LosslessScalingEngine.ScaleMode.TWO_THIRDS) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
                     scope.launch {
                         val out = container.scaling.apply(
                             LosslessScalingEngine.ScaleMode.TWO_THIRDS, refreshHz = refreshPick
@@ -147,6 +150,7 @@ fun ScalingScreen(container: AppContainer) {
                     }
                 }
                 GlassChip("½", scaleState.mode == LosslessScalingEngine.ScaleMode.HALF) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
                     scope.launch {
                         val out = container.scaling.apply(
                             LosslessScalingEngine.ScaleMode.HALF, refreshHz = refreshPick
@@ -169,6 +173,7 @@ fun ScalingScreen(container: AppContainer) {
                 )
             )
             GlassButton("Apply custom scale", primary = false, onClick = {
+                if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
                 scope.launch {
                     val out = container.scaling.apply(
                         LosslessScalingEngine.ScaleMode.CUSTOM, customPct, refreshHz = refreshPick
@@ -211,6 +216,7 @@ fun ScalingScreen(container: AppContainer) {
                 "Drives the display's motion-interpolation hardware (when present)",
                 memcOn
             ) { on ->
+                if (!com.gamershub.ui.requireEngine(container, context)) return@GlassSwitchRow
                 scope.launch {
                     val out = container.frameGen.setEnabled(on)
                     Toast.makeText(context, out.lastOrNull() ?: "Done", Toast.LENGTH_SHORT).show()
@@ -222,6 +228,7 @@ fun ScalingScreen(container: AppContainer) {
                 "Stops the panel duplicating frames — GameMode vote + refresh lock",
                 fgDisplay
             ) { on ->
+                if (!com.gamershub.ui.requireEngine(container, context)) return@GlassSwitchRow
                 scope.launch {
                     container.settings.setFrameGenDisplay(on)
                     if (on) {

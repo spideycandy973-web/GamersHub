@@ -188,6 +188,9 @@ fun RecorderScreen(container: AppContainer) {
         GlassButton(
             text = if (activeState == null) "⏺  START RECORDING" else "■  STOP",
             onClick = {
+                if (activeState == null && !com.gamershub.ui.requireEngine(container, context)) {
+                    return@GlassButton
+                }
                 scope.launch {
                     if (activeState == null) {
                         container.recorder.requestStart(RecorderConfig.Mode.RECORD)

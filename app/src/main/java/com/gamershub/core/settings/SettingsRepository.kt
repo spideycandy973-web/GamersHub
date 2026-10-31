@@ -63,6 +63,12 @@ class SettingsRepository(private val context: Context) {
 
         val STATS_TOTAL_STREAM_SECONDS = intPreferencesKey("stats_total_stream_seconds")
         val STATS_TOTAL_RECORDINGS = intPreferencesKey("stats_total_recordings")
+
+        val ENGINE_ENABLED = booleanPreferencesKey("engine_enabled")
+        val ENHANCE_LEVEL = intPreferencesKey("enhance_level")
+        val ENHANCE_GPU = booleanPreferencesKey("enhance_gpu_comp")
+        val ENHANCE_VIVID = booleanPreferencesKey("enhance_vivid")
+        val ENHANCE_GAME_SHARP = booleanPreferencesKey("enhance_game_sharp")
     }
 
     // ---------- helpers ----------
@@ -192,6 +198,23 @@ class SettingsRepository(private val context: Context) {
         }
     }
     val totalRecordings: Flow<Int> = flow(K.STATS_TOTAL_RECORDINGS, 0)
+
+    // ---------- master engine switch + graphics enhancer ----------
+    val engineEnabled: Flow<Boolean> = flow(K.ENGINE_ENABLED, true)
+    suspend fun setEngineEnabled(v: Boolean) = context.dataStore.edit { it[K.ENGINE_ENABLED] = v }
+
+    /** Sharpen level 0..3 (Off / Soft / Balanced / Sharp). */
+    val enhanceLevel: Flow<Int> = flow(K.ENHANCE_LEVEL, 0)
+    suspend fun setEnhanceLevel(v: Int) = context.dataStore.edit { it[K.ENHANCE_LEVEL] = v.coerceIn(0, 3) }
+
+    val enhanceGpu: Flow<Boolean> = flow(K.ENHANCE_GPU, false)
+    suspend fun setEnhanceGpu(v: Boolean) = context.dataStore.edit { it[K.ENHANCE_GPU] = v }
+
+    val enhanceVivid: Flow<Boolean> = flow(K.ENHANCE_VIVID, false)
+    suspend fun setEnhanceVivid(v: Boolean) = context.dataStore.edit { it[K.ENHANCE_VIVID] = v }
+
+    val enhanceGameSharp: Flow<Boolean> = flow(K.ENHANCE_GAME_SHARP, false)
+    suspend fun setEnhanceGameSharp(v: Boolean) = context.dataStore.edit { it[K.ENHANCE_GAME_SHARP] = v }
 
     suspend fun deviceId(): String {
         val prefs = context.dataStore.data.first()

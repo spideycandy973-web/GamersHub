@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamershub.core.boost.ThermalProfile
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ThermalScreen(container: AppContainer) {
     val g = LocalGlass.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val active by container.thermal.activeProfile.collectAsStateWithLifecycle()
@@ -92,6 +94,7 @@ fun ThermalScreen(container: AppContainer) {
                     .padding(vertical = 5.dp),
                 highlight = selected,
                 onClick = {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassCard
                     scope.launch {
                         container.thermal.setProfile(p)
                         if (shellReady) container.thermal.enforceNow()

@@ -73,6 +73,13 @@ class RecorderController(
             _events.tryEmit("Mic permission not granted — capturing without microphone audio")
         }
         val frameGen = settings.recFrameGen.first()
+        // Graphics-enhancer sharpen level (0..3) → shader unsharp amount.
+        val sharpen = when (settings.enhanceLevel.first()) {
+            1 -> 0.35f
+            2 -> 0.6f
+            3 -> 0.9f
+            else -> 0f
+        }
         return RecorderConfig(
             verticalResolution = res,
             fps = fps,
@@ -80,7 +87,8 @@ class RecorderController(
             bitrateMbps = bitrate,
             withMic = micPref && micGranted,
             mode = mode,
-            frameGen = frameGen
+            frameGen = frameGen,
+            sharpen = sharpen
         )
     }
 

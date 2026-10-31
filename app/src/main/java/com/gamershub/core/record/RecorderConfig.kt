@@ -15,7 +15,9 @@ data class RecorderConfig(
     val withMic: Boolean = false,
     val mode: Mode = Mode.RECORD,
     /** Real GPU frame generation (2× output via motion interpolation). */
-    val frameGen: Boolean = false
+    val frameGen: Boolean = false,
+    /** Unsharp-mask strength for the GPU frame pipeline (0f = off). */
+    val sharpen: Float = 0f
 ) : Parcelable {
     enum class Codec(val mime: String) {
         H264("video/avc"),

@@ -40,6 +40,7 @@ import com.gamershub.ui.components.GlassChip
 import com.gamershub.ui.components.SectionTitle
 import com.gamershub.ui.theme.GhColors
 import com.gamershub.ui.theme.LocalGlass
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -138,9 +139,13 @@ fun UnlockScreen(container: AppContainer) {
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 GlassButton("Unlock max", onClick = {
+                                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
                                     selectedPreset = preset
                                     scope.launch {
-                                        val r = container.unlocker.unlock(preset)
+                                        val p = if (container.settings.enhanceGameSharp.first())
+                                            com.gamershub.core.unlock.GameUnlockPresets.sharpened(preset)
+                                        else preset
+                                        val r = container.unlocker.unlock(p)
                                         Toast.makeText(
                                             context,
                                             if (r.ok) "Unlocked ${r.game}" else "Unlock failed — see report",
@@ -194,10 +199,14 @@ fun UnlockScreen(container: AppContainer) {
                         Text(app.packageName, style = MaterialTheme.typography.labelSmall, color = g.textDim)
                     }
                     GlassChip("Unlock", selected = false) {
+                        if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
                         val preset = com.gamershub.core.unlock.GameUnlockPresets
                             .forAnyPackage(app.packageName, app.label)
                         scope.launch {
-                            val r = container.unlocker.unlock(preset)
+                            val p = if (container.settings.enhanceGameSharp.first())
+                                com.gamershub.core.unlock.GameUnlockPresets.sharpened(preset)
+                            else preset
+                            val r = container.unlocker.unlock(p)
                             Toast.makeText(
                                 context, r.lines.lastOrNull() ?: "Done", Toast.LENGTH_LONG
                             ).show()
@@ -253,6 +262,9 @@ fun UnlockScreen(container: AppContainer) {
                         )
                     }
                     GlassChip(if (isApplied) "Restore" else "Apply", selected = isApplied) {
+                        if (!isApplied && !com.gamershub.ui.requireEngine(container, context)) {
+                            return@GlassChip
+                        }
                         scope.launch {
                             if (isApplied) {
                                 container.spoofer.remove()

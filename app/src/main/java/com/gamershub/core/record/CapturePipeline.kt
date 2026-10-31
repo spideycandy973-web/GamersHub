@@ -85,13 +85,19 @@ class CapturePipeline(
 
         // Optional GPU frame generation between display and encoder.
         var displaySurface = inputSurface
-        if (config.frameGen) {
+        if (config.frameGen || config.sharpen > 0f) {
             val stage = FrameGenStage.create(inputSurface, actualWidth, actualHeight)
             if (stage != null) {
+                stage.frameGenEnabled = config.frameGen
+                stage.sharpen = config.sharpen
                 frameGen = stage
-                frameGenActive = true
+                frameGenActive = config.frameGen
                 displaySurface = stage.renderSurface
-                Log.i(TAG, "FrameGen active: real interpolated frames at ${encodeFps}fps")
+                if (config.frameGen) {
+                    Log.i(TAG, "FrameGen active: real interpolated frames at ${encodeFps}fps")
+                } else {
+                    Log.i(TAG, "Sharpen pipeline active (level ${config.sharpen})")
+                }
             } else {
                 Log.w(TAG, "FrameGen unavailable — falling back to zero-copy")
             }
