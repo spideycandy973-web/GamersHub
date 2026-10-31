@@ -18,6 +18,7 @@ Everything runs through the [Shizuku](https://shizuku.rikka.app/) service (adb /
 | 🧊 **Frame generation** | (1) **capture-side real FG** — GPU block-matching motion estimation + motion-compensated mid-frame synthesis, output at 2× frame rate with genuine generated frames (not duplicates); (2) **hardware MEMC** probe & drive where the SoC exposes it; (3) GameMode frame-rate vote + panel cadence lock | Shizuku + GPU |
 | 📊 **Monitoring** | 1 Hz CPU/freq, thermal zones, battery temp, RAM + **live FPS of the foreground game** (`dumpsys gfxinfo`) — in-app gauges and the floating HUD | shell accelerates FPS |
 | 🎛 **Floating widget** | draggable bubble (tap = glass panel, double-tap/long-press = gestures), FPS HUD, glass control panel, live-chat overlay | system alert window |
+| 🎮 **Game Space (ROG-style)** | swipe inward from a screen edge (system back-gesture is excluded from the edge band so the swipe always lands), tap the bubble, or use the in-app **Game Space** screen's one-tap *Open control panel* — the panel pops over any game with boost · record · live · refresh lock · render scale · sharpen · HUD · thermal · bypass, and closes with ✕, the *Close panel* button or a tap outside | system alert window |
 | 🎮 **Game launcher + app selector** | OS-detected games **plus any app you add** — searchable picker, per-game profiles auto-applied by the foreground watcher | Shizuku |
 | 🔋 **Battery** | bypass charging via kernel power-supply nodes (probed at runtime), kills heat in long sessions | shell/root (device dependent) |
 | ⏺ **Screen recorder** | zero-copy hardware H.264/HEVC up to 4K@120 (device-limited), MP4 + optional mic AAC, robust muxer (audio-timeout watchdog, empty-file detection) | MediaProjection |
@@ -50,9 +51,10 @@ install it on your phone, done. The `nightly` prerelease always carries the late
    - Rooted: Shizuku/Sui starts directly (full identity spoof + root battery nodes unlock).
 2. Open GamersHub — it automatically shows the **real Shizuku permission dialog**; tap *Allow*. If the state looks stale, hit **Reconnect** (it resets the binder listeners and rebinds the shell service). Nothing is applied to the device before the permission is granted.
 3. Grant **Display over other apps** (floating widget) and **Notifications**.
-4. **Game Unlock** → pick any game/app → *Unlock max*. Launch the game — the new graphics/FPS options are in its settings.
-5. **Lossless Scaling** → pick a render scale (½ is pixel-perfect integer scaling) → everything in-game renders faster while the compositor keeps the picture full-screen.
-6. **Master switch** (top of Dashboard & Settings): turning it OFF restores the whole device to stock immediately.
+4. **Game Space** (More → Game Space): start the widget, then tap *Open control panel* to pop the in-game panel — or swipe inward from a screen edge while in a game.
+5. **Game Unlock** → pick any game/app → *Unlock max*. Launch the game — the new graphics/FPS options are in its settings.
+6. **Lossless Scaling** → pick a render scale (½ is pixel-perfect integer scaling) → everything in-game renders faster while the compositor keeps the picture full-screen.
+7. **Master switch** (top of Dashboard & Settings): turning it OFF restores the whole device to stock immediately.
 
 ## 🧠 Architecture
 
