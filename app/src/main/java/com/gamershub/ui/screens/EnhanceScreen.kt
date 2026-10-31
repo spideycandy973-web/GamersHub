@@ -90,7 +90,7 @@ fun EnhanceScreen(container: AppContainer) {
         }
 
         // ------------------------------------------------ sharpen pipeline
-        SectionTitle("SHARPNESS PIPELINE")
+        SectionTitle("CAPTURE SHARPENING (RECORD / STREAM / FRAME-GEN)")
         GlassCard {
             Text(
                 "Sharpen level: ${com.gamershub.core.enhance.GraphicsEnhancer.LEVELS[level]}",
@@ -98,7 +98,8 @@ fun EnhanceScreen(container: AppContainer) {
             )
             Text(
                 "GPU unsharp-mask applied to every frame of the recording / streaming / " +
-                        "frame-generation pipeline — real per-pixel sharpening.",
+                        "frame-generation pipeline (the video output gets sharper). " +
+                        "For sharpening the LIVE screen use Display Sharpness above.",
                 style = MaterialTheme.typography.labelSmall, color = g.textDim,
                 modifier = Modifier.padding(vertical = 6.dp)
             )
@@ -112,6 +113,43 @@ fun EnhanceScreen(container: AppContainer) {
                         }
                     }
                 }
+            }
+        }
+
+        // ------------------------------------------------ display sharpen
+        SectionTitle("DISPLAY SHARPNESS — SUPERSAMPLING")
+        GlassCard {
+            val scalingState by container.scaling.state.collectAsStateWithLifecycle()
+            Text(
+                "The real display-wide sharpening: the system renders ABOVE the " +
+                        "panel resolution and the compositor supersamples down — " +
+                        "full-screen anti-aliasing, every app and game gets the " +
+                        "sharper '4K/8K-class' image. This is the knob you can see.",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val m = com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode
+                listOf(
+                    "Off" to m.NATIVE, "1.25×" to m.SUPER_125,
+                    "1.5×" to m.SUPER_150, "2× (8K)" to m.SUPER_200
+                ).forEach { (label, mode) ->
+                    GlassChip(label, scalingState.mode == mode) {
+                        if (!requireEngine(container, context)) return@GlassChip
+                        scope.launch {
+                            val out = container.scaling.apply(mode)
+                            Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+            if (scalingState.active && scalingState.renderW > scalingState.panelW) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "LIVE: rendering ${scalingState.renderW}×${scalingState.renderH} → " +
+                            "downsampled to ${scalingState.panelW}×${scalingState.panelH}",
+                    style = MaterialTheme.typography.labelSmall, color = g.accent
+                )
             }
         }
 

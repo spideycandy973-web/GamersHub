@@ -257,7 +257,7 @@ fun UnlockScreen(container: AppContainer) {
                     Column(Modifier.weight(1f)) {
                         Text(preset.displayName, style = MaterialTheme.typography.titleMedium, color = g.text)
                         Text(
-                            "${preset.displayW}×${preset.displayH} @ ${preset.maxRefreshHz}Hz · ${preset.gpu}",
+                            "${preset.gpuRenderer} · ${preset.displayW}×${preset.displayH} @ ${preset.maxRefreshHz}Hz",
                             style = MaterialTheme.typography.labelSmall, color = g.textDim
                         )
                     }

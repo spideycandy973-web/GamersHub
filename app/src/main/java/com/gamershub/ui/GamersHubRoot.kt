@@ -56,6 +56,7 @@ import com.gamershub.ui.screens.DashboardScreen
 import com.gamershub.ui.screens.EnhanceScreen
 import com.gamershub.ui.screens.GamesScreen
 import com.gamershub.ui.screens.MoreScreen
+import com.gamershub.ui.screens.ProofScreen
 import com.gamershub.ui.screens.RecorderScreen
 import com.gamershub.ui.screens.ScalingScreen
 import com.gamershub.ui.screens.SettingsScreen
@@ -78,6 +79,7 @@ object Routes {
     const val ANALYTICS = "analytics"
     const val SETTINGS = "settings"
     const val ENHANCE = "enhance"
+    const val PROOF = "proof"
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -164,6 +166,7 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
         composable(Routes.ANALYTICS) { AnalyticsScreen(container) }
         composable(Routes.SETTINGS) { SettingsScreen(container) }
         composable(Routes.ENHANCE) { EnhanceScreen(container) }
+        composable(Routes.PROOF) { ProofScreen(container) }
     }
 }
 

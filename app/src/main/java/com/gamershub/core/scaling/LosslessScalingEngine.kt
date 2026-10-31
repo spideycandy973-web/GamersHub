@@ -28,7 +28,18 @@ import kotlinx.coroutines.withContext
  */
 class LosslessScalingEngine(private val shizuku: ShizukuManager) {
 
-    enum class ScaleMode { NATIVE, HALF, TWO_THIRDS, THREE_QUARTERS, CUSTOM }
+    enum class ScaleMode {
+        /** Native panel resolution (reset). */
+        NATIVE,
+        /** Render below native → compositor upscales → more FPS. */
+        HALF, TWO_THIRDS, THREE_QUARTERS, CUSTOM,
+        /**
+         * Render ABOVE native → compositor supersamples down to the panel —
+         * real full-screen anti-aliasing / sharpness ("4K / 8K class" image).
+         * Costs GPU power; the picture gets visibly crisper everywhere.
+         */
+        SUPER_125, SUPER_150, SUPER_200
+    }
 
     data class State(
         val mode: ScaleMode = ScaleMode.NATIVE,
@@ -58,8 +69,13 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
     }
 
     /**
-     * Applies a render scale. [customPercent] is used for [ScaleMode.CUSTOM]
-     * (50–100). Integer modes pick exact divisors for pixel-perfect upscaling.
+     * Applies a render scale.
+     *  - [customPercent] 40–100 = render below native (performance),
+     *    101–200 = supersample above native (quality).
+     *  - [refreshHz] locks the panel cadence via every keyspace Android/MIUI
+     *    actually reads (global + system peak/min/user refresh rate).
+     * Every applied value is re-read from the system and reported back as
+     * live proof in the returned log lines.
      */
     suspend fun apply(
         mode: ScaleMode,
@@ -90,52 +106,114 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
             )
         }
 
-        val (rw, rh) = when (mode) {
-            ScaleMode.NATIVE -> st.panelW to st.panelH
-            ScaleMode.HALF -> (st.panelW / 2) to (st.panelH / 2)
-            ScaleMode.TWO_THIRDS -> (st.panelW * 2 / 3) to (st.panelH * 2 / 3)
-            ScaleMode.THREE_QUARTERS -> (st.panelW * 3 / 4) to (st.panelH * 3 / 4)
+        // --- render target -------------------------------------------------
+        var w: Int
+        var h: Int
+        var percent = 100
+        when (mode) {
+            ScaleMode.NATIVE -> {
+                w = st.panelW; h = st.panelH; percent = 100
+            }
+            ScaleMode.HALF -> { w = st.panelW / 2; h = st.panelH / 2; percent = 50 }
+            ScaleMode.TWO_THIRDS -> { w = st.panelW * 2 / 3; h = st.panelH * 2 / 3; percent = 67 }
+            ScaleMode.THREE_QUARTERS -> { w = st.panelW * 3 / 4; h = st.panelH * 3 / 4; percent = 75 }
+            ScaleMode.SUPER_125 -> { w = st.panelW * 5 / 4; h = st.panelH * 5 / 4; percent = 125 }
+            ScaleMode.SUPER_150 -> { w = st.panelW * 3 / 2; h = st.panelH * 3 / 2; percent = 150 }
+            ScaleMode.SUPER_200 -> { w = st.panelW * 2; h = st.panelH * 2; percent = 200 }
             ScaleMode.CUSTOM -> {
-                val p = customPercent.coerceIn(40, 100)
-                (st.panelW * p / 100) to (st.panelH * p / 100)
+                percent = customPercent.coerceIn(40, 200)
+                w = st.panelW * percent / 100
+                h = st.panelH * percent / 100
             }
         }
+        // Never exceed a sane 8K-class ceiling for supersampling.
+        val maxLong = 4320
+        val longSide = maxOf(w, h)
+        if (longSide > maxLong) {
+            val f = maxLong.toFloat() / longSide
+            w = (w * f).toInt(); h = (h * f).toInt()
+        }
         // encoders/scalers like even numbers
-        val w = rw - (rw % 2)
-        val h = rh - (rh % 2)
+        w -= w % 2
+        h -= h % 2
 
-        if (mode == ScaleMode.NATIVE) {
+        if (mode == ScaleMode.NATIVE && percent == 100) {
             shizuku.exec("wm size reset")
             shizuku.exec("wm density reset")
             out += "Render resolution reset to native ${st.panelW}x${st.panelH}"
         } else {
             shizuku.exec("wm size ${w}x${h}")
             val origDensity = backupDensity?.toIntOrNull() ?: 420
-            val scaled = (origDensity * w.toFloat() / st.panelW).toInt().coerceAtLeast(120)
+            val scaled = (origDensity * w.toFloat() / st.panelW).toInt().coerceIn(120, 1200)
             shizuku.exec("wm density $scaled")
-            val factor = if (w > 0) st.panelW.toFloat() / w else 1f
-            out += "Rendering at ${w}x${h}, compositor upscales ×%.2f to ${st.panelW}x${st.panelH}".format(factor)
-            out += if (st.panelW % w == 0 && st.panelH % h == 0) {
-                "Integer scaling — pixel-perfect upscale"
+            if (w <= st.panelW) {
+                val factor = if (w > 0) st.panelW.toFloat() / w else 1f
+                out += "PERFORMANCE: rendering at ${w}x${h}, compositor upscales ×%.2f to ${st.panelW}x${st.panelH}".format(factor)
+                out += if (st.panelW % w == 0 && st.panelH % h == 0) {
+                    "Integer scaling — pixel-perfect upscale"
+                } else {
+                    "Fractional scaling — GPU compositor upscale (still zero-lag)"
+                }
             } else {
-                "Fractional scaling — GPU compositor upscale (still zero-lag)"
+                out += "QUALITY: rendering at ${w}x${h} (${percent}%), compositor supersamples DOWN to ${st.panelW}x${st.panelH}"
+                out += "Real full-screen anti-aliasing — every app and game gets the sharper image"
+            }
+
+            // Live proof: read the override back from the system
+            val verify = shizuku.exec("wm size").output
+            val override = Regex("Override size:\\s*(\\S+)").find(verify)?.groupValues?.get(1)
+            out += if (override == "${w}x${h}") {
+                "PROOF: system reports 'Override size: $override' ✓"
+            } else {
+                "PROOF: system reports 'Override size: ${override ?: "none"}' (requested ${w}x${h})"
             }
         }
 
-        if (refreshHz > 0) {
-            shizuku.exec("settings put system peak_refresh_rate $refreshHz.0")
-            shizuku.exec("settings put system min_refresh_rate $refreshHz.0")
-            runCatching {
-                shizuku.exec("settings put system user_refresh_rate $refreshHz.0")
-            }
-            out += "Refresh rate locked to ${refreshHz} Hz"
-        }
+        if (refreshHz > 0) lockRefreshHz(refreshHz, out)
 
         _state.value = st.copy(
             mode = mode, renderW = w, renderH = h,
-            refreshHz = refreshHz, active = mode != ScaleMode.NATIVE
+            refreshHz = if (refreshHz > 0) refreshHz else st.refreshHz,
+            active = mode != ScaleMode.NATIVE
         )
         out
+    }
+
+    /** Locks the panel cadence only (used by the game-space panel). */
+    suspend fun lockRefresh(hz: Int): List<String> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<String>()
+        if (!shizuku.canUseShell) return@withContext listOf("Shizuku shell not connected")
+        if (backupRefresh.isEmpty()) {
+            backupRefresh = mapOf(
+                "peak_refresh_rate" to shizuku.exec("settings get system peak_refresh_rate").trimmed,
+                "min_refresh_rate" to shizuku.exec("settings get system min_refresh_rate").trimmed,
+                "user_refresh_rate" to shizuku.exec("settings get system user_refresh_rate").trimmed
+            )
+        }
+        lockRefreshHz(hz, out)
+        _state.value = _state.value.copy(refreshHz = hz)
+        out
+    }
+
+    /**
+     * Writes every refresh-rate keyspace Android/MIUI reads, then verifies by
+     * reading the global key back. MIUI/HyperOS honours the *global* namespace
+     * (the old system-only write silently did nothing — 'lossless scaling is
+     * not working').
+     */
+    private suspend fun lockRefreshHz(hz: Int, out: MutableList<String>) {
+        listOf("global", "system").forEach { ns ->
+            shizuku.exec("settings put $ns peak_refresh_rate $hz.0")
+            shizuku.exec("settings put $ns min_refresh_rate $hz.0")
+        }
+        shizuku.exec("settings put system user_refresh_rate $hz.0")
+        shizuku.exec("settings put global user_refresh_rate $hz.0")
+        val readBack = shizuku.exec("settings get global peak_refresh_rate").trimmed
+        out += if (readBack.startsWith("$hz")) {
+            "Refresh locked to ${hz} Hz (verified: global peak_refresh_rate = $readBack) ✓"
+        } else {
+            "Refresh lock requested at ${hz} Hz (system reports peak_refresh_rate = $readBack)"
+        }
     }
 
     /** Puts the display back exactly as it was. */

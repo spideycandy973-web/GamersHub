@@ -161,13 +161,54 @@ fun ScalingScreen(container: AppContainer) {
             }
             Spacer(Modifier.height(14.dp))
             Text(
-                "Custom: $customPct%  (40–100)",
+                "Quality — supersample down (crisper '4K/8K class' image):",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassChip("1.25×", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_125) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
+                    scope.launch {
+                        val out = container.scaling.apply(
+                            LosslessScalingEngine.ScaleMode.SUPER_125, refreshHz = refreshPick
+                        )
+                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
+                    }
+                }
+                GlassChip("1.5×", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_150) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
+                    scope.launch {
+                        val out = container.scaling.apply(
+                            LosslessScalingEngine.ScaleMode.SUPER_150, refreshHz = refreshPick
+                        )
+                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
+                    }
+                }
+                GlassChip("2× (8K)", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_200) {
+                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
+                    scope.launch {
+                        val out = container.scaling.apply(
+                            LosslessScalingEngine.ScaleMode.SUPER_200, refreshHz = refreshPick
+                        )
+                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            Text(
+                "Above native: renders sharper than the panel, downsamples in hardware — " +
+                        "real full-screen anti-aliasing. Costs GPU power.",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Custom: $customPct%  (40–200 · under 100 = FPS, over 100 = quality)",
                 style = MaterialTheme.typography.titleMedium, color = g.text
             )
             Slider(
                 value = customPct.toFloat(),
                 onValueChange = { customPct = it.toInt() },
-                valueRange = 40f..100f,
+                valueRange = 40f..200f,
                 colors = SliderDefaults.colors(
                     thumbColor = g.accent, activeTrackColor = g.accent, inactiveTrackColor = g.stroke
                 )

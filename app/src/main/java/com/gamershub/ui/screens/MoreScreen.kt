@@ -29,6 +29,7 @@ fun MoreScreen(nav: NavHostController) {
             Triple("🔓", "Game Unlock", "Max graphics + FPS in your games") to Routes.UNLOCK,
             Triple("🎚", "Lossless Scaling", "Upscaling + real frame generation") to Routes.SCALING,
             Triple("✨", "Graphics Enhancer", "Sharpness, GPU pipeline & colours") to Routes.ENHANCE,
+            Triple("🔬", "Live Proof", "Real commands & outputs — see it working") to Routes.PROOF,
             Triple("🌡", "Thermal Control", "Anti-throttle profiles & governor") to Routes.THERMAL,
             Triple("📡", "Live Streaming", "YouTube · Facebook · Instagram + chat") to Routes.STREAM,
             Triple("📊", "Analytics", "FPS, thermals & session history") to Routes.ANALYTICS,

@@ -93,8 +93,23 @@ class FloatingWidgetService : Service() {
     private var hudView: ComposeView? = null
     private var panelView: ComposeView? = null
     private var chatView: ComposeView? = null
+    private var edgeLView: ComposeView? = null
+    private var edgeRView: ComposeView? = null
 
     private val panelVisible = MutableStateFlow(false)
+
+    /** Shows/hides the control panel and makes its window touchable only when shown. */
+    private fun setPanelVisible(on: Boolean) {
+        panelVisible.value = on
+        val v = panelView ?: return
+        val lp = v.layoutParams as? WindowManager.LayoutParams ?: return
+        lp.flags = if (on) {
+            lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        } else {
+            lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        }
+        runCatching { wm.updateViewLayout(v, lp) }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -183,10 +198,13 @@ class FloatingWidgetService : Service() {
         if (panelView == null) {
             val lp = baseLp().apply {
                 gravity = Gravity.CENTER
-                if (Build.VERSION.SDK_INT >= 31) {
-                    flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                    blurBehindRadius = 24
-                }
+                // NO FLAG_BLUR_BEHIND here: on MIUI an overlay window with
+                // blurBehindRadius blurs the ENTIRE screen behind it (the
+                // "everything gets blurry when the popup shows" bug) and costs
+                // GPU frame time. The panel fakes glass with translucent
+                // backgrounds instead. The window is also non-touchable while
+                // hidden so it can never eat game touches.
+                flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
             }
             panelView = newComposeView { PanelContent() }.also { wm.addView(it, lp) }
         }
@@ -197,13 +215,48 @@ class FloatingWidgetService : Service() {
             }
             chatView = newComposeView { ChatOverlayContent() }.also { wm.addView(it, lp) }
         }
+        // Game-space edge gesture zones (ROG Game-Genie style): thin invisible
+        // strips on both screen edges — swipe inward to open the control panel.
+        if (edgeLView == null) {
+            val lp = baseLp().apply {
+                width = (22 * density).toInt()
+                height = WindowManager.LayoutParams.MATCH_PARENT
+                x = 0; y = 0
+            }
+            edgeLView = newComposeView { EdgeSwipeZone(inward = 1f) }.also { wm.addView(it, lp) }
+        }
+        if (edgeRView == null) {
+            val lp = baseLp().apply {
+                width = (22 * density).toInt()
+                height = WindowManager.LayoutParams.MATCH_PARENT
+                x = resources.displayMetrics.widthPixels - (22 * density).toInt()
+                y = 0
+            }
+            edgeRView = newComposeView { EdgeSwipeZone(inward = -1f) }.also { wm.addView(it, lp) }
+        }
     }
 
     private fun removeAll() {
-        listOfNotNull(bubbleView, hudView, panelView, chatView).forEach {
+        listOfNotNull(bubbleView, hudView, panelView, chatView, edgeLView, edgeRView).forEach {
             runCatching { wm.removeView(it) }
         }
         bubbleView = null; hudView = null; panelView = null; chatView = null
+        edgeLView = null; edgeRView = null
+    }
+
+    /** Invisible edge strip: an inward swipe opens the game-space panel. */
+    @Composable
+    private fun EdgeSwipeZone(inward: Float) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectDragGestures { change, drag ->
+                        change.consume()
+                        if (drag.x * inward > 16f) setPanelVisible(true)
+                    }
+                }
+        )
     }
 
     // ---------------------------------------------------------------- bubble
@@ -217,7 +270,7 @@ class FloatingWidgetService : Service() {
                 scope.launch(Dispatchers.IO) {
                     container.boost.toggleBoost(container.boost.defaultPlan())
                 }
-            GestureAction.OPEN_PANEL -> panelVisible.value = !panelVisible.value
+            GestureAction.OPEN_PANEL -> setPanelVisible(!panelVisible.value)
         }
     }
 
@@ -242,7 +295,7 @@ class FloatingWidgetService : Service() {
                 .size(58.dp)
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = { panelVisible.value = !panelVisible.value },
+                        onTap = { setPanelVisible(!panelVisible.value) },
                         onDoubleTap = { runGesture(doubleTap) },
                         onLongPress = { runGesture(longPress) },
                         onPress = {}
@@ -382,7 +435,7 @@ class FloatingWidgetService : Service() {
                         color = Color(0x99FFFFFF),
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable { panelVisible.value = false }
+                            .clickable { setPanelVisible(false) }
                             .padding(6.dp)
                     )
                 }
@@ -418,6 +471,66 @@ class FloatingWidgetService : Service() {
                                 com.gamershub.core.record.RecorderConfig.Mode.STREAM
                             )
                         }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // -------- game space: refresh-rate lock
+                val scalingState by container.scaling.state.collectAsStateWithLifecycle()
+                PanelLabel("Refresh rate")
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(60, 90, 120, 144).forEach { hz ->
+                        PanelButton("${hz}Hz", scalingState.refreshHz == hz) {
+                            scope.launch(Dispatchers.IO) {
+                                container.scaling.lockRefresh(hz)
+                                container.frameGen.applyPacing(hz)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // -------- game space: lossless scaling
+                PanelLabel("Render scale")
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        "Native" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.NATIVE,
+                        "¾" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.THREE_QUARTERS,
+                        "⅔" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.TWO_THIRDS,
+                        "½" to com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.HALF
+                    ).forEach { (label, mode) ->
+                        PanelButton(label, scalingState.mode == mode) {
+                            scope.launch(Dispatchers.IO) {
+                                container.scaling.apply(mode, refreshHz = scalingState.refreshHz)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                // -------- sharpness + HUD + engine switch
+                val sharpen by container.enhancer.sharpenLevel.collectAsStateWithLifecycle()
+                val hudOn by container.settings.overlayHud.collectAsStateWithLifecycle(true)
+                val engineOn by container.engine.enabled.collectAsStateWithLifecycle()
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PanelButton(
+                        "Sharp ${com.gamershub.core.enhance.GraphicsEnhancer.LEVELS[sharpen]}",
+                        sharpen > 0
+                    ) {
+                        scope.launch(Dispatchers.IO) {
+                            val next = (sharpen + 1) % 4
+                            container.enhancer.setSharpenLevel(next)
+                            container.settings.setEnhanceLevel(next)
+                        }
+                    }
+                    PanelButton(if (hudOn) "HUD ✓" else "HUD ✕", hudOn) {
+                        scope.launch(Dispatchers.IO) { container.settings.setOverlayHud(!hudOn) }
+                    }
+                    PanelButton(if (engineOn) "Engine ✓" else "Engine ✕", engineOn) {
+                        scope.launch(Dispatchers.IO) { container.engine.setEnabled(!engineOn) }
                     }
                 }
 
@@ -474,6 +587,16 @@ class FloatingWidgetService : Service() {
                 }
             }
         }
+    }
+
+    @Composable
+    private fun PanelLabel(text: String) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0x99FFFFFF),
+            modifier = Modifier.padding(bottom = 5.dp)
+        )
     }
 
     @Composable

@@ -41,11 +41,10 @@ class MainActivity : ComponentActivity() {
         ProjectionBroker.attach(projectionLauncher)
         enableEdgeToEdge()
 
-        // Real system blur behind the app window (Android 12+): true glassmorphism.
-        if (Build.VERSION.SDK_INT >= 31) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            window.attributes = window.attributes.apply { blurBehindRadius = 28 }
-        }
+        // NOTE: no window blur here on purpose. FLAG_BLUR_BEHIND /
+        // blurBehindRadius made MIUI blur the entire screen behind any window
+        // of this app (see-through overlay bug) and cost real GPU frame time.
+        // The liquid-glass look comes from translucent gradients in the theme.
 
         val container = (application as GamersHubApp).container
 
