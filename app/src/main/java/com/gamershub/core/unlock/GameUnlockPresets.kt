@@ -58,6 +58,72 @@ object GameUnlockPresets {
         }
     )
 
+    /**
+     * Returns a copy of this preset with REAL 3D-quality overrides merged in:
+     * shadows, textures, character detail (skeletal LOD / draw distance) and
+     * anti-aliasing — the same scalability CVars the games' own graphics menus
+     * write, so the game engine itself renders with them. Levels: 0=Low … 3=Ultra.
+     */
+    fun quality3D(
+        preset: GameUnlockPreset,
+        shadows: Int, textures: Int, characters: Int, aa: Int
+    ): GameUnlockPreset = preset.copy(
+        id = "${preset.id}+q3d",
+        notes = preset.notes + " + 3D quality (shadows/textures/characters/AA)",
+        patchFor = { file ->
+            val p = preset.patchFor(file)
+            if (p == null) {
+                null
+            } else if (p.transform != null) {
+                val base = p.transform
+                p.copy(
+                    description = "${p.description} + 3D quality",
+                    transform = {
+                        body -> mergeIniSections(
+                            base!!.invoke(body),
+                            qualityOverrides(shadows, textures, characters, aa)
+                        )
+                    }
+                )
+            } else {
+                p
+            }
+        }
+    )
+
+    /** Scalability CVars per tier (0=Low … 3=Ultra) — shadows, textures, LOD, AA. */
+    private fun qualityOverrides(shadows: Int, textures: Int, characters: Int, aa: Int): String {
+        fun c(v: Int) = v.coerceIn(0, 3)
+        val s = c(shadows); val t = c(textures); val ch = c(characters); val a = c(aa)
+        val shadowRes = listOf(512, 1024, 2048, 4096)[s]
+        val cascades = listOf(1, 2, 3, 4)[s]
+        val lodBias = listOf(1, 0, -1, -2)[ch]
+        val meshScale = listOf("0.8", "0.6", "0.4", "0.25")[ch]
+        val viewScale = listOf("0.8", "1.0", "1.25", "1.5")[ch]
+        val msaa = listOf(1, 2, 4, 4)[a]
+        val aaq = listOf(2, 4, 6, 6)[a]
+        return """
+[ScalabilityGroups]
+sg.ShadowQuality=$s
+sg.TextureQuality=$t
+sg.ViewDistanceQuality=$ch
+sg.AntiAliasingQuality=$a
+sg.PostProcessQuality=$a
+
+[SystemSettings]
+r.ShadowQuality=$s
+r.Shadow.MaxResolution=$shadowRes
+r.Shadow.CSM.MaxCascades=$cascades
+r.TextureQuality=$t
+r.Streaming.MipBias=${2 - t}
+r.SkeletalMeshLODBias=$lodBias
+r.StaticMeshLODDistanceScale=$meshScale
+r.ViewDistanceScale=$viewScale
+r.MobileMSAA=$msaa
+r.PostProcessAAQuality=$aaq
+""".trimIndent()
+    }
+
     init {
         // ---- PUBG family -------------------------------------------------
         listOf(

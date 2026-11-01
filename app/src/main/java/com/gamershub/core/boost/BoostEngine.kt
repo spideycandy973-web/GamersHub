@@ -78,6 +78,7 @@ class BoostEngine(
 
     private data class Backup(
         val peakRefresh: String?, val minRefresh: String?,
+        val peakRefreshGlobal: String?, val minRefreshGlobal: String?,
         val zenMode: String?, val animWindow: String?,
         val animTransition: String?, val animAnimator: String?,
         val physicalSize: String?
@@ -111,6 +112,9 @@ class BoostEngine(
         if (plan.refreshRateHz > 0) {
             run("settings put system peak_refresh_rate ${plan.refreshRateHz}.0")
             run("settings put system min_refresh_rate ${plan.refreshRateHz}.0")
+            // MIUI/HyperOS reads the GLOBAL namespace — write both.
+            run("settings put global peak_refresh_rate ${plan.refreshRateHz}.0")
+            run("settings put global min_refresh_rate ${plan.refreshRateHz}.0")
         }
 
         if (plan.resolutionScale != 1.0f) {
@@ -122,7 +126,20 @@ class BoostEngine(
             }
         }
 
-        if (plan.killBackground) run("am kill-all")
+        if (plan.killBackground) {
+            // Free RAM WITHOUT the system-wide `am kill-all` jolt — that killed
+            // the Shizuku shell process and half the phone's background apps on
+            // every game start (the "auto engine lags and the app dies" bug).
+            // `am kill` only removes truly cached processes, and the whitelist
+            // keeps our own app, Shizuku, the launcher and input methods safe.
+            run(
+                "sh -c 'for p in \$(pm list packages -3 | cut -d: -f2 | " +
+                    "grep -v -e gamershub -e shizuku -e launcher -e keyboard -e input); " +
+                    "do am kill \$p; done'",
+                quiet = true
+            )
+            log("Freed background RAM (safe kill — essentials untouched)")
+        }
 
         if (plan.blockNotifications) run("settings put global zen_mode 1")
 
@@ -159,8 +176,17 @@ class BoostEngine(
 
         run("cmd power set-fixed-performance-mode-enabled false")
         run("cmd thermalservice reset")
-        backup.peakRefresh?.let { run("settings put system peak_refresh_rate $it") }
-        backup.minRefresh?.let { run("settings put system min_refresh_rate $it") }
+        // Refresh-rate keys live in BOTH namespaces (MIUI reads global). Restore
+        // each one — and DELETE the key when there was no original value, so a
+        // stale override can never leave the panel stuck at e.g. 144 Hz.
+        suspend fun putOrDelete(ns: String, key: String, v: String?) {
+            if (v == null) run("settings delete $ns $key", quiet = true)
+            else run("settings put $ns $key $v", quiet = true)
+        }
+        putOrDelete("system", "peak_refresh_rate", backup.peakRefresh)
+        putOrDelete("system", "min_refresh_rate", backup.minRefresh)
+        putOrDelete("global", "peak_refresh_rate", backup.peakRefreshGlobal)
+        putOrDelete("global", "min_refresh_rate", backup.minRefreshGlobal)
         backup.zenMode?.let { run("settings put global zen_mode $it") }
         backup.animWindow?.let { run("settings put global window_animation_scale $it") }
         backup.animTransition?.let { run("settings put global transition_animation_scale $it") }
@@ -179,10 +205,14 @@ class BoostEngine(
         if (active.softThrottled == on) return
         if (on) {
             run("settings put system min_refresh_rate 60.0", quiet = true)
+            run("settings put global min_refresh_rate 60.0", quiet = true)
             log("Governor: temp above target, capped min refresh at 60 Hz (protecting hardware)")
         } else {
             val hz = active.plan.refreshRateHz
-            if (hz > 0) run("settings put system min_refresh_rate ${hz}.0", quiet = true)
+            if (hz > 0) {
+                run("settings put system min_refresh_rate ${hz}.0", quiet = true)
+                run("settings put global min_refresh_rate ${hz}.0", quiet = true)
+            }
             log("Governor: cooled down, full boost restored")
         }
         _state.value = active.copy(softThrottled = on)
@@ -234,6 +264,8 @@ class BoostEngine(
         return Backup(
             peakRefresh = get("system", "peak_refresh_rate"),
             minRefresh = get("system", "min_refresh_rate"),
+            peakRefreshGlobal = get("global", "peak_refresh_rate"),
+            minRefreshGlobal = get("global", "min_refresh_rate"),
             zenMode = get("global", "zen_mode"),
             animWindow = get("global", "window_animation_scale"),
             animTransition = get("global", "transition_animation_scale"),

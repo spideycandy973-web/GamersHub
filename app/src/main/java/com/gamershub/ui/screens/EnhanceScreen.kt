@@ -17,12 +17,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamershub.di.AppContainer
+import com.gamershub.core.unlock.GameUnlockPresets
 import com.gamershub.ui.requireEngine
 import com.gamershub.ui.components.GlassButton
 import com.gamershub.ui.components.GlassCard
@@ -124,6 +129,113 @@ fun EnhanceScreen(container: AppContainer) {
                         "• $line",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (line.startsWith("Shizuku")) com.gamershub.ui.theme.GhColors.Amber else g.textDim
+                    )
+                }
+            }
+        }
+
+        // ------------------------------------------------ 3D quality
+        SectionTitle("3D ENHANCEMENT — SHADOWS · TEXTURES · CHARACTERS · AA")
+        GlassCard {
+            val stats3d by container.monitor.stats.collectAsStateWithLifecycle()
+            val gamesList by container.games.games.collectAsStateWithLifecycle()
+            var shadows by remember { mutableIntStateOf(2) }
+            var textures by remember { mutableIntStateOf(2) }
+            var characters by remember { mutableIntStateOf(2) }
+            var aa3d by remember { mutableIntStateOf(2) }
+            var qLog by remember { mutableStateOf<List<String>>(emptyList()) }
+            val fgCapture3d by container.settings.frameGenCapture.collectAsStateWithLifecycle(false)
+
+            val target = gamesList.firstOrNull { it.packageName == stats3d.foregroundPackage }
+                ?: gamesList.firstOrNull()
+
+            Text(
+                "Real 3D quality knobs written into the game's own config (the same " +
+                        "scalability CVars its graphics menu sets): shadow resolution & " +
+                        "cascades, texture mip detail, character mesh LOD / draw distance " +
+                        "and anti-aliasing. Applied with backups — verified in the proof below.",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim
+            )
+            Spacer(Modifier.height(10.dp))
+            Text("Shadows", style = MaterialTheme.typography.labelSmall, color = g.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
+                    GlassChip(n, shadows == i) { shadows = i }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Textures", style = MaterialTheme.typography.labelSmall, color = g.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
+                    GlassChip(n, textures == i) { textures = i }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("3D characters (mesh LOD & draw distance)", style = MaterialTheme.typography.labelSmall, color = g.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
+                    GlassChip(n, characters == i) { characters = i }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Anti-aliasing", style = MaterialTheme.typography.labelSmall, color = g.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
+                    GlassChip(n, aa3d == i) { aa3d = i }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "AI frame generation — real motion-interpolated frames on every " +
+                        "captured frame pair (2× output rate in recordings & streams).",
+                style = MaterialTheme.typography.labelSmall, color = g.textDim
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassChip("AI FrameGen Off", !fgCapture3d) {
+                    scope.launch {
+                        container.settings.setFrameGenCapture(false)
+                        container.settings.setRecFrameGen(false)
+                    }
+                }
+                GlassChip("AI FrameGen On", fgCapture3d) {
+                    scope.launch {
+                        container.settings.setFrameGenCapture(true)
+                        container.settings.setRecFrameGen(true)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            GlassButton(
+                "Apply 3D quality to ${target?.label ?: "your game"}",
+                onClick = {
+                    if (!requireEngine(container, context)) return@GlassButton
+                    val t = target
+                    if (t == null) {
+                        qLog = listOf("No game found — install/launch a game first")
+                        return@GlassButton
+                    }
+                    scope.launch {
+                        qLog = listOf("Applying to ${t.label} …")
+                        val preset = GameUnlockPresets.quality3D(
+                            GameUnlockPresets.forAnyPackage(t.packageName, t.label),
+                            shadows, textures, characters, aa3d
+                        )
+                        val report = container.unlocker.unlock(preset)
+                        qLog = report.lines
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (qLog.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                qLog.forEach { line ->
+                    Text(
+                        "• $line",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (line.startsWith("FAILED") || line.startsWith("Error"))
+                            com.gamershub.ui.theme.GhColors.Amber else g.textDim
                     )
                 }
             }

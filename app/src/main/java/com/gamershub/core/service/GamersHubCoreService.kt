@@ -78,8 +78,10 @@ class GamersHubCoreService : Service() {
 
                     val profile = if (fg.isNotBlank()) container.profiles.profiles.value[fg] else null
 
-                    if (profile != null && boostedPkg == null) {
-                        // Entering a profiled game -> apply its plan
+                    if (profile != null) {
+                        // Entering — or SWITCHING BETWEEN — profiled games ->
+                        // apply its plan (the old `boostedPkg == null` guard
+                        // silently ignored game → game switches).
                         boostedPkg = fg
                         val plan = BoostPlan(
                             performanceMode = true,
@@ -96,8 +98,8 @@ class GamersHubCoreService : Service() {
                             DeviceSpoofer.presetById(id)?.let { container.spoofer.apply(it) }
                         }
                         updateNotification("Boosting ${profile.label.ifBlank { fg }}")
-                    } else if (profile == null && boostedPkg != null) {
-                        // Left the game -> restore
+                    } else if (boostedPkg != null) {
+                        // Left the games -> restore
                         boostedPkg = null
                         container.boost.restoreBoost()
                         container.spoofer.remove()
@@ -115,9 +117,13 @@ class GamersHubCoreService : Service() {
                 try {
                     if (s is BoostState.Active) {
                         val stats = container.monitor.stats.value
+                        val sc = container.scaling.state.value
+                        val scText = if (sc.active && sc.panelW > 0)
+                            " · SC ${(sc.renderW * 100f / sc.panelW).toInt()}%"
+                        else ""
                         updateNotification(
                             "Boost active · ${stats.fps.takeIf { it >= 0 }?.toInt() ?: "--"} FPS · " +
-                                    "${stats.batteryTempC.takeIf { it > 0 } ?: "--"}°C"
+                                    "${stats.batteryTempC.takeIf { it > 0 } ?: "--"}°C$scText"
                         )
                     }
                 } catch (t: Throwable) {

@@ -382,6 +382,7 @@ class FloatingWidgetService : Service() {
     private fun HudContent() {
         val enabled by container.settings.overlayHud.collectAsStateWithLifecycle(true)
         val stats by container.monitor.stats.collectAsStateWithLifecycle()
+        val scale by container.scaling.state.collectAsStateWithLifecycle()
         if (!enabled) return
 
         Column(
@@ -417,6 +418,11 @@ class FloatingWidgetService : Service() {
                 if (stats.cpuUsagePct >= 0) {
                     HudChip("CPU ${stats.cpuUsagePct.toInt()}%")
                 }
+            }
+            // Lossless Scaling proof — visible over any game, outside the app.
+            if (scale.active && scale.panelW > 0) {
+                val pct = (scale.renderW * 100f / scale.panelW).toInt()
+                HudChip("SC ${pct}% · ${scale.renderW}×${scale.renderH}")
             }
         }
     }

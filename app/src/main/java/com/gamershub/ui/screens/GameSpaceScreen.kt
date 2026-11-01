@@ -69,15 +69,28 @@ import com.gamershub.ui.components.GlassChip
 import com.gamershub.ui.components.SectionTitle
 import com.gamershub.ui.theme.GhColors
 import com.gamershub.ui.theme.LocalGlass
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * Game Space — the ROG-style gaming hub. Opens with a cinematic intro (tap to
- * skip), then the hub: one-tap control panel, performance modes, your games,
- * live status and quick controls. The panel also opens with an inward edge
- * swipe (the widget claims the edge band from the system back-gesture) or by
- * tapping the floating bubble — so the feature never depends on one path.
+ * The intro video from the owner's Google Drive, cached into app storage on
+ * first open and played from disk afterwards. The Drive file must be shared as
+ * "Anyone with the link" for the download to work; the built-in animated intro
+ * plays as the fallback.
+ */
+private const val INTRO_CACHE_NAME = "game_space_intro.mp4"
+
+private const val INTRO_URL =
+    "https://drive.usercontent.google.com/download?id=1_lro6flRERPAgyrImxEzdt0kt9x5Lbbb&export=download&confirm=t"
+
+/**
+ * Game Space — the ROG-style gaming hub. Opens with the owner's intro video
+ * (cached locally, animated fallback, tap to skip), then the hub: one-tap
+ * control panel, performance modes, your games, live status and quick
+ * controls. The panel also opens with an inward edge swipe or by tapping the
+ * floating bubble — so the feature never depends on one path.
  */
 @Composable
 fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
@@ -322,215 +335,349 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
 
         // ==================================================== cinematic intro
         if (!introDone) {
-            var visible by remember { mutableStateOf(true) }
-            val fade by animateFloatAsState(
-                targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(650),
-                label = "introFade"
-            )
-            val exitScale by animateFloatAsState(
-                targetValue = if (visible) 1f else 1.06f,
-                animationSpec = tween(650),
-                label = "introExit"
-            )
-            val titleIn by animateFloatAsState(
-                targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(750, delayMillis = 120),
-                label = "titleIn"
-            )
-            val subIn by animateFloatAsState(
-                targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(700, delayMillis = 380),
-                label = "subIn"
-            )
-            val underline by animateFloatAsState(
-                targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(900, delayMillis = 300),
-                label = "underline"
-            )
-
-            val ambient = rememberInfiniteTransition(label = "introAmb")
-            val driftA by ambient.animateFloat(
-                0f, 1f,
-                infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Reverse),
-                label = "driftA"
-            )
-            val driftB by ambient.animateFloat(
-                0f, 1f,
-                infiniteRepeatable(tween(7300, easing = LinearEasing), RepeatMode.Reverse),
-                label = "driftB"
-            )
-            val ringRot by ambient.animateFloat(
-                0f, 360f,
-                infiniteRepeatable(tween(11000, easing = LinearEasing), RepeatMode.Restart),
-                label = "ringRot"
-            )
-            val progress = remember { Animatable(0f) }
-
-            LaunchedEffect(Unit) {
-                progress.animateTo(1f, tween(2300))
-            }
-            LaunchedEffect(Unit) {
-                delay(2350)
-                visible = false
-                delay(700)
-                introDone = true
+            val introFile = remember { java.io.File(context.filesDir, INTRO_CACHE_NAME) }
+            var videoReady by remember { mutableStateOf(introFile.exists()) }
+            var videoError by remember { mutableStateOf(false) }
+            var dlProgress by remember {
+                mutableStateOf(if (introFile.exists()) -1f else 0f)
             }
 
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(alpha = fade, scaleX = exitScale, scaleY = exitScale)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF0A0E17), Color(0xFF111A2B), Color(0xFF0A0E17))
-                        )
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        if (visible) {
-                            visible = false
-                            scope.launch {
-                                delay(700)
-                                introDone = true
+            LaunchedEffect(Unit) {
+                if (!videoReady && !videoError) {
+                    val ok = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val conn = java.net.URL(INTRO_URL).openConnection()
+                            conn.connectTimeout = 8000
+                            conn.readTimeout = 20000
+                            val total = conn.contentLengthLong
+                            val tmp = java.io.File(context.filesDir, "$INTRO_CACHE_NAME.part")
+                            conn.getInputStream().use { input ->
+                                java.io.FileOutputStream(tmp).use { out ->
+                                    val buf = ByteArray(64 * 1024)
+                                    var copied = 0L
+                                    while (true) {
+                                        val n = input.read(buf)
+                                        if (n <= 0) break
+                                        out.write(buf, 0, n)
+                                        copied += n
+                                        if (total > 0) {
+                                            dlProgress = (copied.toFloat() / total).coerceIn(0f, 1f)
+                                        }
+                                    }
+                                }
                             }
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                // drifting aurora blobs — slow, low-alpha, glassy depth
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            translationX = -90f + driftA * 180f
-                            translationY = -220f + driftB * 120f
-                            alpha = 0.55f
-                        }
-                        .background(
-                            Brush.radialGradient(
-                                listOf(g.accent.copy(alpha = 0.22f), Color.Transparent)
-                            )
-                        )
-                )
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            translationX = 120f - driftB * 170f
-                            translationY = 260f - driftA * 140f
-                            alpha = 0.5f
-                        }
-                        .background(
-                            Brush.radialGradient(
-                                listOf(g.accent2.copy(alpha = 0.18f), Color.Transparent)
-                            )
-                        )
-                )
+                            if (tmp.length() < 1000L) error("download too small")
+                            tmp.renameTo(introFile)
+                        }.isSuccess
+                    }
+                    videoReady = ok && introFile.exists()
+                    if (!videoReady) {
+                        videoError = true
+                        dlProgress = -1f
+                    }
+                }
+            }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // glass badge with a slow conic halo
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp)) {
+            when {
+                videoReady -> {
+                    VideoIntro(
+                        introFile,
+                        onDone = { introDone = true },
+                        onError = {
+                            videoError = true
+                            videoReady = false
+                        }
+                    )
+                }
+                dlProgress >= 0f && !videoError -> {
+                    PreparingIntro(dlProgress) { introDone = true }
+                }
+                else -> {
+                    // Animated fallback intro — drifting aurora lights, glass
+                    // badge with a rotating conic halo, staggered reveals.
+                    var visible by remember { mutableStateOf(true) }
+                    val fade by animateFloatAsState(
+                        targetValue = if (visible) 1f else 0f,
+                        animationSpec = tween(650),
+                        label = "introFade"
+                    )
+                    val exitScale by animateFloatAsState(
+                        targetValue = if (visible) 1f else 1.06f,
+                        animationSpec = tween(650),
+                        label = "introExit"
+                    )
+                    val titleIn by animateFloatAsState(
+                        targetValue = if (visible) 1f else 0f,
+                        animationSpec = tween(750, delayMillis = 120),
+                        label = "titleIn"
+                    )
+                    val subIn by animateFloatAsState(
+                        targetValue = if (visible) 1f else 0f,
+                        animationSpec = tween(700, delayMillis = 380),
+                        label = "subIn"
+                    )
+                    val underline by animateFloatAsState(
+                        targetValue = if (visible) 1f else 0f,
+                        animationSpec = tween(900, delayMillis = 300),
+                        label = "underline"
+                    )
+
+                    val ambient = rememberInfiniteTransition(label = "introAmb")
+                    val driftA by ambient.animateFloat(
+                        0f, 1f,
+                        infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Reverse),
+                        label = "driftA"
+                    )
+                    val driftB by ambient.animateFloat(
+                        0f, 1f,
+                        infiniteRepeatable(tween(7300, easing = LinearEasing), RepeatMode.Reverse),
+                        label = "driftB"
+                    )
+                    val ringRot by ambient.animateFloat(
+                        0f, 360f,
+                        infiniteRepeatable(tween(11000, easing = LinearEasing), RepeatMode.Restart),
+                        label = "ringRot"
+                    )
+                    val progress = remember { Animatable(0f) }
+
+                    LaunchedEffect(Unit) {
+                        progress.animateTo(1f, tween(2300))
+                    }
+                    LaunchedEffect(Unit) {
+                        delay(2350)
+                        visible = false
+                        delay(700)
+                        introDone = true
+                    }
+
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(alpha = fade, scaleX = exitScale, scaleY = exitScale)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF0A0E17), Color(0xFF111A2B), Color(0xFF0A0E17))
+                                )
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (visible) {
+                                    visible = false
+                                    scope.launch {
+                                        delay(700)
+                                        introDone = true
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Box(
                             Modifier
-                                .size(128.dp)
-                                .graphicsLayer(rotationZ = ringRot)
-                                .clip(CircleShape)
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    translationX = -90f + driftA * 180f
+                                    translationY = -220f + driftB * 120f
+                                    alpha = 0.55f
+                                }
                                 .background(
-                                    Brush.sweepGradient(
-                                        listOf(
-                                            Color.Transparent,
-                                            g.accent.copy(alpha = 0.55f),
-                                            Color.Transparent,
-                                            g.accent2.copy(alpha = 0.45f),
-                                            Color.Transparent
-                                        )
+                                    Brush.radialGradient(
+                                        listOf(g.accent.copy(alpha = 0.22f), Color.Transparent)
                                     )
                                 )
                         )
                         Box(
                             Modifier
-                                .size(94.dp)
-                                .clip(RoundedCornerShape(28.dp))
-                                .background(Color(0x22FFFFFF))
-                                .border(1.dp, Color(0x4DFFFFFF), RoundedCornerShape(28.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Filled.SportsEsports,
-                                contentDescription = null,
-                                tint = g.text,
-                                modifier = Modifier.size(46.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(26.dp))
-                    Text(
-                        "GAME SPACE",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = g.text,
-                        letterSpacing = 12.sp,
-                        modifier = Modifier.graphicsLayer {
-                            alpha = titleIn
-                            translationY = (1f - titleIn) * 34f
-                        }
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Box(
-                        Modifier
-                            .width((140 * underline).dp)
-                            .height(2.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color.Transparent, g.accent, Color.Transparent)
-                                )
-                            )
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "ROG-STYLE IN-GAME CONTROL",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = g.textDim,
-                        letterSpacing = 5.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.graphicsLayer(alpha = subIn)
-                    )
-                }
-
-                // progress line + skip hint pinned to the bottom
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 46.dp)
-                ) {
-                    Box(
-                        Modifier
-                            .width(160.dp)
-                            .height(2.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0x22FFFFFF))
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(progress.value.coerceIn(0f, 1f))
-                                .height(2.dp)
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    translationX = 120f - driftB * 170f
+                                    translationY = 260f - driftA * 140f
+                                    alpha = 0.5f
+                                }
                                 .background(
-                                    Brush.horizontalGradient(listOf(g.accent, g.accent2))
+                                    Brush.radialGradient(
+                                        listOf(g.accent2.copy(alpha = 0.18f), Color.Transparent)
+                                    )
                                 )
                         )
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp)) {
+                                Box(
+                                    Modifier
+                                        .size(128.dp)
+                                        .graphicsLayer(rotationZ = ringRot)
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.sweepGradient(
+                                                listOf(
+                                                    Color.Transparent,
+                                                    g.accent.copy(alpha = 0.55f),
+                                                    Color.Transparent,
+                                                    g.accent2.copy(alpha = 0.45f),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        )
+                                )
+                                Box(
+                                    Modifier
+                                        .size(94.dp)
+                                        .clip(RoundedCornerShape(28.dp))
+                                        .background(Color(0x22FFFFFF))
+                                        .border(1.dp, Color(0x4DFFFFFF), RoundedCornerShape(28.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.SportsEsports,
+                                        contentDescription = null,
+                                        tint = g.text,
+                                        modifier = Modifier.size(46.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(26.dp))
+                            Text(
+                                "GAME SPACE",
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = g.text,
+                                letterSpacing = 12.sp,
+                                modifier = Modifier.graphicsLayer {
+                                    alpha = titleIn
+                                    translationY = (1f - titleIn) * 34f
+                                }
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Box(
+                                Modifier
+                                    .width((140 * underline).dp)
+                                    .height(2.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(Color.Transparent, g.accent, Color.Transparent)
+                                        )
+                                    )
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "ROG-STYLE IN-GAME CONTROL",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = g.textDim,
+                                letterSpacing = 5.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.graphicsLayer(alpha = subIn)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 46.dp)
+                        ) {
+                            Box(
+                                Modifier
+                                    .width(160.dp)
+                                    .height(2.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Color(0x22FFFFFF))
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(progress.value.coerceIn(0f, 1f))
+                                        .height(2.dp)
+                                        .background(
+                                            Brush.horizontalGradient(listOf(g.accent, g.accent2))
+                                        )
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "tap to skip",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0x66FFFFFF)
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "tap to skip",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0x66FFFFFF)
-                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun VideoIntro(
+    file: java.io.File,
+    onDone: () -> Unit,
+    onError: () -> Unit
+) {
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { ctx ->
+            android.widget.VideoView(ctx).apply {
+                setVideoPath(file.absolutePath)
+                setOnPreparedListener { mp ->
+                    mp.isLooping = false
+                    start()
+                }
+                setOnCompletionListener { onDone() }
+                setOnErrorListener { _, _, _ ->
+                    onError()
+                    true
+                }
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+@Composable
+private fun PreparingIntro(progress: Float, onSkip: () -> Unit) {
+    val g = LocalGlass.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF0A0E17), Color(0xFF111A2B), Color(0xFF0A0E17))
+                )
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onSkip() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "PREPARING YOUR INTRO",
+                style = MaterialTheme.typography.headlineLarge,
+                color = g.text,
+                letterSpacing = 10.sp
+            )
+            Spacer(Modifier.height(18.dp))
+            Box(
+                Modifier
+                    .width(220.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color(0x22FFFFFF))
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .height(3.dp)
+                        .background(Brush.horizontalGradient(listOf(g.accent, g.accent2)))
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            val pctText = "%.0f".format(progress * 100)
+            Text(
+                "downloading intro video $pctText% — tap to skip",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0x99FFFFFF)
+            )
         }
     }
 }

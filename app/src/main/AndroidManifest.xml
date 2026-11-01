@@ -53,6 +53,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
@@ -66,6 +67,7 @@
         <activity
             android:name=".core.record.ProjectionPermissionActivity"
             android:exported="false"
+            android:screenOrientation="landscape"
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:launchMode="singleInstance"

@@ -56,7 +56,12 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
 
     private var backupSize: String? = null
     private var backupDensity: String? = null
+
+    /** "namespace:key" -> saved value, for global+system refresh keys. */
     private var backupRefresh: Map<String, String> = emptyMap()
+
+    /** True once this engine wrote refresh overrides (so restore knows to clean up). */
+    private var refreshTouched = false
 
     /** Reads the physical panel size (px) and density. */
     suspend fun probe(): State = withContext(Dispatchers.IO) {
@@ -99,11 +104,7 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
                 ?.groupValues?.get(1)
             backupDensity = Regex("Physical density:\\s*(\\d+)")
                 .find(shizuku.exec("wm density").output)?.groupValues?.get(1)
-            backupRefresh = mapOf(
-                "peak_refresh_rate" to shizuku.exec("settings get system peak_refresh_rate").trimmed,
-                "min_refresh_rate" to shizuku.exec("settings get system min_refresh_rate").trimmed,
-                "user_refresh_rate" to shizuku.exec("settings get system user_refresh_rate").trimmed
-            )
+            backupRefresh = captureRefreshBackup()
         }
 
         // --- render target -------------------------------------------------
@@ -184,11 +185,7 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
         val out = mutableListOf<String>()
         if (!shizuku.canUseShell) return@withContext listOf("Shizuku shell not connected")
         if (backupRefresh.isEmpty()) {
-            backupRefresh = mapOf(
-                "peak_refresh_rate" to shizuku.exec("settings get system peak_refresh_rate").trimmed,
-                "min_refresh_rate" to shizuku.exec("settings get system min_refresh_rate").trimmed,
-                "user_refresh_rate" to shizuku.exec("settings get system user_refresh_rate").trimmed
-            )
+            backupRefresh = captureRefreshBackup()
         }
         lockRefreshHz(hz, out)
         _state.value = _state.value.copy(refreshHz = hz)
@@ -202,6 +199,7 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
      * not working').
      */
     private suspend fun lockRefreshHz(hz: Int, out: MutableList<String>) {
+        refreshTouched = true
         listOf("global", "system").forEach { ns ->
             shizuku.exec("settings put $ns peak_refresh_rate $hz.0")
             shizuku.exec("settings put $ns min_refresh_rate $hz.0")
@@ -216,17 +214,45 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
         }
     }
 
+    /**
+     * Saves every refresh-rate key in BOTH namespaces (MIUI reads the global
+     * one — restoring only system was why the panel stayed stuck at 144 Hz
+     * after the engine was turned off).
+     */
+    private suspend fun captureRefreshBackup(): Map<String, String> {
+        val m = mutableMapOf<String, String>()
+        listOf("global", "system").forEach { ns ->
+            listOf("peak_refresh_rate", "min_refresh_rate", "user_refresh_rate").forEach { k ->
+                m["$ns:$k"] = shizuku.exec("settings get $ns $k").trimmed
+            }
+        }
+        return m
+    }
+
     /** Puts the display back exactly as it was. */
     suspend fun restore(): List<String> = withContext(Dispatchers.IO) {
         val out = mutableListOf<String>()
         if (!shizuku.canUseShell) return@withContext listOf("Shizuku shell not connected")
         shizuku.exec("wm size reset")
         shizuku.exec("wm density reset")
-        backupRefresh.forEach { (k, v) ->
-            if (v.isBlank() || v == "null") shizuku.exec("settings delete system $k")
-            else shizuku.exec("settings put system $k $v")
+        val refreshKeys = listOf("peak_refresh_rate", "min_refresh_rate", "user_refresh_rate")
+        when {
+            backupRefresh.isNotEmpty() -> backupRefresh.forEach { (nsk, v) ->
+                val ns = nsk.substringBefore(":")
+                val k = nsk.substringAfter(":")
+                if (v.isBlank() || v == "null") shizuku.exec("settings delete $ns $k")
+                else shizuku.exec("settings put $ns $k $v")
+            }
+            refreshTouched -> {
+                // No backup taken — DELETE our overrides so the device falls
+                // back to its own default instead of staying at e.g. 144 Hz.
+                listOf("global", "system").forEach { ns ->
+                    refreshKeys.forEach { k -> shizuku.exec("settings delete $ns $k") }
+                }
+            }
         }
         backupSize = null; backupDensity = null; backupRefresh = emptyMap()
+        refreshTouched = false
         _state.value = State(panelW = _state.value.panelW, panelH = _state.value.panelH)
         out += "Display restored to native settings"
         out
