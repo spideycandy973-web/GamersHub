@@ -45,7 +45,8 @@ class EngineCoordinator(
     private val frameGen: FrameGenEngine,
     private val unlocker: GameConfigUnlocker,
     private val battery: BatteryManager,
-    private val enhancer: GraphicsEnhancer
+    private val enhancer: GraphicsEnhancer,
+    private val monitor: com.gamershub.core.monitor.HardwareMonitor
 ) {
 
     private val scope = com.gamershub.core.util.SafeScopes.io("engine")
@@ -72,7 +73,10 @@ class EngineCoordinator(
         _enabled.value = on
         val log = try {
             if (on) {
-                listOf("Engine ON — all systems live")
+                // Bring the live machinery back: shell binding + monitoring.
+                runCatching { shizuku.setShellSuspended(false) }
+                runCatching { monitor.start() }
+                listOf("Engine ON — shell connected, monitoring live, all systems go")
             } else {
                 teardown()
             }
@@ -101,9 +105,21 @@ class EngineCoordinator(
             FloatingWidgetService.stop(context)
             log += "Floating widget stopped"
         }.onFailure { log += "Widget: ${it.message}" }
+        runCatching {
+            context.stopService(
+                android.content.Intent(context, com.gamershub.core.record.ScreenRecordService::class.java)
+            )
+            log += "Recorder / streamer stopped"
+        }.onFailure { log += "Recorder: ${it.message}" }
+        runCatching {
+            monitor.stop()
+            log += "Hardware monitor stopped"
+        }.onFailure { log += "Monitor: ${it.message}" }
 
         if (!shizuku.canUseShell) {
             log += "Shizuku shell not connected — system-level state untouched"
+            runCatching { shizuku.setShellSuspended(true) }
+            log += "Shizuku shell detached — nothing is running"
             log += "Device is idle (engine off)"
             return log
         }
@@ -157,7 +173,14 @@ class EngineCoordinator(
             else "No patched game configs to restore"
         }.onFailure { log += "Game configs: ${it.message}" }
 
-        log += "Done — the phone is back to normal"
+        // 10. detach from the system entirely: the privileged shell unbinds so
+        //     the Shizuku service goes idle and nothing of GamersHub keeps running.
+        runCatching {
+            shizuku.setShellSuspended(true)
+            log += "Shizuku shell disconnected — app fully detached"
+        }.onFailure { log += "Shizuku: ${it.message}" }
+
+        log += "Done — the phone is back to normal and nothing is running"
         return log
     }
 }

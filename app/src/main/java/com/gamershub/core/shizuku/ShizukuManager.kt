@@ -62,6 +62,13 @@ class ShizukuManager(private val context: Context) {
     @Volatile
     private var shell: IGamersHubShell? = null
 
+    /**
+     * Master-switch OFF: the privileged shell stays unbound so nothing of
+     * GamersHub remains attached to the system (the Shizuku service process
+     * goes idle instead of running "in the background").
+     */
+    @Volatile private var shellSuspended = false
+
     @Volatile
     private var bound = false
 
@@ -210,15 +217,38 @@ class ShizukuManager(private val context: Context) {
             _statusDetail.value = "Tap Allow to grant GamersHub Shizuku access"
             return
         }
-        // 3. bind the privileged shell
+        // 3. bind the privileged shell (unless the master switch suspended it)
         _status.value = Status.READY
         _isRoot.value = runCatching { Shizuku.getUid() == 0 }.getOrDefault(false)
+        if (shellSuspended) {
+            _statusDetail.value = "Shell idle — engine master switch is OFF"
+            return
+        }
         if (!_shellReady.value) {
             _statusDetail.value = "Binding shell…"
             bindShell()
         } else {
             _statusDetail.value = "Shell bound${if (_isRoot.value) " (root)" else " (shell)"}"
         }
+    }
+
+    /**
+     * Engine master switch: suspended ⇒ the shell is unbound and stays out;
+     * resumed ⇒ the normal bind flow runs again.
+     */
+    fun setShellSuspended(suspended: Boolean) {
+        shellSuspended = suspended
+        if (suspended) disconnectShell() else refreshState()
+    }
+
+    /** Unbinds the privileged shell user-service without touching listeners. */
+    fun disconnectShell() {
+        runCatching {
+            if (bound) Shizuku.unbindUserService(userServiceArgs, connection, /*remove=*/true)
+        }
+        bound = false
+        shell = null
+        _shellReady.value = false
     }
 
     /** Show the Shizuku permission dialog. Safe to call from anywhere. */
@@ -243,7 +273,7 @@ class ShizukuManager(private val context: Context) {
 
     fun bindShell() {
         runCatching {
-            if (bound) return
+            if (bound || shellSuspended) return
             Shizuku.bindUserService(userServiceArgs, connection)
         }.onFailure {
             _statusDetail.value = "Shell bind failed: ${it.message}"

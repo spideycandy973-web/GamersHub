@@ -86,7 +86,11 @@ class CapturePipeline(
         // Optional GPU frame generation between display and encoder.
         var displaySurface = inputSurface
         if (config.frameGen || config.sharpen > 0f) {
-            val stage = FrameGenStage.create(inputSurface, actualWidth, actualHeight)
+            // A GPU failure here must never kill the recording — fall back to
+            // zero-copy capture instead of aborting the whole pipeline.
+            val stage = runCatching {
+                FrameGenStage.create(inputSurface, actualWidth, actualHeight)
+            }.getOrNull()
             if (stage != null) {
                 stage.frameGenEnabled = config.frameGen
                 stage.sharpen = config.sharpen

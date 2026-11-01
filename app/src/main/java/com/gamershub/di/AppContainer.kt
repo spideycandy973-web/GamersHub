@@ -20,6 +20,8 @@ import com.gamershub.core.spoof.DeviceSpoofer
 import com.gamershub.core.stream.StreamEngine
 import com.gamershub.core.stream.chat.ChatHub
 import com.gamershub.core.unlock.GameConfigUnlocker
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Lightweight manual dependency container. Keeps the app fast to start and free
@@ -47,13 +49,24 @@ class AppContainer(private val app: Application) {
     val enhancer = GraphicsEnhancer(shizuku, scaling)
     val engine = EngineCoordinator(
         app, settings, shizuku, boost, thermal, spoofer,
-        scaling, frameGen, unlocker, battery, enhancer
+        scaling, frameGen, unlocker, battery, enhancer, monitor
     )
+
+    private val appScope = com.gamershub.core.util.SafeScopes.io("container")
 
     fun init() {
         notifications.createChannels()
-        shizuku.init()
-        monitor.start()
         boost.attachThermalGovernor(thermal)
+        // Honor the master switch persisted from the last session: when it was
+        // OFF the phone must stay completely stock — no monitor loops, no
+        // Shizuku shell binding, nothing running in the background.
+        appScope.launch {
+            val engineOn = runCatching {
+                settings.engineEnabled.first()
+            }.getOrDefault(true)
+            shizuku.setShellSuspended(!engineOn)
+            shizuku.init()
+            if (engineOn) monitor.start()
+        }
     }
 }

@@ -21,8 +21,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +58,16 @@ fun RecorderScreen(container: AppContainer) {
     val mic by container.settings.recMic.collectAsStateWithLifecycle(false)
     val state by container.recorder.state.collectAsStateWithLifecycle()
 
+    // Every recorder event stays visible here — failures used to vanish
+    // silently, which made the whole feature look broken.
+    val eventLog = remember { mutableStateListOf<String>() }
+    LaunchedEffect(Unit) {
+        container.recorder.events.collect { msg ->
+            eventLog.add(0, msg)
+            if (eventLog.size > 12) eventLog.removeAt(eventLog.size - 1)
+        }
+    }
+
     val micPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -77,6 +90,43 @@ fun RecorderScreen(container: AppContainer) {
             "Zero-copy hardware encode — the display renders straight into the codec",
             style = MaterialTheme.typography.labelSmall, color = g.textDim
         )
+
+        // ------------------------------------------------- live status
+        val errState = state as? RecorderController.State.Error
+        Spacer(Modifier.height(12.dp))
+        GlassCard(highlight = errState != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when {
+                        errState != null -> "✗"
+                        state is RecorderController.State.Active -> "●"
+                        else -> "○"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = when {
+                        errState != null -> GhColors.Red
+                        state is RecorderController.State.Active -> GhColors.Green
+                        else -> g.textDim
+                    }
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        when {
+                            errState != null -> "Recorder error"
+                            state is RecorderController.State.Active -> "Capturing"
+                            else -> "Ready"
+                        },
+                        style = MaterialTheme.typography.titleMedium, color = g.text
+                    )
+                    Text(
+                        errState?.message
+                            ?: "Tap START RECORDING — Android will ask for screen-capture permission first.",
+                        style = MaterialTheme.typography.labelSmall, color = g.textDim
+                    )
+                }
+            }
+        }
 
         // ------------------------------------------------- active session
         val activeState = state as? RecorderController.State.Active
@@ -199,6 +249,26 @@ fun RecorderScreen(container: AppContainer) {
             },
             modifier = Modifier.fillMaxWidth()
         )
+
+        // ------------------------------------------------- activity log
+        if (eventLog.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            GlassCard {
+                Text(
+                    "ACTIVITY",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+                eventLog.forEach { msg ->
+                    Text(
+                        "• $msg",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (msg.contains("failed", true) || msg.contains("denied", true) || msg.contains("error", true))
+                            GhColors.Amber else g.textDim,
+                        modifier = Modifier.padding(vertical = 1.dp)
+                    )
+                }
+            }
+        }
 
         Spacer(Modifier.height(10.dp))
         Text(

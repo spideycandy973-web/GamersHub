@@ -9,6 +9,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.view.Display
 import com.gamershub.core.shizuku.ShizukuManager
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,7 +52,8 @@ class HardwareMonitor(
         val timestamp: Long = System.currentTimeMillis()
     )
 
-    private val scope = com.gamershub.core.util.SafeScopes.default("monitor")
+    /** Runs the sampling loops — cancelled by [stop] while the master switch is OFF. */
+    private var scope = com.gamershub.core.util.SafeScopes.default("monitor")
 
     private val _stats = MutableStateFlow(HardwareStats())
     val stats: StateFlow<HardwareStats> = _stats.asStateFlow()
@@ -62,6 +64,16 @@ class HardwareMonitor(
     private var lastFrameNs = -1L
     private var gpuModelCache: String? = null
     @Volatile private var running = false
+
+    /**
+     * Stops all sampling loops (master switch OFF). The next [start] gets a
+     * fresh scope — SafeScopes' cancelled scope can't be reused.
+     */
+    fun stop() {
+        running = false
+        runCatching { scope.cancel() }
+        scope = com.gamershub.core.util.SafeScopes.default("monitor")
+    }
 
     fun start() {
         if (running) return

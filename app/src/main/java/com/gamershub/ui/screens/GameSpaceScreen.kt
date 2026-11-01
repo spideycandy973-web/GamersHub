@@ -3,6 +3,7 @@ package com.gamershub.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -32,6 +33,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -321,35 +325,65 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
             var visible by remember { mutableStateOf(true) }
             val fade by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
-                animationSpec = tween(700),
+                animationSpec = tween(650),
                 label = "introFade"
             )
-            val titleScale by animateFloatAsState(
-                targetValue = if (visible) 1f else 1.08f,
-                animationSpec = tween(700),
-                label = "introScale"
+            val exitScale by animateFloatAsState(
+                targetValue = if (visible) 1f else 1.06f,
+                animationSpec = tween(650),
+                label = "introExit"
             )
-            val ring by rememberInfiniteTransition(label = "introRing").animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Restart),
-                label = "ringRot"
+            val titleIn by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = tween(750, delayMillis = 120),
+                label = "titleIn"
+            )
+            val subIn by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = tween(700, delayMillis = 380),
+                label = "subIn"
+            )
+            val underline by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = tween(900, delayMillis = 300),
+                label = "underline"
             )
 
+            val ambient = rememberInfiniteTransition(label = "introAmb")
+            val driftA by ambient.animateFloat(
+                0f, 1f,
+                infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Reverse),
+                label = "driftA"
+            )
+            val driftB by ambient.animateFloat(
+                0f, 1f,
+                infiniteRepeatable(tween(7300, easing = LinearEasing), RepeatMode.Reverse),
+                label = "driftB"
+            )
+            val ringRot by ambient.animateFloat(
+                0f, 360f,
+                infiniteRepeatable(tween(11000, easing = LinearEasing), RepeatMode.Restart),
+                label = "ringRot"
+            )
+            val progress = remember { Animatable(0f) }
+
             LaunchedEffect(Unit) {
-                delay(2300)
+                progress.animateTo(1f, tween(2300))
+            }
+            LaunchedEffect(Unit) {
+                delay(2350)
                 visible = false
-                delay(750)
+                delay(700)
                 introDone = true
             }
 
             Box(
                 Modifier
                     .fillMaxSize()
-                    .graphicsLayer(alpha = fade)
+                    .graphicsLayer(alpha = fade, scaleX = exitScale, scaleY = exitScale)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFF0B0D12), Color(0xFF141B2A), Color(0xFF0B0D12))
+                            listOf(Color(0xFF0A0E17), Color(0xFF111A2B), Color(0xFF0A0E17))
                         )
                     )
                     .clickable(
@@ -359,47 +393,137 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
                         if (visible) {
                             visible = false
                             scope.launch {
-                                delay(750)
+                                delay(700)
                                 introDone = true
                             }
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.graphicsLayer(
-                        scaleX = titleScale, scaleY = titleScale
-                    )
-                ) {
-                    Box(
-                        Modifier
-                            .size(104.dp)
-                            .graphicsLayer(rotationZ = ring)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.sweepGradient(
-                                    listOf(g.accent, g.accent2, g.accent, g.accent2)
-                                )
+                // drifting aurora blobs — slow, low-alpha, glassy depth
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = -90f + driftA * 180f
+                            translationY = -220f + driftB * 120f
+                            alpha = 0.55f
+                        }
+                        .background(
+                            Brush.radialGradient(
+                                listOf(g.accent.copy(alpha = 0.22f), Color.Transparent)
                             )
-                            .border(2.dp, Color(0x33FFFFFF), CircleShape)
-                    )
-                    Spacer(Modifier.height(22.dp))
+                        )
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = 120f - driftB * 170f
+                            translationY = 260f - driftA * 140f
+                            alpha = 0.5f
+                        }
+                        .background(
+                            Brush.radialGradient(
+                                listOf(g.accent2.copy(alpha = 0.18f), Color.Transparent)
+                            )
+                        )
+                )
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // glass badge with a slow conic halo
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp)) {
+                        Box(
+                            Modifier
+                                .size(128.dp)
+                                .graphicsLayer(rotationZ = ringRot)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.sweepGradient(
+                                        listOf(
+                                            Color.Transparent,
+                                            g.accent.copy(alpha = 0.55f),
+                                            Color.Transparent,
+                                            g.accent2.copy(alpha = 0.45f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                        Box(
+                            Modifier
+                                .size(94.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(Color(0x22FFFFFF))
+                                .border(1.dp, Color(0x4DFFFFFF), RoundedCornerShape(28.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.SportsEsports,
+                                contentDescription = null,
+                                tint = g.text,
+                                modifier = Modifier.size(46.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(26.dp))
                     Text(
                         "GAME SPACE",
                         style = MaterialTheme.typography.headlineLarge,
                         color = g.text,
-                        letterSpacing = 10.sp
+                        letterSpacing = 12.sp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = titleIn
+                            translationY = (1f - titleIn) * 34f
+                        }
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        Modifier
+                            .width((140 * underline).dp)
+                            .height(2.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color.Transparent, g.accent, Color.Transparent)
+                                )
+                            )
+                    )
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         "ROG-STYLE IN-GAME CONTROL",
                         style = MaterialTheme.typography.labelSmall,
                         color = g.textDim,
                         letterSpacing = 5.sp,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.graphicsLayer(alpha = subIn)
                     )
-                    Spacer(Modifier.height(26.dp))
+                }
+
+                // progress line + skip hint pinned to the bottom
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 46.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .width(160.dp)
+                            .height(2.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color(0x22FFFFFF))
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(progress.value.coerceIn(0f, 1f))
+                                .height(2.dp)
+                                .background(
+                                    Brush.horizontalGradient(listOf(g.accent, g.accent2))
+                                )
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Text(
                         "tap to skip",
                         style = MaterialTheme.typography.labelSmall,

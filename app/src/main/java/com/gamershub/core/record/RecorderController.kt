@@ -102,7 +102,7 @@ class RecorderController(
             return false
         }
         val config = currentConfig(mode)
-        return ProjectionBroker.request(context) { resultCode, data ->
+        val launched = ProjectionBroker.request(context) { resultCode, data ->
             if (resultCode != Activity.RESULT_OK || data == null) {
                 pushEvent("Screen capture permission denied")
                 pushState(State.Idle)
@@ -115,13 +115,28 @@ class RecorderController(
                 .putExtra(ScreenRecordService.EXTRA_CONFIG, config)
             ContextCompat.startForegroundService(context, intent)
         }
+        if (!launched) {
+            // Never fail silently — surface it on the Recorder screen.
+            _events.tryEmit("Could not open the screen-capture permission dialog")
+            _state.value = State.Error("Could not open the screen-capture permission dialog")
+        }
+        return launched
     }
 
     fun stop() {
-        context.startService(
-            Intent(context, ScreenRecordService::class.java)
-                .setAction(ScreenRecordService.ACTION_STOP)
-        )
+        // ACTION_STOP via startService throws from background on API 26+
+        // (widget gesture path) — fall back to stopService, whose onDestroy
+        // runs the same full cleanup.
+        runCatching {
+            context.startService(
+                Intent(context, ScreenRecordService::class.java)
+                    .setAction(ScreenRecordService.ACTION_STOP)
+            )
+        }.onFailure {
+            runCatching {
+                context.stopService(Intent(context, ScreenRecordService::class.java))
+            }
+        }
     }
 
     /** Toggle helper used by gestures: starts RECORD or stops. */
