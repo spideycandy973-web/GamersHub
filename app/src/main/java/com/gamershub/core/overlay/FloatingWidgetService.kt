@@ -707,7 +707,7 @@ class FloatingWidgetService : Service() {
     // ============================ ROG/AXERON-style game bar ================
 
     private fun refreshQuickStates() {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             runCatching {
                 dnsOn.value =
                     container.shizuku.exec("settings get global private_dns_mode").trimmed == "hostname"
@@ -735,7 +735,7 @@ class FloatingWidgetService : Service() {
         label: String,
         flow: MutableStateFlow<Boolean>
     ) {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             runCatching {
                 container.shizuku.exec(if (on) onCmd else offCmd)
                 val read = container.shizuku.exec(verifyCmd).trimmed
@@ -784,7 +784,7 @@ class FloatingWidgetService : Service() {
     }
 
     private fun takeScreenshot() {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val dir = "/sdcard/Pictures/GamersHub"
             val file = "$dir/GH_${System.currentTimeMillis()}.png"
             val r = container.shizuku.exec("mkdir -p '$dir' && screencap -p '$file'")
@@ -802,7 +802,7 @@ class FloatingWidgetService : Service() {
     }
 
     private fun calibrateGyro() {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val sm = getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
             val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)
             if (sensor == null) {
@@ -836,7 +836,7 @@ class FloatingWidgetService : Service() {
     }
 
     private fun setBrightnessPct(pct: Float) {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             runCatching {
                 container.shizuku.exec("settings put system screen_brightness_mode 0")
                 container.shizuku.exec(
@@ -847,7 +847,7 @@ class FloatingWidgetService : Service() {
     }
 
     private fun setMediaVolume(v: Int) {
-        serviceScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             runCatching {
                 container.shizuku.exec("media volume --stream 3 --set ${v.coerceIn(0, 15)}")
                 lastAction.value = "Media volume → $v/15"
@@ -986,7 +986,7 @@ class FloatingWidgetService : Service() {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     QuickToggle("🔁", "Refresh Rate", scalingState.refreshHz > 0, Modifier.weight(1f)) {
-                        serviceScope.launch(Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             val next = when (scalingState.refreshHz) {
                                 60 -> 90; 90 -> 120; 120 -> 144; 144 -> 60; else -> 120
                             }
@@ -996,7 +996,7 @@ class FloatingWidgetService : Service() {
                         }
                     }
                     QuickToggle("📊", "Info Monitor", hudOn, Modifier.weight(1f)) {
-                        serviceScope.launch(Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             container.settings.setOverlayHud(!hudOn)
                             lastAction.value = "Info monitor ${if (!hudOn) "ON" else "OFF"}"
                         }
@@ -1016,7 +1016,7 @@ class FloatingWidgetService : Service() {
                         toggleCrosshair(!cross)
                     }
                     QuickToggle("⚡", "Quick Boost", boostState is com.gamershub.core.boost.BoostState.Active, Modifier.weight(1f)) {
-                        serviceScope.launch(Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             if (boostState is com.gamershub.core.boost.BoostState.Active) {
                                 val out = container.boost.restoreBoost()
                                 lastAction.value = "Boost released"
