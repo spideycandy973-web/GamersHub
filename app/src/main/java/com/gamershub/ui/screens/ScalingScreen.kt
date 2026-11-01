@@ -81,7 +81,7 @@ fun ScalingScreen(container: AppContainer) {
             val out = container.scaling.apply(mode, pct, refreshHz = refreshPick)
             applyLog = out
             wmReadback = runCatching {
-                container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                container.shizuku.exec("wm size").output.trim().replace("\n", " · ")
                     .ifBlank { "(no output)" }
             }.getOrDefault("(read failed)")
             busy = false
@@ -91,7 +91,7 @@ fun ScalingScreen(container: AppContainer) {
     fun readWmNow() {
         scope.launch {
             wmReadback = runCatching {
-                container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                container.shizuku.exec("wm size").output.trim().replace("\n", " · ")
                     .ifBlank { "(no output)" }
             }.getOrDefault("(read failed)")
         }
@@ -249,7 +249,7 @@ fun ScalingScreen(container: AppContainer) {
                     val out = container.scaling.restore()
                     applyLog = out
                     wmReadback = runCatching {
-                        container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                        container.shizuku.exec("wm size").output.trim().replace("\n", " · ")
                             .ifBlank { "(no output)" }
                     }.getOrDefault("(read failed)")
                     busy = false
