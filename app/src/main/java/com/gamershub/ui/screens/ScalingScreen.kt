@@ -1,6 +1,7 @@
 package com.gamershub.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,6 +66,37 @@ fun ScalingScreen(container: AppContainer) {
     var customPct by remember { mutableIntStateOf(85) }
     var refreshPick by remember { mutableIntStateOf(0) }
 
+    // Persistent result state — every scale action writes its full proof here
+    // (instead of a Toast that vanishes), plus the LIVE `wm size` read-back, so
+    // "did anything actually happen?" is answered by the system itself.
+    var applyLog by remember { mutableStateOf<List<String>>(emptyList()) }
+    var wmReadback by remember { mutableStateOf("not read yet") }
+    var busy by remember { mutableStateOf(false) }
+
+    fun applyScale(mode: LosslessScalingEngine.ScaleMode, pct: Int = 100) {
+        if (!com.gamershub.ui.requireEngine(container, context)) return
+        scope.launch {
+            busy = true
+            applyLog = listOf("Applying…")
+            val out = container.scaling.apply(mode, pct, refreshHz = refreshPick)
+            applyLog = out
+            wmReadback = runCatching {
+                container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                    .ifBlank { "(no output)" }
+            }.getOrDefault("(read failed)")
+            busy = false
+        }
+    }
+
+    fun readWmNow() {
+        scope.launch {
+            wmReadback = runCatching {
+                container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                    .ifBlank { "(no output)" }
+            }.getOrDefault("(read failed)")
+        }
+    }
+
     LaunchedEffect(shellReady) {
         if (shellReady) {
             container.scaling.probe()
@@ -89,6 +121,28 @@ fun ScalingScreen(container: AppContainer) {
                     "fewer pixels, the hardware compositor scales them up — zero added lag.",
             style = MaterialTheme.typography.labelSmall, color = g.textDim
         )
+
+        if (!shellReady) {
+            Spacer(Modifier.height(12.dp))
+            GlassCard {
+                Text(
+                    "Shizuku shell not connected",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = GhColors.Amber
+                )
+                Text(
+                    "Scaling writes real display commands through the Shizuku shell — " +
+                            "without it, every change silently does nothing. Start Shizuku, " +
+                            "then tap Reconnect.",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+                Spacer(Modifier.height(8.dp))
+                GlassButton("Reconnect Shizuku", primary = false, onClick = {
+                    container.shizuku.reconnect()
+                    readWmNow()
+                })
+            }
+        }
 
         // ---------------------------------------------------- panel info
         Spacer(Modifier.height(12.dp))
@@ -125,38 +179,16 @@ fun ScalingScreen(container: AppContainer) {
         GlassCard {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassChip("Native", scaleState.mode == LosslessScalingEngine.ScaleMode.NATIVE) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(LosslessScalingEngine.ScaleMode.NATIVE)
-                        Toast.makeText(context, out.lastOrNull() ?: "Reset", Toast.LENGTH_SHORT).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.NATIVE)
                 }
                 GlassChip("¾", scaleState.mode == LosslessScalingEngine.ScaleMode.THREE_QUARTERS) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.THREE_QUARTERS, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.firstOrNull() ?: "Applied", Toast.LENGTH_SHORT).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.THREE_QUARTERS)
                 }
                 GlassChip("⅔", scaleState.mode == LosslessScalingEngine.ScaleMode.TWO_THIRDS) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.TWO_THIRDS, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.firstOrNull() ?: "Applied", Toast.LENGTH_SHORT).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.TWO_THIRDS)
                 }
                 GlassChip("½", scaleState.mode == LosslessScalingEngine.ScaleMode.HALF) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.HALF, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.firstOrNull() ?: "Applied", Toast.LENGTH_SHORT).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.HALF)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -167,31 +199,13 @@ fun ScalingScreen(container: AppContainer) {
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassChip("1.25×", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_125) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.SUPER_125, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.SUPER_125)
                 }
                 GlassChip("1.5×", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_150) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.SUPER_150, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.SUPER_150)
                 }
                 GlassChip("2× (8K)", scaleState.mode == LosslessScalingEngine.ScaleMode.SUPER_200) {
-                    if (!com.gamershub.ui.requireEngine(container, context)) return@GlassChip
-                    scope.launch {
-                        val out = container.scaling.apply(
-                            LosslessScalingEngine.ScaleMode.SUPER_200, refreshHz = refreshPick
-                        )
-                        Toast.makeText(context, out.lastOrNull() ?: "Applied", Toast.LENGTH_LONG).show()
-                    }
+                    applyScale(LosslessScalingEngine.ScaleMode.SUPER_200)
                 }
             }
             Text(
@@ -214,13 +228,7 @@ fun ScalingScreen(container: AppContainer) {
                 )
             )
             GlassButton("Apply custom scale", primary = false, onClick = {
-                if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
-                scope.launch {
-                    val out = container.scaling.apply(
-                        LosslessScalingEngine.ScaleMode.CUSTOM, customPct, refreshHz = refreshPick
-                    )
-                    Toast.makeText(context, out.firstOrNull() ?: "Applied", Toast.LENGTH_SHORT).show()
-                }
+                applyScale(LosslessScalingEngine.ScaleMode.CUSTOM, customPct)
             })
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -237,10 +245,63 @@ fun ScalingScreen(container: AppContainer) {
             Spacer(Modifier.height(10.dp))
             GlassButton("Restore display", onClick = {
                 scope.launch {
+                    busy = true
                     val out = container.scaling.restore()
-                    Toast.makeText(context, out.lastOrNull() ?: "Restored", Toast.LENGTH_SHORT).show()
+                    applyLog = out
+                    wmReadback = runCatching {
+                        container.shizuku.exec("wm size").output.trim().replace('\n', ' · ')
+                            .ifBlank { "(no output)" }
+                    }.getOrDefault("(read failed)")
+                    busy = false
                 }
             }, modifier = Modifier.fillMaxWidth())
+        }
+
+        // ---------------------------------------------------- system proof
+        SectionTitle("SYSTEM PROOF — WHAT THE PHONE ACTUALLY DID")
+        GlassCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "wm size read-back (live):",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim,
+                    modifier = Modifier.weight(1f)
+                )
+                GlassChip("Refresh", selected = false) { readWmNow() }
+            }
+            Text(
+                wmReadback,
+                style = MaterialTheme.typography.labelSmall, color = g.accent,
+                modifier = Modifier
+                    .padding(top = 4.dp, bottom = 8.dp)
+                    .horizontalScroll(rememberScrollState())
+            )
+            if (applyLog.isEmpty()) {
+                Text(
+                    "No action yet — pick a render scale above. Every write and its " +
+                            "read-back will be listed here, so a silent failure is impossible.",
+                    style = MaterialTheme.typography.labelSmall, color = g.textDim
+                )
+            } else {
+                applyLog.forEach { line ->
+                    Text(
+                        "• $line",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            line.startsWith("PROOF") && line.contains("✓") -> GhColors.Green
+                            line.startsWith("PROOF") -> GhColors.Amber
+                            line.contains("not connected") -> GhColors.Amber
+                            else -> g.textDim
+                        },
+                        modifier = Modifier.padding(vertical = 1.dp)
+                    )
+                }
+                if (busy) {
+                    Text(
+                        "Working…",
+                        style = MaterialTheme.typography.labelSmall, color = g.accent
+                    )
+                }
+            }
         }
 
         // ---------------------------------------------------- frame gen

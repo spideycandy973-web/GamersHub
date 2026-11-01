@@ -11,9 +11,11 @@ import kotlinx.coroutines.withContext
  * Graphics Enhancer — sharpness & image-quality knobs that work without root.
  *
  * Everything here is real, reversible and verified:
- *  - **Sharpen pipeline** — unsharp-mask strength (0..3) fed into the GPU frame
- *    pipeline (FrameGenStage shader), so recorded / streamed / frame-generated
- *    output is genuinely sharpened at pixel level.
+ *  - **Sharpen** — real device sharpening in three layers: (1) supersampling
+ *    through the Lossless Scaling engine (render above panel resolution, the
+ *    compositor downsamples → visibly crisper), (2) the vendor `*sharp*`
+ *    display properties the ROM exposes (`setprop` + `getprop` read-back),
+ *    (3) the unsharp shader strength fed into the capture/frame-gen pipeline.
  *  - **Force GPU rendering** — `settings get/put global force_gpu_rendering`
  *    with read-back verification (the developer-option switch), falling back to
  *    the classic SurfaceFlinger overlay toggle.
@@ -25,7 +27,10 @@ import kotlinx.coroutines.withContext
  * No fake claims: each switch reports whether this device actually exposes the
  * knob, and anything unsupported simply stays off with a clear message.
  */
-class GraphicsEnhancer(private val shizuku: ShizukuManager) {
+class GraphicsEnhancer(
+    private val shizuku: ShizukuManager,
+    private val scaling: com.gamershub.core.scaling.LosslessScalingEngine
+) {
 
     data class Capability(
         val gpuRendering: Boolean = false,
@@ -40,6 +45,10 @@ class GraphicsEnhancer(private val shizuku: ShizukuManager) {
     /** 0 = off, 1 = soft, 2 = balanced, 3 = sharp. */
     private val _sharpenLevel = MutableStateFlow(0)
     val sharpenLevel: StateFlow<Int> = _sharpenLevel.asStateFlow()
+
+    /** Human-readable proof of what the last sharpen change actually did. */
+    private val _sharpenProof = MutableStateFlow<List<String>>(emptyList())
+    val sharpenProof: StateFlow<List<String>> = _sharpenProof.asStateFlow()
 
     private val _gpuRendering = MutableStateFlow(false)
     val gpuRendering: StateFlow<Boolean> = _gpuRendering.asStateFlow()
@@ -56,8 +65,82 @@ class GraphicsEnhancer(private val shizuku: ShizukuManager) {
             else -> 0.9f
         }
 
-    suspend fun setSharpenLevel(level: Int) {
-        _sharpenLevel.value = level.coerceIn(0, 3)
+    suspend fun setSharpenLevel(level: Int): List<String> = withContext(Dispatchers.IO) {
+        val lvl = level.coerceIn(0, 3)
+        _sharpenLevel.value = lvl
+        val out = mutableListOf<String>()
+
+        if (!shizuku.canUseShell) {
+            out += "Shizuku shell not connected — sharpening needs the shell"
+            _sharpenProof.value = out
+            return@withContext out
+        }
+
+        // ---- 1) REAL full-screen sharpening: supersampling ------------------
+        // Rendering ABOVE panel resolution and letting the hardware compositor
+        // downsample is genuine spatial sharpening — visible immediately on
+        // every screen and game. Handled by the Lossless Scaling engine so the
+        // Scaling screen always shows the true current render size.
+        if (lvl >= 2) {
+            val superPct = if (lvl == 2) 110 else 125
+            val mode = if (lvl == 2)
+                com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.CUSTOM
+            else
+                com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.SUPER_125
+            val applyOut = if (lvl == 2) {
+                scaling.apply(mode, customPercent = superPct)
+            } else {
+                scaling.apply(mode)
+            }
+            out += applyOut
+            out += "Sharpen $lvl: supersample ${superPct}% — compositor downsamples → crisper image"
+        } else {
+            out += "Supersample sharpen off (render size left as-is)"
+        }
+
+        // ---- 2) Vendor display sharpen props (only what the ROM exposes) ----
+        out += setVendorSharpen(lvl)
+
+        // ---- 3) Feed the frame-pipeline shader (recording / frame gen) ------
+        out += "Frame-pipeline unsharp shader: ${shaderSharpen} strength"
+
+        _sharpenProof.value = out
+        out
+    }
+
+    /**
+     * Drives the vendor `*sharp*` display properties the ROM actually exposes.
+     * Each write is read back with `getprop` — nothing is claimed that does not
+     * stick ("no click bait").
+     */
+    private suspend fun setVendorSharpen(lvl: Int): String {
+        val knobs = shizuku.exec("getprop | grep -iE '\\.sharp|sharpness' | head -6").output
+            .lines()
+            .mapNotNull { line ->
+                val m = Regex("\\[([^]]+)]").find(line)?.groupValues?.get(1) ?: return@mapNotNull null
+                if (line.contains('=')) m.trim() else null
+            }
+            .distinct()
+        if (knobs.isEmpty()) {
+            return "Vendor sharpen props: none exposed on this ROM (supersample is the active sharpen path)"
+        }
+        val target = when (lvl) {
+            0 -> "0"
+            1 -> "2"
+            2 -> "3"
+            else -> "5"
+        }
+        var stuck = 0
+        for (k in knobs) {
+            shizuku.exec("setprop $k $target")
+            val read = shizuku.exec("getprop $k").trimmed
+            if (read == target) stuck++
+        }
+        return if (stuck > 0) {
+            "Vendor sharpen props: $stuck/${knobs.size} set to $target and verified ✓"
+        } else {
+            "Vendor sharpen props found (${knobs.joinToString(", ")}) but the ROM refuses shell writes"
+        }
     }
 
     /** Detects which image-quality knobs this device actually exposes. */
@@ -143,6 +226,12 @@ class GraphicsEnhancer(private val shizuku: ShizukuManager) {
             _vivid.value = false
             return@withContext listOf("Enhancer reset (no shell needed)")
         }
+        if (_sharpenLevel.value >= 2) {
+            runCatching { log += scaling.apply(com.gamershub.core.scaling.LosslessScalingEngine.ScaleMode.NATIVE) }
+        }
+        if (_sharpenLevel.value > 0) {
+            runCatching { log += setVendorSharpen(0) }
+        }
         if (_gpuRendering.value || globalKeyExists(KEY_GPU_RENDERING)) {
             runCatching {
                 if (setGpuRendering(false)) log += "GPU-rendering override removed"
@@ -155,7 +244,7 @@ class GraphicsEnhancer(private val shizuku: ShizukuManager) {
             }
         }
         _sharpenLevel.value = 0
-        log += "Sharpen pipeline off"
+        log += "Sharpen off (supersample reset, vendor props cleared)"
         log
     }
 

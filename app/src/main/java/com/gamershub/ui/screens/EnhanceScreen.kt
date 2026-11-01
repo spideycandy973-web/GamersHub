@@ -90,16 +90,19 @@ fun EnhanceScreen(container: AppContainer) {
         }
 
         // ------------------------------------------------ sharpen pipeline
-        SectionTitle("CAPTURE SHARPENING (RECORD / STREAM / FRAME-GEN)")
+        SectionTitle("SCREEN & CAPTURE SHARPENING — REAL DEVICE KNOBS")
         GlassCard {
+            val proof by container.enhancer.sharpenProof.collectAsStateWithLifecycle()
             Text(
                 "Sharpen level: ${com.gamershub.core.enhance.GraphicsEnhancer.LEVELS[level]}",
                 style = MaterialTheme.typography.titleMedium, color = g.text
             )
             Text(
-                "GPU unsharp-mask applied to every frame of the recording / streaming / " +
-                        "frame-generation pipeline (the video output gets sharper). " +
-                        "For sharpening the LIVE screen use Display Sharpness above.",
+                "Balanced / Sharp supersample the WHOLE DISPLAY through the Lossless " +
+                        "Scaling engine (the compositor downsamples → visibly crisper screen), " +
+                        "drive the vendor sharpen display props this ROM exposes — each one " +
+                        "read back and verified — and feed the unsharp shader into " +
+                        "record / stream / frame-gen. The proof of every step is below.",
                 style = MaterialTheme.typography.labelSmall, color = g.textDim,
                 modifier = Modifier.padding(vertical = 6.dp)
             )
@@ -112,6 +115,16 @@ fun EnhanceScreen(container: AppContainer) {
                             container.settings.setEnhanceLevel(i)
                         }
                     }
+                }
+            }
+            if (proof.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                proof.forEach { line ->
+                    Text(
+                        "• $line",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (line.startsWith("Shizuku")) com.gamershub.ui.theme.GhColors.Amber else g.textDim
+                    )
                 }
             }
         }

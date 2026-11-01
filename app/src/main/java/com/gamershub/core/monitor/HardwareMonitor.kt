@@ -91,7 +91,13 @@ class HardwareMonitor(
             }
         }
 
-        // Slow privileged path: foreground app + fps + thermal status
+        // Slow privileged path: foreground app + fps + thermal status.
+        // NOTE: these shell probes are the expensive ones — `dumpsys window`
+        // dumps every window in the system and used to run every 2.5s, which
+        // made the WHOLE PHONE lag. The cadence is now 5s, foreground detection
+        // uses the far cheaper `dumpsys activity activities`, thermal status is
+        // re-read only every third tick (it barely changes).
+        var slowTick = 0
         scope.launch {
             while (isActive) {
                 try {
@@ -101,8 +107,10 @@ class HardwareMonitor(
                             val fps = readForegroundFps(fg)
                             _stats.value = _stats.value.copy(foregroundPackage = fg, fps = fps)
                         }
-                        val ts = readThermalStatus()
-                        if (ts >= 0) _stats.value = _stats.value.copy(thermalStatus = ts)
+                        if (slowTick % 3 == 0) {
+                            val ts = readThermalStatus()
+                            if (ts >= 0) _stats.value = _stats.value.copy(thermalStatus = ts)
+                        }
                         if (gpuModelCache == null) {
                             gpuModelCache = readGpuModel()
                             _stats.value = _stats.value.copy(gpuModel = gpuModelCache.orEmpty())
@@ -111,7 +119,8 @@ class HardwareMonitor(
                 } catch (t: Throwable) {
                     android.util.Log.w("GamersHub", "privileged monitor tick failed", t)
                 }
-                delay(2500)
+                slowTick++
+                delay(5000)
             }
         }
     }
@@ -237,9 +246,14 @@ class HardwareMonitor(
     // -------------------------------------------- Privileged (Shizuku) reads
     private suspend fun readForegroundPackage(): String {
         return try {
-            val res = shizuku.exec("dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | head -n 2")
+            // `dumpsys window` dumps EVERY window in the system (megabytes) and
+            // was the main source of whole-phone lag. `dumpsys activity
+            // activities` piped through grep is a tiny fraction of the cost.
+            val res = shizuku.exec(
+                "dumpsys activity activities | grep -m1 -E 'topResumedActivity|ResumedActivity'"
+            )
             if (!res.ok) return ""
-            // mCurrentFocus=Window{... u0 com.game.pkg/com.game.MainActivity}
+            // topResumedActivity=ActivityRecord{... u0 com.game.pkg/.MainActivity}
             // NOTE: this pattern must stay valid for ICU regex — Android's
             // java.util.regex is ICU-backed on many devices (MIUI etc.) and
             // throws PatternSyntaxException for patterns the OpenJDK engine
@@ -282,6 +296,12 @@ class HardwareMonitor(
 
     private suspend fun readGpuModel(): String {
         if (Build.SUPPORTED_ABIS.isEmpty()) return ""
+        // Cheap props first — `dumpsys SurfaceFlinger` dumps every layer in the
+        // system, so only fall back to it when the props are empty.
+        val cheap = shizuku.exec(
+            "getprop | grep -m2 -iE 'ro.hardware.egl|ro.board.platform'"
+        ).output.substringAfter("]").trim().trim('[', ' ')
+        if (cheap.isNotBlank()) return cheap.take(64)
         val res = shizuku.exec("dumpsys SurfaceFlinger | grep -i 'GLES:' | head -n 1")
         if (!res.ok) return ""
         // GLES: Qualcomm, Adreno (TM) 740, ...

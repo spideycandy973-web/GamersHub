@@ -44,7 +44,7 @@ class AppContainer(private val app: Application) {
     val recorder = RecorderController(app, settings, analytics)
     val stream = StreamEngine(app, settings)
     val chat = ChatHub(settings)
-    val enhancer = GraphicsEnhancer(shizuku)
+    val enhancer = GraphicsEnhancer(shizuku, scaling)
     val engine = EngineCoordinator(
         app, settings, shizuku, boost, thermal, spoofer,
         scaling, frameGen, unlocker, battery, enhancer

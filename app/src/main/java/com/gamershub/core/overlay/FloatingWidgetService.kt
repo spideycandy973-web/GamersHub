@@ -101,6 +101,9 @@ class FloatingWidgetService : Service() {
 
     private val panelVisible = MutableStateFlow(false)
 
+    /** Last engine action result, shown in the panel so nothing fails silently. */
+    private val lastAction = MutableStateFlow("")
+
     /**
      * Shows/hides the control panel. The panel WINDOW is created on open and
      * REMOVED on close — add/remove is bulletproof where a
@@ -498,6 +501,16 @@ class FloatingWidgetService : Service() {
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     )
                 }
+
+                val actionLine by lastAction.collectAsStateWithLifecycle()
+                if (actionLine.isNotBlank()) {
+                    Text(
+                        actionLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xB3FFFFFF),
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
 
                 // Boost + Record + Stream trio
@@ -542,8 +555,9 @@ class FloatingWidgetService : Service() {
                     listOf(60, 90, 120, 144).forEach { hz ->
                         PanelButton("${hz}Hz", scalingState.refreshHz == hz) {
                             scope.launch(Dispatchers.IO) {
-                                container.scaling.lockRefresh(hz)
+                                val out = container.scaling.lockRefresh(hz)
                                 container.frameGen.applyPacing(hz)
+                                lastAction.value = out.lastOrNull() ?: "Refresh → ${hz}Hz"
                             }
                         }
                     }
@@ -562,7 +576,8 @@ class FloatingWidgetService : Service() {
                     ).forEach { (label, mode) ->
                         PanelButton(label, scalingState.mode == mode) {
                             scope.launch(Dispatchers.IO) {
-                                container.scaling.apply(mode, refreshHz = scalingState.refreshHz)
+                                val out = container.scaling.apply(mode, refreshHz = scalingState.refreshHz)
+                                lastAction.value = out.firstOrNull() ?: "Render scale → $label"
                             }
                         }
                     }
@@ -581,8 +596,9 @@ class FloatingWidgetService : Service() {
                     ) {
                         scope.launch(Dispatchers.IO) {
                             val next = (sharpen + 1) % 4
-                            container.enhancer.setSharpenLevel(next)
+                            val out = container.enhancer.setSharpenLevel(next)
                             container.settings.setEnhanceLevel(next)
+                            lastAction.value = out.firstOrNull() ?: "Sharpen → ${com.gamershub.core.enhance.GraphicsEnhancer.LEVELS[next]}"
                         }
                     }
                     PanelButton(if (hudOn) "HUD ✓" else "HUD ✕", hudOn) {
