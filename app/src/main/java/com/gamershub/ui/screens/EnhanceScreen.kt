@@ -139,10 +139,10 @@ fun EnhanceScreen(container: AppContainer) {
         GlassCard {
             val stats3d by container.monitor.stats.collectAsStateWithLifecycle()
             val gamesList by container.games.games.collectAsStateWithLifecycle()
-            var shadows by remember { mutableIntStateOf(2) }
-            var textures by remember { mutableIntStateOf(2) }
-            var characters by remember { mutableIntStateOf(2) }
-            var aa3d by remember { mutableIntStateOf(2) }
+            val shadows by container.settings.q3dShadows.collectAsStateWithLifecycle(2)
+            val textures by container.settings.q3dTextures.collectAsStateWithLifecycle(2)
+            val characters by container.settings.q3dCharacters.collectAsStateWithLifecycle(2)
+            val aa3d by container.settings.q3dAa.collectAsStateWithLifecycle(2)
             var qLog by remember { mutableStateOf<List<String>>(emptyList()) }
             val fgCapture3d by container.settings.frameGenCapture.collectAsStateWithLifecycle(false)
 
@@ -160,28 +160,36 @@ fun EnhanceScreen(container: AppContainer) {
             Text("Shadows", style = MaterialTheme.typography.labelSmall, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
-                    GlassChip(n, shadows == i) { shadows = i }
+                    GlassChip(n, shadows == i) {
+                        scope.launch { container.settings.setQ3dShadows(i) }
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
             Text("Textures", style = MaterialTheme.typography.labelSmall, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
-                    GlassChip(n, textures == i) { textures = i }
+                    GlassChip(n, textures == i) {
+                        scope.launch { container.settings.setQ3dTextures(i) }
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
             Text("3D characters (mesh LOD & draw distance)", style = MaterialTheme.typography.labelSmall, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
-                    GlassChip(n, characters == i) { characters = i }
+                    GlassChip(n, characters == i) {
+                        scope.launch { container.settings.setQ3dCharacters(i) }
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
             Text("Anti-aliasing", style = MaterialTheme.typography.labelSmall, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Low", "Med", "High", "Ultra").forEachIndexed { i, n ->
-                    GlassChip(n, aa3d == i) { aa3d = i }
+                    GlassChip(n, aa3d == i) {
+                        scope.launch { container.settings.setQ3dAa(i) }
+                    }
                 }
             }
 

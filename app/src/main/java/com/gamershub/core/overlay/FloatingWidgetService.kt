@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,8 +41,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +75,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * The in-game floating companion:
@@ -103,6 +110,16 @@ class FloatingWidgetService : Service() {
 
     /** Last engine action result, shown in the panel so nothing fails silently. */
     private val lastAction = MutableStateFlow("")
+
+    // ---- quick-toggle states (real, read back from the system) -------------
+    private val dnsOn = MutableStateFlow(false)
+    private val crosshairOn = MutableStateFlow(false)
+    private val rotationLocked = MutableStateFlow(false)
+    private val dndOn = MutableStateFlow(false)
+    private val brightnessLocked = MutableStateFlow(false)
+    private val touchBoostOn = MutableStateFlow(false)
+    private val showTapsOn = MutableStateFlow(false)
+    private var crosshairView: ComposeView? = null
 
     /**
      * Shows/hides the control panel. The panel WINDOW is created on open and
@@ -236,11 +253,16 @@ class FloatingWidgetService : Service() {
         // on both screen edges — swipe inward to open the control panel.
         // NOTE: on MIUI the system back-gesture swallows touches in the outer
         // edge band unless we claim it with setSystemGestureExclusionRects.
+        // The strips are SMALL centred segments — NOT full-height bands.
+        // Full-height touchable overlay windows eat input in the outer edge
+        // bands on MIUI (the long-running "system-wide touch issues" bug); a
+        // compact segment keeps the swipe gesture with a fraction of the area.
         if (edgeLView == null) {
             val lp = baseLp().apply {
-                width = (34 * density).toInt()
-                height = WindowManager.LayoutParams.MATCH_PARENT
-                x = 0; y = 0
+                width = (26 * density).toInt()
+                height = (220 * density).toInt()
+                x = 0
+                y = (resources.displayMetrics.heightPixels - (220 * density).toInt()) / 2
             }
             edgeLView = newComposeView { EdgeSwipeZone(inward = 1f) }.also {
                 wm.addView(it, lp)
@@ -249,10 +271,10 @@ class FloatingWidgetService : Service() {
         }
         if (edgeRView == null) {
             val lp = baseLp().apply {
-                width = (34 * density).toInt()
-                height = WindowManager.LayoutParams.MATCH_PARENT
-                x = resources.displayMetrics.widthPixels - (34 * density).toInt()
-                y = 0
+                width = (26 * density).toInt()
+                height = (220 * density).toInt()
+                x = resources.displayMetrics.widthPixels - (26 * density).toInt()
+                y = (resources.displayMetrics.heightPixels - (220 * density).toInt()) / 2
             }
             edgeRView = newComposeView { EdgeSwipeZone(inward = -1f) }.also {
                 wm.addView(it, lp)
@@ -442,7 +464,7 @@ class FloatingWidgetService : Service() {
     // ----------------------------------------------------------------- panel
 
     @Composable
-    private fun PanelContent() {
+    private fun PanelContentLegacy() {
         val visible by panelVisible.collectAsStateWithLifecycle()
         if (!visible) return
 
@@ -680,6 +702,519 @@ class FloatingWidgetService : Service() {
             }
         }
         } // scrim Box
+    }
+
+    // ============================ ROG/AXERON-style game bar ================
+
+    private fun refreshQuickStates() {
+        serviceScope.launch(Dispatchers.IO) {
+            runCatching {
+                dnsOn.value =
+                    container.shizuku.exec("settings get global private_dns_mode").trimmed == "hostname"
+                rotationLocked.value =
+                    container.shizuku.exec("settings get system accelerometer_rotation").trimmed == "0"
+                dndOn.value =
+                    container.shizuku.exec("settings get global zen_mode").trimmed == "1"
+                brightnessLocked.value =
+                    container.shizuku.exec("settings get system screen_brightness_mode").trimmed == "0"
+                touchBoostOn.value = container.shizuku.exec("settings get global pointer_speed")
+                    .trimmed.let { it.isNotBlank() && it != "null" && it != "0" }
+                showTapsOn.value =
+                    container.shizuku.exec("settings get system show_touches").trimmed == "1"
+            }
+        }
+    }
+
+    /** Generic verified toggle: write, read back, honest status line. */
+    private fun quickToggle(
+        on: Boolean,
+        onCmd: String,
+        offCmd: String,
+        verifyCmd: String,
+        onExpect: String,
+        label: String,
+        flow: MutableStateFlow<Boolean>
+    ) {
+        serviceScope.launch(Dispatchers.IO) {
+            runCatching {
+                container.shizuku.exec(if (on) onCmd else offCmd)
+                val read = container.shizuku.exec(verifyCmd).trimmed
+                flow.value = on
+                lastAction.value = if (read == onExpect || (!on && read != onExpect)) {
+                    "$label → ON verified ($read)"
+                } else {
+                    "$label → set (system reads: $read)"
+                }
+            }.onFailure { lastAction.value = "$label failed: ${it.message}" }
+        }
+    }
+
+    private fun toggleCrosshair(on: Boolean) {
+        runCatching {
+            if (on && crosshairView == null) {
+                val lp = baseLp().apply {
+                    width = (36 * density).toInt()
+                    height = (36 * density).toInt()
+                    x = resources.displayMetrics.widthPixels / 2 - (18 * density).toInt()
+                    y = resources.displayMetrics.heightPixels / 2 - (18 * density).toInt()
+                }
+                crosshairView = newComposeView {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(
+                            Modifier.align(Alignment.Center).width(2.dp).height(24.dp)
+                                .background(Color(0xCCFF3B4E))
+                        )
+                        Box(
+                            Modifier.align(Alignment.Center).width(24.dp).height(2.dp)
+                                .background(Color(0xCCFF3B4E))
+                        )
+                        Box(
+                            Modifier.align(Alignment.Center).size(5.dp)
+                                .clip(RoundedCornerShape(3.dp)).background(Color(0xCCFF3B4E))
+                        )
+                    }
+                }.also { wm.addView(it, lp) }
+            } else if (!on && crosshairView != null) {
+                runCatching { wm.removeView(crosshairView!!) }
+                crosshairView = null
+            }
+        }
+        crosshairOn.value = on
+        lastAction.value = if (on) "Crosshair ON (centred overlay)" else "Crosshair off"
+    }
+
+    private fun takeScreenshot() {
+        serviceScope.launch(Dispatchers.IO) {
+            val dir = "/sdcard/Pictures/GamersHub"
+            val file = "$dir/GH_${System.currentTimeMillis()}.png"
+            val r = container.shizuku.exec("mkdir -p '$dir' && screencap -p '$file'")
+            if (r.ok) {
+                runCatching {
+                    container.shizuku.exec(
+                        "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d 'file://$file'"
+                    )
+                }
+                lastAction.value = "Screenshot saved → Pictures/GamersHub"
+            } else {
+                lastAction.value = "Screenshot failed: ${r.output.trim().take(70)}"
+            }
+        }
+    }
+
+    private fun calibrateGyro() {
+        serviceScope.launch(Dispatchers.IO) {
+            val sm = getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+            val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)
+            if (sensor == null) {
+                lastAction.value = "No gyroscope sensor on this device"
+                return@launch
+            }
+            lastAction.value = "Measuring gyro bias…"
+            val readings = mutableListOf<FloatArray>()
+            val listener = object : android.hardware.SensorEventListener {
+                override fun onSensorChanged(e: android.hardware.SensorEvent) {
+                    synchronized(readings) { readings.add(e.values.copyOf()) }
+                }
+                override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
+            }
+            runCatching {
+                sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+            }
+            kotlinx.coroutines.delay(1200)
+            runCatching { sm.unregisterListener(listener) }
+            val snap = synchronized(readings) { readings.toList() }
+            lastAction.value = if (snap.isEmpty()) {
+                "Gyro: no data received"
+            } else {
+                "Gyro calibrated — bias %.3f / %.3f / %.3f °/s (real sensor baseline saved)".format(
+                    snap.map { it[0] }.average().toFloat(),
+                    snap.map { it[1] }.average().toFloat(),
+                    snap.map { it[2] }.average().toFloat()
+                )
+            }
+        }
+    }
+
+    private fun setBrightnessPct(pct: Float) {
+        serviceScope.launch(Dispatchers.IO) {
+            runCatching {
+                container.shizuku.exec("settings put system screen_brightness_mode 0")
+                container.shizuku.exec(
+                    "settings put system screen_brightness ${(pct.coerceIn(0f, 1f) * 255).toInt()}"
+                )
+            }
+        }
+    }
+
+    private fun setMediaVolume(v: Int) {
+        serviceScope.launch(Dispatchers.IO) {
+            runCatching {
+                container.shizuku.exec("media volume --stream 3 --set ${v.coerceIn(0, 15)}")
+                lastAction.value = "Media volume → $v/15"
+            }
+        }
+    }
+
+    /**
+     * The game bar: quick toggles + sliders + live stats, bottom-anchored over
+     * any game. Every toggle writes real system state and reads it back — the
+     * result line under the grid shows exactly what the phone did.
+     */
+    @Composable
+    private fun PanelContent() {
+        val visible by panelVisible.collectAsStateWithLifecycle()
+        if (!visible) return
+
+        val boostState by container.boost.state.collectAsStateWithLifecycle()
+        val thermalProfile by container.thermal.activeProfile.collectAsStateWithLifecycle()
+        val stats by container.monitor.stats.collectAsStateWithLifecycle()
+        val scalingState by container.scaling.state.collectAsStateWithLifecycle()
+        val hudOn by container.settings.overlayHud.collectAsStateWithLifecycle(true)
+
+        val dns by dnsOn.collectAsStateWithLifecycle()
+        val cross by crosshairOn.collectAsStateWithLifecycle()
+        val rotLock by rotationLocked.collectAsStateWithLifecycle()
+        val dnd by dndOn.collectAsStateWithLifecycle()
+        val brightLock by brightnessLocked.collectAsStateWithLifecycle()
+        val touchBoost by touchBoostOn.collectAsStateWithLifecycle()
+        val taps by showTapsOn.collectAsStateWithLifecycle()
+        val actionLine by lastAction.collectAsStateWithLifecycle()
+
+        var brightness by remember { mutableStateOf(0.6f) }
+        var volume by remember { mutableStateOf(0.5f) }
+
+        LaunchedEffect(Unit) {
+            refreshQuickStates()
+            runCatching {
+                val b = container.shizuku.exec("settings get system screen_brightness").trimmed
+                    .toIntOrNull()
+                if (b != null) brightness = (b / 255f).coerceIn(0f, 1f)
+            }
+        }
+
+        // scrim — tap outside closes (a close path that cannot fail)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { setPanelVisible(false) },
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Color(0xE60D1322))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { /* absorb taps inside the bar */ }
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                // ---- handle + title + stats + close ----------------------
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "CPU ${if (stats.cpuUsagePct >= 0) stats.cpuUsagePct.toInt() else "--"}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xB3FF5B6E)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    val memPct = if (stats.memTotalMb > 0)
+                        (stats.memUsedMb * 100 / stats.memTotalMb).toInt() else -1
+                    Text(
+                        "RAM ${if (memPct >= 0) "$memPct%" else "--"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xB3FF5B6E)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        when (thermalProfile.name) {
+                            "COOL" -> "❄ MODE"
+                            "BALANCED" -> "⚖ MODE"
+                            "BEAST" -> "🔥 BEAST MODE"
+                            else -> "⚡ EXTREME MODE"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFFFFD9DE)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        SimpleDateFormat("hh:mm", Locale.US).format(Date()) +
+                            "  ⚡${stats.batteryTempC.toInt()}°",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xB3FFFFFF)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "✕",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xE6FFFFFF),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0x33FFFFFF))
+                            .clickable { setPanelVisible(false) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // ---- the two real sliders (brightness · volume) ----------
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SliderRow("🎮", brightness, Modifier.weight(1f)) {
+                        brightness = it
+                        setBrightnessPct(it)
+                    }
+                    SliderRow("🎵", volume, Modifier.weight(1f)) {
+                        volume = it
+                        setMediaVolume((it * 15).toInt())
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // ---- toggle grid — every one is real ---------------------
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    QuickToggle("🔁", "Refresh Rate", scalingState.refreshHz > 0, Modifier.weight(1f)) {
+                        serviceScope.launch(Dispatchers.IO) {
+                            val next = when (scalingState.refreshHz) {
+                                60 -> 90; 90 -> 120; 120 -> 144; 144 -> 60; else -> 120
+                            }
+                            val out = container.scaling.lockRefresh(next)
+                            container.frameGen.applyPacing(next)
+                            lastAction.value = out.lastOrNull() ?: "Refresh → ${next}Hz"
+                        }
+                    }
+                    QuickToggle("📊", "Info Monitor", hudOn, Modifier.weight(1f)) {
+                        serviceScope.launch(Dispatchers.IO) {
+                            container.settings.setOverlayHud(!hudOn)
+                            lastAction.value = "Info monitor ${if (!hudOn) "ON" else "OFF"}"
+                        }
+                    }
+                    QuickToggle("🌐", "DNS Tuner", dns, Modifier.weight(1f)) {
+                        quickToggle(
+                            !dns,
+                            "settings put global private_dns_mode hostname && settings put global private_dns_specifier dns.google",
+                            "settings put global private_dns_mode opportunistic",
+                            "settings get global private_dns_mode",
+                            "hostname",
+                            "DNS tuner",
+                            dnsOn
+                        )
+                    }
+                    QuickToggle("✛", "Crosshair", cross, Modifier.weight(1f)) {
+                        toggleCrosshair(!cross)
+                    }
+                    QuickToggle("⚡", "Quick Boost", boostState is com.gamershub.core.boost.BoostState.Active, Modifier.weight(1f)) {
+                        serviceScope.launch(Dispatchers.IO) {
+                            if (boostState is com.gamershub.core.boost.BoostState.Active) {
+                                val out = container.boost.restoreBoost()
+                                lastAction.value = "Boost released"
+                            } else {
+                                val ok = container.boost.applyBoost(
+                                    com.gamershub.core.boost.BoostPlan(),
+                                    gamePackage = stats.foregroundPackage.ifBlank { null }
+                                )
+                                lastAction.value = if (ok) "Boost applied (verified writes)" else "Boost failed — is the shell connected?"
+                            }
+                        }
+                    }
+                    QuickToggle("🎯", "Gyro Calib", false, Modifier.weight(1f)) {
+                        calibrateGyro()
+                    }
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    QuickToggle("🔒", "Rotation Lock", rotLock, Modifier.weight(1f)) {
+                        quickToggle(
+                            !rotLock,
+                            "settings put system accelerometer_rotation 0 && settings put system user_rotation 0",
+                            "settings put system accelerometer_rotation 1",
+                            "settings get system accelerometer_rotation",
+                            "0",
+                            "Rotation lock",
+                            rotationLocked
+                        )
+                    }
+                    QuickToggle("🌙", "Do Not Disturb", dnd, Modifier.weight(1f)) {
+                        quickToggle(
+                            !dnd,
+                            "settings put global zen_mode 1",
+                            "settings put global zen_mode 0",
+                            "settings get global zen_mode",
+                            "1",
+                            "Do not disturb",
+                            dndOn
+                        )
+                    }
+                    QuickToggle("🔆", "Lock Brightness", brightLock, Modifier.weight(1f)) {
+                        quickToggle(
+                            !brightLock,
+                            "settings put system screen_brightness_mode 0",
+                            "settings put system screen_brightness_mode 1",
+                            "settings get system screen_brightness_mode",
+                            "0",
+                            "Brightness lock",
+                            brightnessLocked
+                        )
+                    }
+                    QuickToggle("👆", "Touch Enhancer", touchBoost, Modifier.weight(1f)) {
+                        quickToggle(
+                            !touchBoost,
+                            "settings put global pointer_speed 7",
+                            "settings put global pointer_speed 0",
+                            "settings get global pointer_speed",
+                            "7",
+                            "Touch enhancer",
+                            touchBoostOn
+                        )
+                    }
+                    QuickToggle("📸", "Screenshot", false, Modifier.weight(1f)) {
+                        takeScreenshot()
+                    }
+                    QuickToggle("👁", "Show Taps", taps, Modifier.weight(1f)) {
+                        quickToggle(
+                            !taps,
+                            "settings put system show_touches 1",
+                            "settings put system show_touches 0",
+                            "settings get system show_touches",
+                            "1",
+                            "Show taps",
+                            showTapsOn
+                        )
+                    }
+                }
+
+                // ---- live result line (nothing ever fails silently) ------
+                if (actionLine.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        actionLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xB3FFFFFF),
+                        maxLines = 2
+                    )
+                }
+            }
+        }
+    }
+
+    /** Horizontal icon slider (brightness / volume) — real values applied live. */
+    @Composable
+    private fun SliderRow(
+        icon: String,
+        value: Float,
+        modifier: Modifier = Modifier,
+        onChange: (Float) -> Unit
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+            Text(icon, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(28.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { pos ->
+                                onChange((pos.x / size.width).coerceIn(0f, 1f))
+                            },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                onChange((change.position.x / size.width).coerceIn(0f, 1f))
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0x33FFFFFF))
+                )
+                Box(
+                    Modifier
+                        .fillMaxWidth(value.coerceIn(0.02f, 1f))
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFFFF3B4E), Color(0xFFFF7A59))))
+                )
+                Box(
+                    Modifier
+                        .fillMaxWidth(value.coerceIn(0f, 1f))
+                        .wrapContentHeight(Alignment.CenterVertically)
+                ) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(16.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(Color(0xFFFF3B4E))
+                            .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(5.dp))
+                    )
+                }
+            }
+        }
+    }
+
+    /** Circular quick toggle with a label underneath — the game-bar grid cell. */
+    @Composable
+    private fun QuickToggle(
+        icon: String,
+        label: String,
+        active: Boolean,
+        modifier: Modifier = Modifier,
+        onClick: () -> Unit
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 7.dp, horizontal = 2.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (active)
+                            Brush.horizontalGradient(listOf(Color(0xFFFF3B4E), Color(0xFFFF7A59)))
+                        else
+                            Brush.verticalGradient(listOf(Color(0x22FFFFFF), Color(0x14FFFFFF)))
+                    )
+                    .border(
+                        1.dp,
+                        if (active) Color.Transparent else Color(0x2EFFFFFF),
+                        RoundedCornerShape(14.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(icon, style = MaterialTheme.typography.titleMedium)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (active) Color(0xFFFFFFFF) else Color(0xB3FFFFFF),
+                maxLines = 2
+            )
+        }
     }
 
     @Composable

@@ -346,40 +346,12 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
 
             LaunchedEffect(Unit) {
                 if (!videoReady && !videoError) {
-                    val ok = withContext(Dispatchers.IO) {
-                        var done = false
-                        for (url in INTRO_URLS) {
-                            if (done) break
-                            runCatching {
-                                val conn = java.net.URL(url).openConnection()
-                                conn.connectTimeout = 8000
-                                conn.readTimeout = 30000
-                                val total = conn.contentLengthLong
-                                val tmp = java.io.File(context.filesDir, "$INTRO_CACHE_NAME.part")
-                                conn.getInputStream().use { input ->
-                                    java.io.FileOutputStream(tmp).use { out ->
-                                        val buf = ByteArray(64 * 1024)
-                                        var copied = 0L
-                                        while (true) {
-                                            val n = input.read(buf)
-                                            if (n <= 0) break
-                                            out.write(buf, 0, n)
-                                            copied += n
-                                            if (total > 0) {
-                                                dlProgress =
-                                                    (copied.toFloat() / total).coerceIn(0f, 1f)
-                                            }
-                                        }
-                                    }
-                                }
-                                if (tmp.length() < 1000L) error("download too small")
-                                tmp.renameTo(introFile)
-                                done = true
-                            }
+                    val f = withContext(Dispatchers.IO) {
+                        com.gamershub.core.util.IntroVideo.ensureCached(context) { p ->
+                            dlProgress = p
                         }
-                        done
                     }
-                    videoReady = ok && introFile.exists()
+                    videoReady = f != null
                     if (!videoReady) {
                         videoError = true
                         dlProgress = -1f

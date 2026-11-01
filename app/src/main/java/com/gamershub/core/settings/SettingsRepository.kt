@@ -46,6 +46,11 @@ class SettingsRepository(private val context: Context) {
 
         val SCALE_MODE = stringPreferencesKey("scale_mode")
         val SCALE_CUSTOM_PCT = intPreferencesKey("scale_custom_pct")
+
+        val Q3D_SHADOWS = intPreferencesKey("q3d_shadows")
+        val Q3D_TEXTURES = intPreferencesKey("q3d_textures")
+        val Q3D_CHARACTERS = intPreferencesKey("q3d_characters")
+        val Q3D_AA = intPreferencesKey("q3d_aa")
         val FRAMEGEN_DISPLAY = booleanPreferencesKey("framegen_display")
         val FRAMEGEN_CAPTURE = booleanPreferencesKey("framegen_capture")
 
@@ -145,6 +150,16 @@ class SettingsRepository(private val context: Context) {
     suspend fun setScaleMode(v: String) = context.dataStore.edit { it[K.SCALE_MODE] = v }
     val scaleCustomPct: Flow<Int> = flow(K.SCALE_CUSTOM_PCT, 85)
     suspend fun setScaleCustomPct(v: Int) = context.dataStore.edit { it[K.SCALE_CUSTOM_PCT] = v }
+
+    // 3D quality knobs — persisted so selections NEVER reset when navigating.
+    val q3dShadows: Flow<Int> = flow(K.Q3D_SHADOWS, 2)
+    suspend fun setQ3dShadows(v: Int) = context.dataStore.edit { it[K.Q3D_SHADOWS] = v.coerceIn(0, 3) }
+    val q3dTextures: Flow<Int> = flow(K.Q3D_TEXTURES, 2)
+    suspend fun setQ3dTextures(v: Int) = context.dataStore.edit { it[K.Q3D_TEXTURES] = v.coerceIn(0, 3) }
+    val q3dCharacters: Flow<Int> = flow(K.Q3D_CHARACTERS, 2)
+    suspend fun setQ3dCharacters(v: Int) = context.dataStore.edit { it[K.Q3D_CHARACTERS] = v.coerceIn(0, 3) }
+    val q3dAa: Flow<Int> = flow(K.Q3D_AA, 2)
+    suspend fun setQ3dAa(v: Int) = context.dataStore.edit { it[K.Q3D_AA] = v.coerceIn(0, 3) }
     val frameGenDisplay: Flow<Boolean> = flow(K.FRAMEGEN_DISPLAY, false)
     suspend fun setFrameGenDisplay(v: Boolean) = context.dataStore.edit { it[K.FRAMEGEN_DISPLAY] = v }
     val frameGenCapture: Flow<Boolean> = flow(K.FRAMEGEN_CAPTURE, false)

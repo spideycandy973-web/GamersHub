@@ -259,6 +259,18 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
             shizuku.exec("wm density reset")
             out += "Touch mapping restored to native panel values ✓"
         }
+        // Heal animation scales left at 0.5 by older boost versions — that
+        // value made the whole system feel transition-less and janky.
+        listOf(
+            "window_animation_scale", "transition_animation_scale", "animator_duration_scale"
+        ).forEach { k ->
+            val v = shizuku.exec("settings get global $k").trimmed
+            if (v == "0.5") {
+                shizuku.exec("settings put global $k 1.0")
+                shizuku.exec("settings put system $k 1.0")
+            }
+        }
+        out += "Animation scales checked — restored to 1.0× where an old boost had halved them"
         out += "If touches still feel off: toggle the scale to Native and back once."
         out
     }

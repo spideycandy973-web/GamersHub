@@ -11,11 +11,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.gamershub.core.boost.BoostEngine
 import com.gamershub.core.record.ProjectionBroker
 import com.gamershub.di.AppContainer
 import com.gamershub.ui.GamersHubRoot
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -56,7 +71,30 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            GamersHubRoot(container as AppContainer)
+            val c = container as AppContainer
+            var introDone by rememberSaveable { mutableStateOf(false) }
+            val introFile = remember { java.io.File(filesDir, "game_space_intro.mp4") }
+            Box(Modifier.fillMaxSize()) {
+                GamersHubRoot(c)
+                if (!introDone) {
+                    if (introFile.exists() && introFile.length() > 10_000L) {
+                        AppIntroVideo(introFile) { introDone = true }
+                    } else {
+                        // Not cached yet — prefetch in the background for the
+                        // next launch instead of blocking this one.
+                        LaunchedEffect(Unit) {
+                            withContext(Dispatchers.IO) {
+                                runCatching {
+                                    com.gamershub.core.util.IntroVideo.ensureCached(
+                                        this@MainActivity
+                                    ) {}
+                                }
+                            }
+                            introDone = true
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -65,4 +103,35 @@ class MainActivity : ComponentActivity() {
         runCatching { unregisterReceiver(keepScreenOnReceiver) }
         super.onDestroy()
     }
+}
+
+/** Fullscreen tap-to-skip video intro (the owner's Drive video, cached locally). */
+@Composable
+private fun AppIntroVideo(
+    file: java.io.File,
+    onDone: () -> Unit
+) {
+    AndroidView(
+        factory = { ctx ->
+            android.widget.VideoView(ctx).apply {
+                setVideoPath(file.absolutePath)
+                setOnPreparedListener { mp ->
+                    mp.isLooping = false
+                    start()
+                }
+                setOnCompletionListener { onDone() }
+                setOnErrorListener { _, _, _ ->
+                    onDone()
+                    true
+                }
+                setOnTouchListener { _, _ ->
+                    onDone()
+                    true
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    )
 }

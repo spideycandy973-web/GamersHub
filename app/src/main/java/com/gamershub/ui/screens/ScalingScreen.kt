@@ -63,7 +63,7 @@ fun ScalingScreen(container: AppContainer) {
     val fgCapture by container.settings.frameGenCapture.collectAsStateWithLifecycle(false)
     val shellReady by container.shizuku.shellReady.collectAsStateWithLifecycle()
 
-    var customPct by remember { mutableIntStateOf(85) }
+    val customPct by container.settings.scaleCustomPct.collectAsStateWithLifecycle(85)
     var refreshPick by remember { mutableIntStateOf(0) }
 
     // Persistent result state — every scale action writes its full proof here
@@ -221,7 +221,9 @@ fun ScalingScreen(container: AppContainer) {
             )
             Slider(
                 value = customPct.toFloat(),
-                onValueChange = { customPct = it.toInt() },
+                onValueChange = {
+                    scope.launch { container.settings.setScaleCustomPct(it.toInt()) }
+                },
                 valueRange = 40f..200f,
                 colors = SliderDefaults.colors(
                     thumbColor = g.accent, activeTrackColor = g.accent, inactiveTrackColor = g.stroke

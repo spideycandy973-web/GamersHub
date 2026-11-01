@@ -1,9 +1,12 @@
 package com.gamershub.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -151,13 +154,21 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
         navController = nav,
         startDestination = Routes.HOME,
         enterTransition = {
-            slideInHorizontally(tween(320)) { it / 3 } + fadeIn(tween(320))
+            slideInHorizontally(tween(420, easing = FastOutSlowInEasing)) { it / 2 } +
+                fadeIn(tween(420)) +
+                scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.94f)
         },
-        exitTransition = { fadeOut(tween(200)) },
+        exitTransition = {
+            fadeOut(tween(220)) + scaleOut(tween(220), targetScale = 0.98f)
+        },
         popEnterTransition = {
-            slideInHorizontally(tween(320)) { -it / 3 } + fadeIn(tween(320))
+            slideInHorizontally(tween(420, easing = FastOutSlowInEasing)) { -it / 2 } +
+                fadeIn(tween(420)) +
+                scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.94f)
         },
-        popExitTransition = { fadeOut(tween(200)) }
+        popExitTransition = {
+            fadeOut(tween(220)) + scaleOut(tween(220), targetScale = 0.98f)
+        }
     ) {
         composable(Routes.HOME) { DashboardScreen(container, nav) }
         composable(Routes.BOOST) { BoosterScreen(container) }
