@@ -25,8 +25,16 @@ class ProjectionPermissionActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        launcher.launch(mpm.createScreenCaptureIntent())
+        // If ANYTHING fails here the trampoline must die immediately — a stuck
+        // invisible fullscreen activity eats every touch in app AND system UI.
+        runCatching {
+            val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            launcher.launch(mpm.createScreenCaptureIntent())
+        }.onFailure {
+            ProjectionBroker.onResult(Activity.RESULT_CANCELED, null)
+            finish()
+            overridePendingTransition(0, 0)
+        }
     }
 
     override fun onDestroy() {

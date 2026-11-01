@@ -10,12 +10,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,7 +41,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -120,23 +122,24 @@ fun GamersHubRoot(container: AppContainer) {
             }
         }
 
-        Box(
+        Row(
             Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(g.bg2, g.bg)))
         ) {
-            AppNavHost(nav, container)
-
-            // Floating glass bottom bar
             val backStack by nav.currentBackStackEntryAsState()
             val currentRoute = backStack?.destination?.route
             val showBar = currentRoute in TABS.map { it.route }
+
+            // ROG-style glass navigation rail pinned to the left edge
             if (showBar) {
-                GlassBottomBar(
+                GlassNavRail(
                     nav = nav,
-                    currentRoute = currentRoute,
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    currentRoute = currentRoute
                 )
+            }
+            Box(Modifier.weight(1f)) {
+                AppNavHost(nav, container)
             }
         }
     }
@@ -174,61 +177,62 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
 }
 
 @Composable
-private fun GlassBottomBar(
+private fun GlassNavRail(
     nav: NavHostController,
-    currentRoute: String?,
-    modifier: Modifier = Modifier
+    currentRoute: String?
 ) {
     val g = LocalGlass.current
-    Box(modifier.padding(horizontal = 16.dp).navigationBarsPadding()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(g.glass)
-                .border(1.dp, g.stroke, RoundedCornerShape(24.dp))
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TABS.forEach { tab ->
-                val selected = currentRoute == tab.route
-                val tint by animateColorAsState(
-                    if (selected) g.accent else g.textDim, tween(220), label = "tab"
-                )
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickable {
-                            if (!selected) {
-                                nav.navigate(tab.route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(88.dp)
+            .systemBarsPadding()
+            .padding(start = 10.dp, top = 12.dp, bottom = 12.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(g.glass)
+            .border(1.dp, g.stroke, RoundedCornerShape(24.dp))
+            .padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TABS.forEach { tab ->
+            val selected = currentRoute == tab.route
+            val tint by animateColorAsState(
+                if (selected) g.accent else g.textDim, tween(220), label = "tab"
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable {
+                        if (!selected) {
+                            nav.navigate(tab.route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Icon(
-                        tab.icon, contentDescription = tab.label,
-                        tint = tint, modifier = Modifier.size(22.dp)
-                    )
-                    Text(
-                        tab.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = tint
-                    )
-                    AnimatedVisibility(selected) {
-                        Box(
-                            Modifier
-                                .padding(top = 2.dp)
-                                .size(width = 14.dp, height = 3.dp)
-                                .clip(CircleShape)
-                                .background(Brush.horizontalGradient(listOf(g.accent, g.accent2)))
-                        )
                     }
+                    .padding(vertical = 8.dp)
+            ) {
+                Icon(
+                    tab.icon, contentDescription = tab.label,
+                    tint = tint, modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    tab.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tint
+                )
+                AnimatedVisibility(selected) {
+                    Box(
+                        Modifier
+                            .padding(top = 3.dp)
+                            .size(width = 18.dp, height = 3.dp)
+                            .clip(CircleShape)
+                            .background(Brush.horizontalGradient(listOf(g.accent, g.accent2)))
+                    )
                 }
             }
         }

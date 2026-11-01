@@ -268,6 +268,28 @@ fun ScalingScreen(container: AppContainer) {
                 )
                 GlassChip("Refresh", selected = false) { readWmNow() }
             }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(
+                    "Fix touch mapping",
+                    onClick = {
+                        if (!com.gamershub.ui.requireEngine(container, context)) return@GlassButton
+                        scope.launch {
+                            busy = true
+                            applyLog = listOf("Re-applying display mapping (staggered writes)…")
+                            val out = container.scaling.healTouch()
+                            applyLog = out
+                            wmReadback = runCatching {
+                                container.shizuku.exec("wm size").output.trim().replace("\n", " · ")
+                                    .ifBlank { "(no output)" }
+                            }.getOrDefault("(read failed)")
+                            busy = false
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    primary = false
+                )
+            }
             Text(
                 wmReadback,
                 style = MaterialTheme.typography.labelSmall, color = g.accent,

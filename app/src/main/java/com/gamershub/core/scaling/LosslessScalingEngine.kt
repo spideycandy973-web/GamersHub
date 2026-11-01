@@ -140,10 +140,14 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
 
         if (mode == ScaleMode.NATIVE && percent == 100) {
             shizuku.exec("wm size reset")
+            // Stagger the two writes — changing size+density in the same instant
+            // races the input mapper on MIUI and leaves touches miss-targeted.
+            kotlinx.coroutines.delay(400)
             shizuku.exec("wm density reset")
             out += "Render resolution reset to native ${st.panelW}x${st.panelH}"
         } else {
             shizuku.exec("wm size ${w}x${h}")
+            kotlinx.coroutines.delay(400)
             val origDensity = backupDensity?.toIntOrNull() ?: 420
             val scaled = (origDensity * w.toFloat() / st.panelW).toInt().coerceIn(120, 1200)
             shizuku.exec("wm density $scaled")
@@ -229,11 +233,42 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
         return m
     }
 
+    /**
+     * Re-applies the current display override with STAGGERED writes — the known
+     * heal for MIUI input-mapping glitches after a resolution/density change
+     * ("huge touch issues" until the mapper re-reads the configuration).
+     */
+    suspend fun healTouch(): List<String> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<String>()
+        if (!shizuku.canUseShell) return@withContext listOf("Shizuku shell not connected")
+        val st = _state.value
+        val densOut = shizuku.exec("wm density").output
+        val dens = Regex("density:\\s*(\\d+)").findAll(densOut)
+            .lastOrNull()?.groupValues?.get(1)
+        if (st.active && st.renderW > 0) {
+            shizuku.exec("wm size ${st.renderW}x${st.renderH}")
+            kotlinx.coroutines.delay(400)
+            if (dens != null) shizuku.exec("wm density $dens")
+            kotlinx.coroutines.delay(250)
+            // Second size write nudges InputManager to re-read the mapping.
+            shizuku.exec("wm size ${st.renderW}x${st.renderH}")
+            out += "Touch mapping re-applied: ${st.renderW}x${st.renderH} @ density $dens (staggered) ✓"
+        } else {
+            shizuku.exec("wm size reset")
+            kotlinx.coroutines.delay(400)
+            shizuku.exec("wm density reset")
+            out += "Touch mapping restored to native panel values ✓"
+        }
+        out += "If touches still feel off: toggle the scale to Native and back once."
+        out
+    }
+
     /** Puts the display back exactly as it was. */
     suspend fun restore(): List<String> = withContext(Dispatchers.IO) {
         val out = mutableListOf<String>()
         if (!shizuku.canUseShell) return@withContext listOf("Shizuku shell not connected")
         shizuku.exec("wm size reset")
+        kotlinx.coroutines.delay(400)
         shizuku.exec("wm density reset")
         val refreshKeys = listOf("peak_refresh_rate", "min_refresh_rate", "user_refresh_rate")
         when {

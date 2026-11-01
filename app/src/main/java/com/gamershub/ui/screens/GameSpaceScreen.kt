@@ -82,8 +82,10 @@ import kotlinx.coroutines.withContext
  */
 private const val INTRO_CACHE_NAME = "game_space_intro.mp4"
 
-private const val INTRO_URL =
-    "https://drive.usercontent.google.com/download?id=1_lro6flRERPAgyrImxEzdt0kt9x5Lbbb&export=download&confirm=t"
+private val INTRO_URLS = listOf(
+    "https://drive.usercontent.google.com/download?id=1_lro6flRERPAgyrImxEzdt0kt9x5Lbbb&export=download&confirm=t",
+    "https://drive.google.com/uc?export=download&id=1_lro6flRERPAgyrImxEzdt0kt9x5Lbbb"
+)
 
 /**
  * Game Space — the ROG-style gaming hub. Opens with the owner's intro video
@@ -345,30 +347,37 @@ fun GameSpaceScreen(container: AppContainer, onOpen: (String) -> Unit) {
             LaunchedEffect(Unit) {
                 if (!videoReady && !videoError) {
                     val ok = withContext(Dispatchers.IO) {
-                        runCatching {
-                            val conn = java.net.URL(INTRO_URL).openConnection()
-                            conn.connectTimeout = 8000
-                            conn.readTimeout = 20000
-                            val total = conn.contentLengthLong
-                            val tmp = java.io.File(context.filesDir, "$INTRO_CACHE_NAME.part")
-                            conn.getInputStream().use { input ->
-                                java.io.FileOutputStream(tmp).use { out ->
-                                    val buf = ByteArray(64 * 1024)
-                                    var copied = 0L
-                                    while (true) {
-                                        val n = input.read(buf)
-                                        if (n <= 0) break
-                                        out.write(buf, 0, n)
-                                        copied += n
-                                        if (total > 0) {
-                                            dlProgress = (copied.toFloat() / total).coerceIn(0f, 1f)
+                        var done = false
+                        for (url in INTRO_URLS) {
+                            if (done) break
+                            runCatching {
+                                val conn = java.net.URL(url).openConnection()
+                                conn.connectTimeout = 8000
+                                conn.readTimeout = 30000
+                                val total = conn.contentLengthLong
+                                val tmp = java.io.File(context.filesDir, "$INTRO_CACHE_NAME.part")
+                                conn.getInputStream().use { input ->
+                                    java.io.FileOutputStream(tmp).use { out ->
+                                        val buf = ByteArray(64 * 1024)
+                                        var copied = 0L
+                                        while (true) {
+                                            val n = input.read(buf)
+                                            if (n <= 0) break
+                                            out.write(buf, 0, n)
+                                            copied += n
+                                            if (total > 0) {
+                                                dlProgress =
+                                                    (copied.toFloat() / total).coerceIn(0f, 1f)
+                                            }
                                         }
                                     }
                                 }
+                                if (tmp.length() < 1000L) error("download too small")
+                                tmp.renameTo(introFile)
+                                done = true
                             }
-                            if (tmp.length() < 1000L) error("download too small")
-                            tmp.renameTo(introFile)
-                        }.isSuccess
+                        }
+                        done
                     }
                     videoReady = ok && introFile.exists()
                     if (!videoReady) {

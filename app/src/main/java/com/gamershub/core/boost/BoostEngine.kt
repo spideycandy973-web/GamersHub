@@ -144,9 +144,10 @@ class BoostEngine(
         if (plan.blockNotifications) run("settings put global zen_mode 1")
 
         if (plan.speedTweaks) {
-            run("settings put global window_animation_scale 0.5")
-            run("settings put global transition_animation_scale 0.5")
-            run("settings put global animator_duration_scale 0.5")
+            // NOTE: the old 0.5x animation-scale tweak made the ENTIRE system
+            // feel unresponsive and glitched input on MIUI ("no smooth
+            // transitions", "touch issues"). Stock animation scales stay now —
+            // that is what keeps transitions smooth in the app and system UI.
             // Best effort: HWUI renderer hint (silently fails when not writable)
             run("setprop debug.hwui.renderer skiavk", quiet = true)
         }
