@@ -4,13 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,23 +23,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.gamershub.ui.Routes
+import com.gamershub.ui.theme.GlassThemeColors
 import com.gamershub.ui.theme.LocalGlass
 
 /**
  * The "More" tab — every tool on ONE screen. Compact horizontal cards so the
- * whole list fits the landscape display without cutting rows off (the user:
- * "it's not perfectly fit in screen").
+ * whole list fits the landscape display. Every surface, border and text colour
+ * comes from the theme (LocalGlass) so dark mode and light mode are both
+ * first-class — the old hardcoded light palette made dark mode unreadable.
  */
 @Composable
 fun MoreScreen(nav: NavHostController) {
@@ -75,7 +79,7 @@ fun MoreScreen(nav: NavHostController) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { (info, route) ->
                     val (emoji, title, sub) = info
-                    CompactToolCard(emoji, title, sub, g.text, g.textDim, Modifier.weight(1f)) {
+                    CompactToolCard(g, emoji, title, sub, Modifier.weight(1f)) {
                         nav.navigate(route)
                     }
                 }
@@ -86,27 +90,38 @@ fun MoreScreen(nav: NavHostController) {
     }
 }
 
-/** One compact tool row-card: icon tile + title + subtitle, ~84dp tall. */
+/**
+ * One compact tool row-card: icon tile + title + subtitle, ~84dp tall.
+ * All colours are theme-driven (works in dark AND light); the icon tile
+ * follows the active accent; the card scales on press like every other card.
+ */
 @Composable
 private fun CompactToolCard(
+    g: GlassThemeColors,
     emoji: String,
     title: String,
     sub: String,
-    titleColor: Color,
-    subColor: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "tool-press"
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .padding(vertical = 5.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .shadow(4.dp, RoundedCornerShape(18.dp), clip = false, ambientColor = g.accent.copy(alpha = 0.18f))
             .clip(RoundedCornerShape(18.dp))
             .background(
-                Brush.verticalGradient(listOf(Color(0xE6FFFFFF), Color(0xB3FFFFFF)))
+                Brush.verticalGradient(listOf(g.glassHi, g.glass))
             )
-            .border(1.dp, Color(0x2E2A3A4D), RoundedCornerShape(18.dp))
+            .border(1.dp, g.stroke, RoundedCornerShape(18.dp))
             .clickable(interaction, indication = null) { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
@@ -115,17 +130,22 @@ private fun CompactToolCard(
                 .size(44.dp)
                 .clip(RoundedCornerShape(13.dp))
                 .background(
-                    Brush.verticalGradient(listOf(Color(0x14FF3B4E), Color(0x0AFF3B4E)))
+                    Brush.verticalGradient(
+                        listOf(
+                            g.accent.copy(alpha = 0.24f),
+                            g.accent2.copy(alpha = 0.10f)
+                        )
+                    )
                 )
-                .border(1.dp, Color(0x22FF3B4E), RoundedCornerShape(13.dp)),
+                .border(1.dp, g.accent.copy(alpha = 0.35f), RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(emoji, style = MaterialTheme.typography.titleLarge)
         }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = titleColor)
-            Text(sub, style = MaterialTheme.typography.labelSmall, color = subColor)
+            Text(title, style = MaterialTheme.typography.titleSmall, color = g.text)
+            Text(sub, style = MaterialTheme.typography.labelSmall, color = g.textDim)
         }
     }
 }
