@@ -987,12 +987,13 @@ class FloatingWidgetService : Service() {
                             "BEAST" -> "🔥 BEAST MODE"
                             else -> "⚡ EXTREME MODE"
                         },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFFFF8A7A),
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = Color(0xFFFF3B4E),
-                            blurRadius = 22f
-                        )
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color(0xFFFF3B4E),
+                                blurRadius = 22f
+                            )
+                        ),
+                        color = Color(0xFFFF8A7A)
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
