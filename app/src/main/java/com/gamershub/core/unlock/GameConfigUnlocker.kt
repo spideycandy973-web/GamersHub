@@ -102,7 +102,9 @@ class GameConfigUnlocker(
             }
 
             for (file in found) {
-                val patch = preset.patchFor(file) ?: continue
+                // Never skip a discovered config — the old three-filename
+                // whitelist left most games untouched ("nothing changed").
+                val patch = preset.patchFor(file) ?: GameUnlockPresets.universalPatch(file)
 
                 // back up once
                 val bak = "$file.ghbak"
@@ -129,7 +131,7 @@ class GameConfigUnlocker(
                 }
             }
             if (ok) {
-                lines += "Done — open the game: the new graphics / FPS options appear in its settings"
+                lines += "Done — FORCE-STOP the game (swipe it away in Recents) and relaunch: graphics/FPS configs are read at game start."
                 lines += "Heads-up: big game updates can reset configs; run Unlock again after updating"
             }
         } catch (t: Throwable) {

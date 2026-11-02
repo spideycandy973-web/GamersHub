@@ -14,6 +14,23 @@ object GameUnlockPresets {
 
     val ALL: List<GameUnlockPreset> by lazy { registry.values.toList() }
 
+    private const val GH_MARK = "; GamersHub universal quality"
+
+    /**
+     * Never-null fallback patch: writes a REAL quality-override block into any
+     * config-ish file. Before this, a game whose config file name was not one
+     * of three hard-coded names was skipped silently — the user saw
+     * "not even a single thing is changed".
+     */
+    fun universalPatch(file: String): GameUnlockPreset.Patch = GameUnlockPreset.Patch(
+        description = "universal quality override (any engine)",
+        merge = false,
+        transform = { body ->
+            if (body.contains(GH_MARK)) body
+            else body + "\n\n" + GH_MARK + "\n" + qualityOverrides(3, 3, 3, 3) + "\n"
+        }
+    )
+
     private val registry = LinkedHashMap<String, GameUnlockPreset>()
 
     fun forPackage(packageName: String): GameUnlockPreset? = registry[packageName]
@@ -43,10 +60,8 @@ object GameUnlockPresets {
         id = "${preset.id}+sharp",
         notes = preset.notes + " + AA/post-process sharpening overrides",
         patchFor = { file ->
-            val p = preset.patchFor(file)
-            if (p == null) {
-                null
-            } else if (p.transform != null) {
+            val p = preset.patchFor(file) ?: universalPatch(file)
+            if (p.transform != null) {
                 val base = p.transform
                 p.copy(
                     description = "${p.description} + sharpen",
@@ -71,10 +86,8 @@ object GameUnlockPresets {
         id = "${preset.id}+q3d",
         notes = preset.notes + " + 3D quality (shadows/textures/characters/AA)",
         patchFor = { file ->
-            val p = preset.patchFor(file)
-            if (p == null) {
-                null
-            } else if (p.transform != null) {
+            val p = preset.patchFor(file) ?: universalPatch(file)
+            if (p.transform != null) {
                 val base = p.transform
                 p.copy(
                     description = "${p.description} + 3D quality",

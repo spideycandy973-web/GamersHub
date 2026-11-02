@@ -50,11 +50,14 @@ data class RecorderConfig(
 
     /** Sensible default bitrate for the given canvas and encode rate. */
     fun autoBitrateBps(width: Int, height: Int, encodeFps: Int = fps): Long {
-        val bpp = if (codec == Codec.HEVC) 0.075 else 0.10
+        // High-motion gameplay needs REAL bitrate — the old 0.10 bpp starved
+        // the encoder and produced the blocky "glitches during any motion".
+        // 0.22 bpp ≈ 27 Mbps for 1080p60 H.264 — clean motion on every device.
+        val bpp = if (codec == Codec.HEVC) 0.15 else 0.22
         val raw = (width.toLong() * height * encodeFps * bpp).toLong()
         val capMbps = if (bitrateMbps > 0) bitrateMbps.toLong() * 1_000_000 else Long.MAX_VALUE
-        val floor = 2_000_000L
-        val ceiling = minOf(capMbps, 80_000_000L)
+        val floor = 4_000_000L
+        val ceiling = minOf(capMbps, 120_000_000L)
         return raw.coerceIn(floor, ceiling)
     }
 }

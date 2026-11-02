@@ -132,13 +132,21 @@ class BoostEngine(
             // every game start (the "auto engine lags and the app dies" bug).
             // `am kill` only removes truly cached processes, and the whitelist
             // keeps our own app, Shizuku, the launcher and input methods safe.
+            // CRITICAL: NEVER kill the game being played (or its family) — the
+            // old loop did exactly that, which is why the game popped a
+            // "Reload" dialog and then crashed in a loop.
+            val game = gamePackage?.substringBefore(":")?.takeIf { it.isNotBlank() } ?: ""
+            val gameFilter = if (game.isNotEmpty()) " -e $game" else ""
             run(
                 "sh -c 'for p in \$(pm list packages -3 | cut -d: -f2 | " +
-                    "grep -v -e gamershub -e shizuku -e launcher -e keyboard -e input); " +
+                    "grep -v -e gamershub -e shizuku -e launcher -e keyboard -e input " +
+                    "-e com.google. -e com.android. -e com.miui. -e com.xiaomi. " +
+                    "-e com.qualcomm. -e com.mediatek. -e com.oplus. -e com.oneplus." +
+                    gameFilter + "); " +
                     "do am kill \$p; done'",
                 quiet = true
             )
-            log("Freed background RAM (safe kill — essentials untouched)")
+            log("Freed background RAM (safe kill — game + essentials untouched)")
         }
 
         if (plan.blockNotifications) run("settings put global zen_mode 1")

@@ -140,36 +140,50 @@ class FloatingWidgetService : Service() {
         if (on) {
             panelClosing.value = false
             panelVisible.value = true
-            if (panelView == null) {
-                val lp = baseLp().apply {
-                    width = WindowManager.LayoutParams.MATCH_PARENT
-                    height = WindowManager.LayoutParams.MATCH_PARENT
-                    gravity = Gravity.CENTER
-                    @Suppress("DEPRECATION")
-                    windowAnimations = android.R.style.Animation_Dialog
+            val existing = panelView
+            if (existing != null && existing.isAttachedToWindow) {
+                // Already up — or a close animation was CANCELLED by this tap.
+                // Snap it back to fully visible instead of doing nothing (the
+                // old code let the close animation remove the window anyway →
+                // the panel would "not open at all" until the next full cycle).
+                existing.animate().cancel()
+                existing.alpha = 1f
+                existing.translationY = 0f
+                existing.scaleX = 1f
+                existing.scaleY = 1f
+                return
+            }
+            // stale view (its window is gone) — clean up and add a fresh one
+            runCatching { existing?.let { wm.removeView(it) } }
+            panelView = null
+            val lp = baseLp().apply {
+                width = WindowManager.LayoutParams.MATCH_PARENT
+                height = WindowManager.LayoutParams.MATCH_PARENT
+                gravity = Gravity.CENTER
+                @Suppress("DEPRECATION")
+                windowAnimations = android.R.style.Animation_Dialog
+            }
+            runCatching {
+                panelView = newComposeView { PanelContent() }.also { v ->
+                    wm.addView(v, lp)
+                    // ---- pop-in: slide up + fade + scale (guaranteed) ----
+                    v.alpha = 0f
+                    v.translationY = 220f
+                    v.scaleX = 0.88f
+                    v.scaleY = 0.88f
+                    v.animate()
+                        .alpha(1f)
+                        .translationY(0f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(340)
+                        .setInterpolator(
+                            android.view.animation.DecelerateInterpolator()
+                        )
+                        .start()
                 }
-                runCatching {
-                    panelView = newComposeView { PanelContent() }.also { v ->
-                        wm.addView(v, lp)
-                        // ---- pop-in: slide up + fade + scale (guaranteed) ----
-                        v.alpha = 0f
-                        v.translationY = 220f
-                        v.scaleX = 0.88f
-                        v.scaleY = 0.88f
-                        v.animate()
-                            .alpha(1f)
-                            .translationY(0f)
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(340)
-                            .setInterpolator(
-                                android.view.animation.DecelerateInterpolator()
-                            )
-                            .start()
-                    }
-                }.onFailure {
-                    panelView = null
-                }
+            }.onFailure {
+                panelView = null
             }
         } else {
             val v = panelView
@@ -186,20 +200,27 @@ class FloatingWidgetService : Service() {
                         android.view.animation.AccelerateInterpolator()
                     )
                     .withEndAction {
-                        runCatching { wm.removeView(v) }
-                        if (panelView === v) panelView = null
+                        // Only remove if the panel was NOT re-opened meanwhile
+                        if (panelClosing.value) {
+                            runCatching { wm.removeView(v) }
+                            if (panelView === v) panelView = null
+                            panelVisible.value = false
+                        }
                         panelClosing.value = false
                     }
                     .start()
                 // safety net: if the animation never completes, still remove
                 scope.launch {
                     kotlinx.coroutines.delay(600)
-                    if (panelView === v) {
+                    if (panelView === v && panelClosing.value) {
                         runCatching { wm.removeView(v) }
                         panelView = null
+                        panelVisible.value = false
                         panelClosing.value = false
                     }
                 }
+            } else {
+                panelVisible.value = false
             }
         }
     }
