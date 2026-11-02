@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,7 +104,7 @@ private val TABS = listOf(
 @Composable
 fun GamersHubRoot(container: AppContainer) {
     val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
-    val accent by container.settings.accent.collectAsStateWithLifecycle("GRAPHITE")
+    val accent by container.settings.accent.collectAsStateWithLifecycle("CRIMSON")
     val dark = when (themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
@@ -154,20 +156,20 @@ private fun AppNavHost(nav: NavHostController, container: AppContainer) {
         navController = nav,
         startDestination = Routes.HOME,
         enterTransition = {
-            slideInHorizontally(tween(420, easing = FastOutSlowInEasing)) { it / 2 } +
+            slideInHorizontally(tween(520, easing = FastOutSlowInEasing)) { it } +
                 fadeIn(tween(420)) +
-                scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.94f)
+                scaleIn(tween(520, easing = FastOutSlowInEasing), initialScale = 0.9f)
         },
         exitTransition = {
-            fadeOut(tween(220)) + scaleOut(tween(220), targetScale = 0.98f)
+            fadeOut(tween(240)) + scaleOut(tween(240), targetScale = 0.96f)
         },
         popEnterTransition = {
-            slideInHorizontally(tween(420, easing = FastOutSlowInEasing)) { -it / 2 } +
+            slideInHorizontally(tween(520, easing = FastOutSlowInEasing)) { -it } +
                 fadeIn(tween(420)) +
-                scaleIn(tween(420, easing = FastOutSlowInEasing), initialScale = 0.94f)
+                scaleIn(tween(520, easing = FastOutSlowInEasing), initialScale = 0.9f)
         },
         popExitTransition = {
-            fadeOut(tween(220)) + scaleOut(tween(220), targetScale = 0.98f)
+            fadeOut(tween(240)) + scaleOut(tween(240), targetScale = 0.96f)
         }
     ) {
         composable(Routes.HOME) { DashboardScreen(container, nav) }
@@ -196,14 +198,15 @@ private fun GlassNavRail(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(88.dp)
+            .width(82.dp)
             .systemBarsPadding()
-            .padding(start = 10.dp, top = 12.dp, bottom = 12.dp)
+            .padding(start = 8.dp, top = 10.dp, bottom = 10.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(g.glass)
             .border(1.dp, g.stroke, RoundedCornerShape(24.dp))
-            .padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TABS.forEach { tab ->
@@ -225,22 +228,23 @@ private fun GlassNavRail(
                             }
                         }
                     }
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 5.dp)
             ) {
                 Icon(
                     tab.icon, contentDescription = tab.label,
-                    tint = tint, modifier = Modifier.size(24.dp)
+                    tint = tint, modifier = Modifier.size(22.dp)
                 )
                 Text(
                     tab.label,
                     style = MaterialTheme.typography.labelSmall,
-                    color = tint
+                    color = tint,
+                    maxLines = 1
                 )
                 AnimatedVisibility(selected) {
                     Box(
                         Modifier
-                            .padding(top = 3.dp)
-                            .size(width = 18.dp, height = 3.dp)
+                            .padding(top = 2.dp)
+                            .size(width = 16.dp, height = 3.dp)
                             .clip(CircleShape)
                             .background(Brush.horizontalGradient(listOf(g.accent, g.accent2)))
                     )

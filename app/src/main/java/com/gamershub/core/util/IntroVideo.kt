@@ -27,11 +27,28 @@ object IntroVideo {
     }
 
     /**
-     * Downloads the video if needed. Returns the cached file on success, null
-     * on failure (callers fall back to the animated intro).
+     * Returns the intro video file. The video is BUILT INTO the APK
+     * (`res/raw/game_space_intro.mp4`) and copied out once — no network needed.
+     * The Google-Drive download is kept only as a fallback for stripped builds.
      */
     suspend fun ensureCached(context: Context, onProgress: (Float) -> Unit): File? {
         cached(context)?.let { return it }
+        val fromRaw = runCatching {
+            val dest = File(context.filesDir, CACHE_NAME)
+            val resId = context.resources.getIdentifier(
+                "game_space_intro", "raw", context.packageName
+            )
+            if (resId == 0) error("no built-in intro")
+            context.resources.openRawResource(resId).use { input ->
+                java.io.FileOutputStream(dest).use { out -> input.copyTo(out) }
+            }
+            if (dest.length() < 10_000L) error("built-in intro too small")
+            dest
+        }.getOrNull()
+        if (fromRaw != null && fromRaw.exists()) {
+            onProgress(1f)
+            return fromRaw
+        }
         for (url in URLS) {
             val ok = runCatching {
                 val conn = java.net.URL(url).openConnection()

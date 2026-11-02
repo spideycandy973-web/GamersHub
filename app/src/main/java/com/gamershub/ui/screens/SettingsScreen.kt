@@ -83,7 +83,7 @@ fun SettingsScreen(container: AppContainer) {
         SectionTitle("APPEARANCE")
         GlassCard {
             val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
-            val accent by container.settings.accent.collectAsStateWithLifecycle("GRAPHITE")
+            val accent by container.settings.accent.collectAsStateWithLifecycle("CRIMSON")
             Text("Theme", style = MaterialTheme.typography.titleMedium, color = g.text)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -98,7 +98,7 @@ fun SettingsScreen(container: AppContainer) {
             Text("Accent", style = MaterialTheme.typography.titleMedium, color = g.text)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("GRAPHITE", "TEAL", "PLUM", "ROSE").forEach { a ->
+                listOf("CRIMSON", "GRAPHITE", "TEAL", "PLUM", "ROSE").forEach { a ->
                     GlassChip(
                         a.lowercase().replaceFirstChar { it.uppercase() },
                         accent == a

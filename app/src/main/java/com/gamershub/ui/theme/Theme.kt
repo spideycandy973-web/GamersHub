@@ -96,11 +96,12 @@ val LocalGlass = staticCompositionLocalOf<GlassThemeColors> {
 }
 
 /** Accent palettes — all muted liquid tones. */
-fun glassColors(dark: Boolean, accentKey: String = "GRAPHITE"): GlassThemeColors {
+fun glassColors(dark: Boolean, accentKey: String = "CRIMSON"): GlassThemeColors {
     val (a1, a2) = when (accentKey.uppercase()) {
         "TEAL" -> GhColors.Lime to GhColors.Cyber
         "PLUM" -> GhColors.Violet to GhColors.Magenta
         "ROSE" -> GhColors.Magenta to GhColors.Amber
+        "CRIMSON" -> GhColors.Red to GhColors.Amber
         else -> GhColors.Cyber to GhColors.Violet // GRAPHITE
     }
     return if (dark) {
@@ -161,7 +162,7 @@ private val GhTypography = Typography(
 @Composable
 fun GamersHubTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    accent: String = "GRAPHITE",
+    accent: String = "CRIMSON",
     content: @Composable () -> Unit
 ) {
     val glass = glassColors(darkTheme, accent)

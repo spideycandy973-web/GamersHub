@@ -87,7 +87,7 @@ class SettingsRepository(private val context: Context) {
         runCatching { ThemeMode.valueOf(it) }.getOrDefault(ThemeMode.SYSTEM)
     }
 
-    val accent: Flow<String> = flow(K.ACCENT, "GRAPHITE")
+    val accent: Flow<String> = flow(K.ACCENT, "CRIMSON")
     suspend fun setAccent(value: String) = context.dataStore.edit { it[K.ACCENT] = value }
 
     val amoledDark: Flow<Boolean> = flow(K.OVERRIDE_DARK_AMOLED, false)

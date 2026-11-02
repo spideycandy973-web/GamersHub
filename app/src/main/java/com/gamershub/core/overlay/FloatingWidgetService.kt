@@ -906,9 +906,13 @@ class FloatingWidgetService : Service() {
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 10.dp)
-                    .clip(RoundedCornerShape(26.dp))
+                    .clip(androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp))
                     .background(Color(0xE60D1322))
-                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+                    .border(
+                        1.5.dp,
+                        Color(0x66FF3B4E),
+                        androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp)
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -1096,6 +1100,43 @@ class FloatingWidgetService : Service() {
                             showTapsOn
                         )
                     }
+                }
+
+                // ---- logo + settings, like the reference bar ---------------
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "◆ GAMERSHUB",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0x80FF5B6E)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "▾",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0x66FFFFFF)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "⚙",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xB3FFFFFF),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                runCatching {
+                                    startActivity(
+                                        packageManager.getLaunchIntentForPackage(packageName)
+                                            ?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                                setPanelVisible(false)
+                            }
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
                 }
 
                 // ---- live result line (nothing ever fails silently) ------

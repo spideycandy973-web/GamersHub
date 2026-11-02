@@ -203,8 +203,12 @@ class ScreenRecordService : Service() {
                 this, arrayOf(file.absolutePath), arrayOf("video/mp4"), null
             )
             if (size > 0) {
+                // Publish into the PUBLIC gallery (Movies/GamersHub) — files in
+                // Android/data are invisible to the Gallery and the Files app,
+                // which looked like "the recording was never saved".
+                val where = publishToGallery(file)
                 container.recorder.pushEvent(
-                    "Saved: ${file.name} (%.1f MB)".format(size / 1048576f)
+                    ("Saved: ${file.name} (%.1f MB) → $where").format(size / 1048576f)
                 )
                 serviceScope.launch { container.settings.incrementRecordings() }
             } else {
@@ -216,6 +220,37 @@ class ScreenRecordService : Service() {
         container.recorder.pushState(RecorderController.State.Idle)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /** Copies the finished recording into MediaStore so the Gallery shows it. */
+    private fun publishToGallery(file: File): String {
+        return try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, file.name)
+                put(android.provider.MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                if (Build.VERSION.SDK_INT >= 29) {
+                    put(
+                        android.provider.MediaStore.Video.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_MOVIES + "/GamersHub"
+                    )
+                    put(android.provider.MediaStore.Video.Media.IS_PENDING, 1)
+                }
+            }
+            val uri = contentResolver.insert(
+                android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values
+            ) ?: return "gallery insert failed"
+            contentResolver.openOutputStream(uri)?.use { out ->
+                file.inputStream().use { it.copyTo(out) }
+            }
+            if (Build.VERSION.SDK_INT >= 29) {
+                values.clear()
+                values.put(android.provider.MediaStore.Video.Media.IS_PENDING, 0)
+                contentResolver.update(uri, values, null, null)
+            }
+            "Gallery ✓ Movies/GamersHub"
+        } catch (t: Throwable) {
+            "kept in app folder only (${t.message})"
+        }
     }
 
     private fun newOutputFile(): File {

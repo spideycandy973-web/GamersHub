@@ -66,7 +66,24 @@ class AppContainer(private val app: Application) {
             }.getOrDefault(true)
             shizuku.setShellSuspended(!engineOn)
             shizuku.init()
-            if (engineOn) monitor.start()
+            if (engineOn) {
+                monitor.start()
+                // Heal system animation scales left at 0 / 0.5 (old boost
+                // versions, dev options). With animators disabled the OS SKIPS
+                // every transition — which is why "the app has no animations".
+                // Only broken values are touched; 1.0/1.5/2.0 are respected.
+                listOf(
+                    "window_animation_scale",
+                    "transition_animation_scale",
+                    "animator_duration_scale"
+                ).forEach { k ->
+                    val v = shizuku.exec("settings get global $k").trimmed
+                    if (v == "0" || v == "0.0" || v == "0.5") {
+                        shizuku.exec("settings put global $k 1.0")
+                        shizuku.exec("settings put system $k 1.0")
+                    }
+                }
+            }
         }
     }
 }

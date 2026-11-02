@@ -265,7 +265,7 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
             "window_animation_scale", "transition_animation_scale", "animator_duration_scale"
         ).forEach { k ->
             val v = shizuku.exec("settings get global $k").trimmed
-            if (v == "0.5") {
+            if (v == "0" || v == "0.0" || v == "0.5") {
                 shizuku.exec("settings put global $k 1.0")
                 shizuku.exec("settings put system $k 1.0")
             }
