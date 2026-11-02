@@ -982,45 +982,41 @@ class FloatingWidgetService : Service() {
                     ) { /* absorb taps inside the bar */ }
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
-                // ---- handle + title + stats + close ----------------------
+                // ---- CPU (left) · mode title (center) · RAM (right) -------
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "CPU ${if (stats.cpuUsagePct >= 0) stats.cpuUsagePct.toInt() else "--"}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xB3FF5B6E)
-                    )
-                    Spacer(Modifier.width(12.dp))
                     val memPct = if (stats.memTotalMb > 0)
                         (stats.memUsedMb * 100 / stats.memTotalMb).toInt() else -1
-                    Text(
-                        "RAM ${if (memPct >= 0) "$memPct%" else "--"}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xB3FF5B6E)
+                    SideStat(
+                        "CPU",
+                        if (stats.cpuUsagePct >= 0) "${stats.cpuUsagePct.toInt()}%" else "--%"
                     )
                     Spacer(Modifier.weight(1f))
-                    Text(
-                        when (thermalProfile.name) {
-                            "COOL" -> "❄ MODE"
-                            "BALANCED" -> "⚖ MODE"
-                            "BEAST" -> "🔥 BEAST MODE"
-                            else -> "⚡ EXTREME MODE"
-                        },
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            shadow = androidx.compose.ui.graphics.Shadow(
-                                color = Color(0xFFFF3B4E),
-                                blurRadius = 22f
-                            )
-                        ),
-                        color = Color(0xFFFF8A7A)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            when (thermalProfile.name) {
+                                "COOL" -> "❄ MODE"
+                                "BALANCED" -> "⚖ MODE"
+                                "BEAST" -> "🔥 BEAST MODE"
+                                else -> "⚡ EXTREME MODE"
+                            },
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = Color(0xFFFF3B4E),
+                                    blurRadius = 22f
+                                )
+                            ),
+                            color = Color(0xFFFF8A7A)
+                        )
+                        Text(
+                            SimpleDateFormat("hh:mm", Locale.US).format(Date()) +
+                                "  ⚡${stats.batteryTempC.toInt()}°",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xB3FFFFFF)
+                        )
+                    }
                     Spacer(Modifier.weight(1f))
-                    Text(
-                        SimpleDateFormat("hh:mm", Locale.US).format(Date()) +
-                            "  ⚡${stats.batteryTempC.toInt()}°",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xB3FFFFFF)
-                    )
-                    Spacer(Modifier.width(12.dp))
+                    SideStat("RAM", if (memPct >= 0) "$memPct%" else "--%")
+                    Spacer(Modifier.width(10.dp))
                     Text(
                         "✕",
                         style = MaterialTheme.typography.titleMedium,
@@ -1295,6 +1291,28 @@ class FloatingWidgetService : Service() {
                     )
                 }
             }
+        }
+    }
+
+    /** Big glowing side stat (CPU / RAM) flanking the panel face. */
+    @Composable
+    private fun SideStat(name: String, value: String) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                name,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0x99FF5B6E)
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color(0xFFFF3B4E),
+                        blurRadius = 26f
+                    )
+                ),
+                color = Color(0xFFFF6B5B)
+            )
         }
     }
 

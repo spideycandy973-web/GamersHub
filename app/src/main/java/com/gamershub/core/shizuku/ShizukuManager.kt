@@ -288,10 +288,17 @@ class ShizukuManager(private val context: Context) {
     suspend fun exec(command: String): ShellResult = withContext(Dispatchers.IO) {
         var service = shell
         if (service == null || !runCatching { service.asBinder().pingBinder() }.getOrDefault(false)) {
-            // binder stale — rebuild once
+            // binder stale — REALLY rebuild: rebind and wait for the async
+            // ServiceConnection to deliver the new shell (the old code rebinded
+            // but never waited, so every command failed forever after the first
+            // dropped binder — "the panel options do nothing").
             shell = null
             bound = false
             refreshState()
+            repeat(12) {
+                if (shell != null) return@repeat
+                kotlinx.coroutines.delay(150)
+            }
             service = shell
         }
         if (service == null) return@withContext ShellResult(-1, "shell service not bound")

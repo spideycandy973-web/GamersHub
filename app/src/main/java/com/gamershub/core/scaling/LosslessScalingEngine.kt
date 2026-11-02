@@ -174,7 +174,15 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
             }
         }
 
-        if (refreshHz > 0) lockRefreshHz(refreshHz, out)
+        if (refreshHz > 0) lockRefreshHz(refreshHz, out) else if (st.refreshHz > 0) {
+            // re-assert the previous lock — a display-size change on MIUI
+            // silently drops the refresh-rate override
+            runCatching { lockRefreshHz(st.refreshHz, out) }
+        }
+        // Heal the input mapper + animation scales right after the display
+        // writes (staggered internally) — this is the fix for the glitchy /
+        // jumpy rendering and miss-targeted touches after scaling.
+        runCatching { healTouch() }
 
         _state.value = st.copy(
             mode = mode, renderW = w, renderH = h,

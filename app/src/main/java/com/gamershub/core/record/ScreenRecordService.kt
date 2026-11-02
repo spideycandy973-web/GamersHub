@@ -77,6 +77,10 @@ class ScreenRecordService : Service() {
     }
 
     private fun startCapture(resultCode: Int, data: Intent, config: RecorderConfig) {
+        if (pipeline != null) {
+            container.recorder.pushEvent("Capture already running — duplicate start ignored")
+            return
+        }
         currentMode = config.mode
 
         ServiceCompat.startForeground(
@@ -199,18 +203,31 @@ class ScreenRecordService : Service() {
 
         if (file != null && (mode == RecorderConfig.Mode.RECORD || mode == RecorderConfig.Mode.BOTH)) {
             val size = runCatching { file.length() }.getOrDefault(0L)
-            MediaScannerConnection.scanFile(
-                this, arrayOf(file.absolutePath), arrayOf("video/mp4"), null
-            )
             if (size > 0) {
-                // Publish into the PUBLIC gallery (Movies/GamersHub) — files in
-                // Android/data are invisible to the Gallery and the Files app,
-                // which looked like "the recording was never saved".
-                val where = publishToGallery(file)
                 container.recorder.pushEvent(
-                    ("Saved: ${file.name} (%.1f MB) → $where").format(size / 1048576f)
+                    ("Saving ${file.name} (%.1f MB) …").format(size / 1048576f)
                 )
-                serviceScope.launch { container.settings.incrementRecordings() }
+                // Publish OFF the main thread. The old synchronous copy of a
+                // multi-hundred-MB file blocked the UI thread into an ANR that
+                // looked exactly like "the app crashes when I stop recording".
+                // A dedicated scope survives even service destruction.
+                com.gamershub.core.util.SafeScopes.io("recorder-save").launch {
+                    runCatching {
+                        MediaScannerConnection.scanFile(
+                            this@ScreenRecordService,
+                            arrayOf(file.absolutePath), arrayOf("video/mp4"), null
+                        )
+                        // Publish into the PUBLIC gallery (Movies/GamersHub) —
+                        // files in Android/data are invisible to the Gallery.
+                        val where = publishToGallery(file)
+                        container.recorder.pushEvent(
+                            ("Saved: ${file.name} (%.1f MB) → %s").format(size / 1048576f, where)
+                        )
+                        container.settings.incrementRecordings()
+                    }.onFailure {
+                        container.recorder.pushEvent("Gallery publish failed: ${it.message}")
+                    }
+                }
             } else {
                 container.recorder.pushEvent("Recording failed — output file was empty")
             }

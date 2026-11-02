@@ -73,13 +73,13 @@ class RecorderController(
             _events.tryEmit("Mic permission not granted — capturing without microphone audio")
         }
         val frameGen = settings.recFrameGen.first()
-        // Graphics-enhancer sharpen level (0..3) → shader unsharp amount.
-        val sharpen = when (settings.enhanceLevel.first()) {
-            1 -> 0.35f
-            2 -> 0.6f
-            3 -> 0.9f
-            else -> 0f
-        }
+        // Recordings go through the ZERO-COPY path (display → encoder surface
+        // directly). The GL sharpen/interpolation stage used to sit between the
+        // display and the encoder whenever the display sharpen level was on —
+        // that stage is what produced the heavy graphics glitches in recordings
+        // (and the extra GPU load glitched the game itself). Display sharpening
+        // stays a DISPLAY effect; recordings capture the display as-is.
+        val sharpen = 0f
         return RecorderConfig(
             verticalResolution = res,
             fps = fps,
