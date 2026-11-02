@@ -131,11 +131,10 @@ class FloatingWidgetService : Service() {
     private var crosshairView: ComposeView? = null
 
     /**
-     * Shows/hides the control panel. The panel WINDOW is created on open and
-     * REMOVED on close — add/remove is bulletproof where a
-     * FLAG_NOT_TOUCHABLE flip silently failed on MIUI (panel showed but every
-     * tap — including its own ✕ — passed through to the app behind it).
-     * When hidden there is no panel window at all: zero touch interference.
+     * Shows/hides the control panel with a real window-level pop animation:
+     * the panel SLIDES UP + FADES + SCALES IN (ViewPropertyAnimator — runs on
+     * the window itself, so it is visible on every ROM), and plays the reverse
+     * on close before the window is removed.
      */
     private fun setPanelVisible(on: Boolean) {
         if (on) {
@@ -150,20 +149,57 @@ class FloatingWidgetService : Service() {
                     windowAnimations = android.R.style.Animation_Dialog
                 }
                 runCatching {
-                    panelView = newComposeView { PanelContent() }.also { wm.addView(it, lp) }
+                    panelView = newComposeView { PanelContent() }.also { v ->
+                        wm.addView(v, lp)
+                        // ---- pop-in: slide up + fade + scale (guaranteed) ----
+                        v.alpha = 0f
+                        v.translationY = 220f
+                        v.scaleX = 0.88f
+                        v.scaleY = 0.88f
+                        v.animate()
+                            .alpha(1f)
+                            .translationY(0f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(340)
+                            .setInterpolator(
+                                android.view.animation.DecelerateInterpolator()
+                            )
+                            .start()
+                    }
                 }.onFailure {
                     panelView = null
                 }
             }
         } else {
-            // play the close animation first, then remove the window
-            panelClosing.value = true
-            scope.launch {
-                kotlinx.coroutines.delay(240)
-                panelVisible.value = false
-                panelView?.let { v -> runCatching { wm.removeView(v) } }
-                panelView = null
-                panelClosing.value = false
+            val v = panelView
+            if (v != null) {
+                panelClosing.value = true
+                // ---- pop-out: reverse animation, THEN remove the window ----
+                v.animate()
+                    .alpha(0f)
+                    .translationY(220f)
+                    .scaleX(0.9f)
+                    .scaleY(0.9f)
+                    .setDuration(220)
+                    .setInterpolator(
+                        android.view.animation.AccelerateInterpolator()
+                    )
+                    .withEndAction {
+                        runCatching { wm.removeView(v) }
+                        if (panelView === v) panelView = null
+                        panelClosing.value = false
+                    }
+                    .start()
+                // safety net: if the animation never completes, still remove
+                scope.launch {
+                    kotlinx.coroutines.delay(600)
+                    if (panelView === v) {
+                        runCatching { wm.removeView(v) }
+                        panelView = null
+                        panelClosing.value = false
+                    }
+                }
             }
         }
     }
@@ -902,17 +938,6 @@ class FloatingWidgetService : Service() {
         var brightness by remember { mutableStateOf(0.6f) }
         var volume by remember { mutableStateOf(0.5f) }
 
-        // pop-up / close animation — the panel slides, scales & fades in
-        // instead of appearing flat and instant
-        val closing by panelClosing.collectAsStateWithLifecycle()
-        val pop = remember { Animatable(0f) }
-        LaunchedEffect(Unit) {
-            pop.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
-        }
-        LaunchedEffect(closing) {
-            if (closing) pop.animateTo(0f, tween(200))
-        }
-
         LaunchedEffect(Unit) {
             refreshQuickStates()
             runCatching {
@@ -936,13 +961,6 @@ class FloatingWidgetService : Service() {
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 10.dp)
-                    .graphicsLayer {
-                        alpha = pop.value
-                        val s = 0.92f + 0.08f * pop.value
-                        scaleX = s
-                        scaleY = s
-                        translationY = (1f - pop.value) * 64f
-                    }
                     .shadow(
                         30.dp,
                         androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp),

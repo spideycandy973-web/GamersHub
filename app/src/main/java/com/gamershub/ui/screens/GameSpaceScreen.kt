@@ -596,7 +596,7 @@ private fun VideoIntro(
 ) {
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { ctx ->
-            android.widget.VideoView(ctx).apply {
+            com.gamershub.core.util.FillVideoView(ctx).apply {
                 setVideoPath(file.absolutePath)
                 setOnPreparedListener { mp ->
                     mp.isLooping = false

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -146,16 +147,47 @@ fun EnhanceScreen(container: AppContainer) {
             var qLog by remember { mutableStateOf<List<String>>(emptyList()) }
             val fgCapture3d by container.settings.frameGenCapture.collectAsStateWithLifecycle(false)
 
-            val target = gamesList.firstOrNull { it.packageName == stats3d.foregroundPackage }
-                ?: gamesList.firstOrNull()
+            // ---- target: ANY app on the device ---------------------------
+            // null targetPkg = "Auto" → whatever app is on screen right now
+            var targetPkg by remember { mutableStateOf<String?>(null) }
+            val fgPkg = stats3d.foregroundPackage
+            val fgLabel = remember(fgPkg) {
+                runCatching {
+                    val ai = context.packageManager.getApplicationInfo(fgPkg, 0)
+                    context.packageManager.getApplicationLabel(ai).toString()
+                }.getOrDefault(fgPkg)
+            }
+            val resolvedPkg = targetPkg
+                ?: fgPkg.ifBlank { gamesList.firstOrNull()?.packageName.orEmpty() }
+            val targetLabel = gamesList.firstOrNull { it.packageName == resolvedPkg }?.label
+                ?: if (resolvedPkg == fgPkg && fgLabel.isNotBlank()) fgLabel
+                else resolvedPkg.ifBlank { "your game" }
 
             Text(
-                "Real 3D quality knobs written into the game's own config (the same " +
-                        "scalability CVars its graphics menu sets): shadow resolution & " +
-                        "cascades, texture mip detail, character mesh LOD / draw distance " +
-                        "and anti-aliasing. Applied with backups — verified in the proof below.",
+                "Works on ALL apps — two real layers. (1) ENGINE-LEVEL: the same " +
+                        "scalability CVars the game's own graphics menu writes (shadows, " +
+                        "textures, character LOD, AA) into the game's config — backed up, " +
+                        "verified; they appear when you RESTART the game. (2) UNIVERSAL: " +
+                        "colour vibrance through the system colour pipeline — changes " +
+                        "EVERY app instantly so you can SEE the difference below.",
                 style = MaterialTheme.typography.labelSmall, color = g.textDim
             )
+            Spacer(Modifier.height(10.dp))
+            Text("Target app", style = MaterialTheme.typography.labelSmall, color = g.text)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                GlassChip(
+                    "Auto: ${fgLabel.ifBlank { fgPkg }.ifBlank { "foreground" }}",
+                    targetPkg == null
+                ) { targetPkg = null }
+                gamesList.forEach { game ->
+                    GlassChip(game.label, targetPkg == game.packageName) {
+                        targetPkg = game.packageName
+                    }
+                }
+            }
             Spacer(Modifier.height(10.dp))
             Text("Shadows", style = MaterialTheme.typography.labelSmall, color = g.text)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -216,22 +248,48 @@ fun EnhanceScreen(container: AppContainer) {
 
             Spacer(Modifier.height(12.dp))
             GlassButton(
-                "Apply 3D quality to ${target?.label ?: "your game"}",
+                "Apply 3D quality to $targetLabel",
                 onClick = {
                     if (!requireEngine(container, context)) return@GlassButton
-                    val t = target
-                    if (t == null) {
-                        qLog = listOf("No game found — install/launch a game first")
+                    if (resolvedPkg.isBlank()) {
+                        qLog = listOf("No app found — open an app/game first")
                         return@GlassButton
                     }
                     scope.launch {
-                        qLog = listOf("Applying to ${t.label} …")
+                        qLog = listOf("Applying to $targetLabel …")
                         val preset = GameUnlockPresets.quality3D(
-                            GameUnlockPresets.forAnyPackage(t.packageName, t.label),
+                            GameUnlockPresets.forAnyPackage(resolvedPkg, targetLabel),
                             shadows, textures, characters, aa3d
                         )
                         val report = container.unlocker.unlock(preset)
-                        qLog = report.lines
+                        val log = report.lines.toMutableList()
+                        // universal, instant & visible on EVERY app:
+                        val lvl = (shadows + textures + characters + aa3d) / 4
+                        log += container.enhancer.setVibrance(lvl)
+                        log += "Engine configs appear after RESTARTING the game (they load at game start)."
+                        log += "The colour change is INSTANT — press BEFORE/AFTER below to see it."
+                        qLog = log
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            var previewBefore by remember { mutableStateOf(false) }
+            GlassButton(
+                if (previewBefore) "Show AFTER — enhanced image" else "Preview BEFORE — original colours",
+                primary = false,
+                onClick = {
+                    if (!requireEngine(container, context)) return@GlassButton
+                    scope.launch {
+                        previewBefore = !previewBefore
+                        val lvl = (shadows + textures + characters + aa3d) / 4
+                        qLog = if (previewBefore) {
+                            container.enhancer.restoreVibrance() +
+                                listOf("You are looking at the ORIGINAL image — compare, then tap AFTER.")
+                        } else {
+                            container.enhancer.setVibrance(lvl) +
+                                listOf("ENHANCED image showing — see the difference? That is the real pipeline.")
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
