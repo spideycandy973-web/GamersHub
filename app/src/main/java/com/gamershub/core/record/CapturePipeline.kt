@@ -98,7 +98,7 @@ class CapturePipeline(
                 frameGenActive = config.frameGen
                 displaySurface = stage.renderSurface
                 if (config.frameGen) {
-                    Log.i(TAG, "FrameGen active: real interpolated frames at ${encodeFps}fps")
+                    Log.i(TAG, "FrameGen active: zero-ghost 2x cadence at ${encodeFps}fps")
                 } else {
                     Log.i(TAG, "Sharpen pipeline active (level ${config.sharpen})")
                 }

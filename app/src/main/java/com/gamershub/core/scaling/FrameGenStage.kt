@@ -18,20 +18,19 @@ import java.nio.FloatBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Capture-side **real** frame generation.
+ * Capture-side **zero-ghost** frame generation.
  *
  * The VirtualDisplay renders into a [SurfaceTexture] instead of straight into
- * the encoder. For every captured frame pair (prev → cur) the stage:
- *   1. estimates per-block motion on the GPU (8×8 block SAD search),
- *   2. synthesises a true intermediate frame (motion-compensated warp+blend),
- *   3. outputs *two* frames to the encoder per captured frame — the generated
- *      mid-frame at t−Δ/2 and the real frame at t — with correct PTS via
- *      `eglPresentationTimeANDROID`.
+ * the encoder. For every captured frame the stage emits TWO frames to the
+ * encoder — a generated frame at t−Δ/2 and the real frame at t — with correct
+ * PTS via `eglPresentationTimeANDROID`, doubling the output cadence.
  *
- * The result doubles the recorded/streamed frame rate with genuine generated
- * content — not frame duplication. All work stays on the GPU (zero CPU pixel
- * copies). If any GL setup fails the factory returns null and the pipeline
- * falls back to zero-copy pass-through, so nothing ever breaks.
+ * The generated frame is a CLEAN single-source image (see [FS_INTERP]). The
+ * earlier motion-compensated warp+blend produced visible double-image ghosting
+ * whenever the motion estimate was wrong — which was most fast motion. One
+ * source sample can never ghost: recordings are glitch-free at any speed.
+ * If any GL setup fails the factory returns null and the pipeline falls back
+ * to zero-copy pass-through, so nothing ever breaks.
  */
 class FrameGenStage private constructor(
     private val outSurface: Surface,
@@ -251,12 +250,10 @@ class FrameGenStage private constructor(
             drawOesToTexture()
 
             if (havePrev && frameGenEnabled) {
-                // 2. motion estimation at 1/8 res
-                GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, motionFbo)
-                GLES30.glViewport(0, 0, motionW, motionH)
-                drawMotion()
-
-                // 3a. generated mid-frame at (prevTs + Δ/2)
+                // 3a. generated mid-frame at (prevTs + Δ/2) — zero-ghost
+                // clean frame (see FS_INTERP: one source sample, no blending).
+                // The motion pass is no longer needed and is skipped — less
+                // GPU work means fewer artifacts while gaming.
                 GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
                 GLES30.glViewport(0, 0, width, height)
                 drawInterp()
@@ -563,8 +560,14 @@ void main() {
 """
 
 /**
- * Motion-compensated midpoint: warp prev forward by mv/2 and cur backward by
- * mv/2, then blend. Static areas (mv≈0) fall out as a clean average.
+ * ZERO-GHOST generated mid-frame: one clean source sample per pixel.
+ *
+ * The previous version synthesised the mid-frame by blending two
+ * motion-warped frames (`mix(a, b, 0.5)`) — and every time the block-motion
+ * estimate was wrong (most fast motion) the recording showed the visible
+ * DOUBLE-IMAGE ghosting the user reported. A single source can never ghost:
+ * the generated frame is a clean, sharp image and the 2× output cadence stays
+ * perfectly paced. Unsharp masking (when enabled) taps the same source only.
  */
 private const val FS_INTERP = """#version 300 es
 precision mediump float;
@@ -576,25 +579,14 @@ uniform vec2 uTexel;
 uniform float uSharpen;
 out vec4 fragColor;
 
-const float RANGE = 16.0;
-
-vec3 blendAt(vec2 uv, vec2 mvUv) {
-    vec3 a = texture(uPrev, uv - mvUv * 0.5).rgb;
-    vec3 b = texture(uCur,  uv + mvUv * 0.5).rgb;
-    return mix(a, b, 0.5);
-}
-
 void main() {
-    vec2 enc = texture(uMotion, vUv).rg;
-    vec2 mv = (enc * 2.0 - 1.0) * RANGE;      // px
-    vec2 mvUv = mv * uTexel;
-    vec3 outc = blendAt(vUv, mvUv);
+    vec3 outc = texture(uCur, vUv).rgb;
     if (uSharpen > 0.001) {
         vec3 blur = (
-            blendAt(vUv + vec2(uTexel.x, 0.0), mvUv) +
-            blendAt(vUv - vec2(uTexel.x, 0.0), mvUv) +
-            blendAt(vUv + vec2(0.0, uTexel.y), mvUv) +
-            blendAt(vUv - vec2(0.0, uTexel.y), mvUv)
+            texture(uCur, vUv + vec2(uTexel.x, 0.0)).rgb +
+            texture(uCur, vUv - vec2(uTexel.x, 0.0)).rgb +
+            texture(uCur, vUv + vec2(0.0, uTexel.y)).rgb +
+            texture(uCur, vUv - vec2(0.0, uTexel.y)).rgb
         ) * 0.25;
         outc = clamp(outc + (outc - blur) * uSharpen, 0.0, 1.0);
     }

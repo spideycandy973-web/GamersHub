@@ -227,8 +227,9 @@ fun EnhanceScreen(container: AppContainer) {
 
             Spacer(Modifier.height(12.dp))
             Text(
-                "AI frame generation — real motion-interpolated frames on every " +
-                        "captured frame pair (2× output rate in recordings & streams).",
+                "AI frame generation — 2× output cadence with clean zero-ghost " +
+                        "generated frames (no cross-frame blending → no ghosting, " +
+                        "at any motion speed) in recordings & streams.",
                 style = MaterialTheme.typography.labelSmall, color = g.textDim
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

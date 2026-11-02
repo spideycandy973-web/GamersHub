@@ -229,7 +229,7 @@ fun RecorderScreen(container: AppContainer) {
             Spacer(Modifier.height(8.dp))
             val fg by container.settings.recFrameGen.collectAsStateWithLifecycle(false)
             GlassSwitchRow(
-                "Frame generation", "Real GPU-interpolated frames at 2× output rate",
+                "Frame generation", "2× output cadence — clean zero-ghost frames",
                 fg
             ) { on -> scope.launch { container.settings.setRecFrameGen(on) } }
         }

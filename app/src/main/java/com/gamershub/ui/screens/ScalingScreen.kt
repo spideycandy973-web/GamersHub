@@ -366,7 +366,7 @@ fun ScalingScreen(container: AppContainer) {
             Spacer(Modifier.height(8.dp))
             GlassSwitchRow(
                 "Capture frame generation",
-                "Real motion-interpolated frames at 2× rate in recordings & streams",
+                "2× frame cadence in recordings & streams — clean, zero-ghost",
                 fgCapture
             ) { on ->
                 scope.launch {
