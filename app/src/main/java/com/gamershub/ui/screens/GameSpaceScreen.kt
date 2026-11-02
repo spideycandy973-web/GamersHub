@@ -600,6 +600,11 @@ private fun VideoIntro(
                 setVideoPath(file.absolutePath)
                 setOnPreparedListener { mp ->
                     mp.isLooping = false
+                    // fill the whole screen (crop-to-fit) — no letterbox bars
+                    @Suppress("DEPRECATION")
+                    setVideoScalingMode(
+                        android.media.MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                    )
                     start()
                 }
                 setOnCompletionListener { onDone() }

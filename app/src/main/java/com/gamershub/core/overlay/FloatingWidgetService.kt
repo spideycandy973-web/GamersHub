@@ -9,8 +9,11 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -21,6 +24,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,8 +53,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -108,6 +114,9 @@ class FloatingWidgetService : Service() {
 
     private val panelVisible = MutableStateFlow(false)
 
+    /** True while the close animation plays, before the window is removed. */
+    private val panelClosing = MutableStateFlow(false)
+
     /** Last engine action result, shown in the panel so nothing fails silently. */
     private val lastAction = MutableStateFlow("")
 
@@ -129,13 +138,16 @@ class FloatingWidgetService : Service() {
      * When hidden there is no panel window at all: zero touch interference.
      */
     private fun setPanelVisible(on: Boolean) {
-        panelVisible.value = on
         if (on) {
+            panelClosing.value = false
+            panelVisible.value = true
             if (panelView == null) {
                 val lp = baseLp().apply {
                     width = WindowManager.LayoutParams.MATCH_PARENT
                     height = WindowManager.LayoutParams.MATCH_PARENT
                     gravity = Gravity.CENTER
+                    @Suppress("DEPRECATION")
+                    windowAnimations = android.R.style.Animation_Dialog
                 }
                 runCatching {
                     panelView = newComposeView { PanelContent() }.also { wm.addView(it, lp) }
@@ -144,8 +156,15 @@ class FloatingWidgetService : Service() {
                 }
             }
         } else {
-            panelView?.let { v -> runCatching { wm.removeView(v) } }
-            panelView = null
+            // play the close animation first, then remove the window
+            panelClosing.value = true
+            scope.launch {
+                kotlinx.coroutines.delay(240)
+                panelVisible.value = false
+                panelView?.let { v -> runCatching { wm.removeView(v) } }
+                panelView = null
+                panelClosing.value = false
+            }
         }
     }
 
@@ -883,6 +902,17 @@ class FloatingWidgetService : Service() {
         var brightness by remember { mutableStateOf(0.6f) }
         var volume by remember { mutableStateOf(0.5f) }
 
+        // pop-up / close animation — the panel slides, scales & fades in
+        // instead of appearing flat and instant
+        val closing by panelClosing.collectAsStateWithLifecycle()
+        val pop = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            pop.animateTo(1f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessMediumLow))
+        }
+        LaunchedEffect(closing) {
+            if (closing) pop.animateTo(0f, tween(200))
+        }
+
         LaunchedEffect(Unit) {
             refreshQuickStates()
             runCatching {
@@ -906,11 +936,26 @@ class FloatingWidgetService : Service() {
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 10.dp)
+                    .graphicsLayer {
+                        alpha = pop.value
+                        val s = 0.92f + 0.08f * pop.value
+                        scaleX = s
+                        scaleY = s
+                        translationY = (1f - pop.value) * 64f
+                    }
+                    .shadow(
+                        30.dp,
+                        androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                        ambientColor = Color(0x88FF3B4E),
+                        spotColor = Color(0xCCFF3B4E)
+                    )
                     .clip(androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .background(Color(0xE60D1322))
+                    .background(
+                        Brush.verticalGradient(listOf(Color(0xF5141C30), Color(0xF50A0F1E)))
+                    )
                     .border(
                         1.5.dp,
-                        Color(0x66FF3B4E),
+                        Brush.verticalGradient(listOf(Color(0x99FF5B6E), Color(0x33FF5B6E))),
                         androidx.compose.foundation.shape.CutCornerShape(topStart = 30.dp, topEnd = 30.dp)
                     )
                     .clickable(
@@ -943,7 +988,11 @@ class FloatingWidgetService : Service() {
                             else -> "⚡ EXTREME MODE"
                         },
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFFFFD9DE)
+                        color = Color(0xFFFF8A7A),
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color(0xFFFF3B4E),
+                            blurRadius = 22f
+                        )
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
@@ -964,6 +1013,18 @@ class FloatingWidgetService : Service() {
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
+
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0x00FF5B6E), Color(0xFFFF5B6E), Color(0x00FF5B6E))
+                            )
+                        )
+                )
 
                 Spacer(Modifier.height(8.dp))
 
@@ -1203,10 +1264,15 @@ class FloatingWidgetService : Service() {
                     Box(
                         Modifier
                             .align(Alignment.CenterEnd)
-                            .size(16.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                            .background(Color(0xFFFF3B4E))
-                            .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(5.dp))
+                            .shadow(
+                                10.dp, CircleShape,
+                                ambientColor = Color(0xFFFF3B4E),
+                                spotColor = Color(0xFFFF3B4E)
+                            )
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(Brush.verticalGradient(listOf(Color(0xFFFF6B5B), Color(0xFFFF3B4E))))
+                            .border(1.5.dp, Color(0x99FFFFFF), CircleShape)
                     )
                 }
             }
@@ -1222,27 +1288,43 @@ class FloatingWidgetService : Service() {
         modifier: Modifier = Modifier,
         onClick: () -> Unit
     ) {
+        val interaction = remember { MutableInteractionSource() }
+        val pressed by interaction.collectIsPressedAsState()
+        val scale by animateFloatAsState(
+            if (pressed) 0.90f else 1f,
+            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+            label = "toggle-scale"
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = modifier
-                .clip(RoundedCornerShape(14.dp))
-                .clickable(onClick = onClick)
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(interaction, indication = null, onClick = onClick)
                 .padding(vertical = 7.dp, horizontal = 2.dp)
         ) {
             Box(
                 Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(46.dp)
+                    .then(
+                        if (active) Modifier.shadow(
+                            12.dp,
+                            RoundedCornerShape(15.dp),
+                            ambientColor = Color(0xFFFF3B4E),
+                            spotColor = Color(0xFFFF3B4E)
+                        ) else Modifier
+                    )
+                    .clip(RoundedCornerShape(15.dp))
                     .background(
                         if (active)
-                            Brush.horizontalGradient(listOf(Color(0xFFFF3B4E), Color(0xFFFF7A59)))
+                            Brush.verticalGradient(listOf(Color(0xFFFF5B6E), Color(0xFFFF8A4C)))
                         else
                             Brush.verticalGradient(listOf(Color(0x22FFFFFF), Color(0x14FFFFFF)))
                     )
                     .border(
                         1.dp,
-                        if (active) Color.Transparent else Color(0x2EFFFFFF),
-                        RoundedCornerShape(14.dp)
+                        if (active) Color(0x55FFFFFF) else Color(0x2EFFFFFF),
+                        RoundedCornerShape(15.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
