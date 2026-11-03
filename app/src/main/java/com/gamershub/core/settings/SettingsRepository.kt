@@ -83,7 +83,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { it[K.THEME_MODE] = mode.name }
     }
-    val themeMode: Flow<ThemeMode> = flow(K.THEME_MODE, "SYSTEM").map {
+    val themeMode: Flow<ThemeMode> = flow(K.THEME_MODE, "DARK").map {
         runCatching { ThemeMode.valueOf(it) }.getOrDefault(ThemeMode.SYSTEM)
     }
 

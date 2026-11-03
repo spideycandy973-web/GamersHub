@@ -23,7 +23,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.GridView
@@ -103,7 +109,7 @@ private val TABS = listOf(
 
 @Composable
 fun GamersHubRoot(container: AppContainer) {
-    val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.SYSTEM)
+    val themeMode by container.settings.themeMode.collectAsStateWithLifecycle(ThemeMode.DARK)
     val accent by container.settings.accent.collectAsStateWithLifecycle("CRIMSON")
     val dark = when (themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -127,26 +133,99 @@ fun GamersHubRoot(container: AppContainer) {
             }
         }
 
-        Row(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(g.bg2, g.bg)))
-        ) {
-            val backStack by nav.currentBackStackEntryAsState()
-            val currentRoute = backStack?.destination?.route
-            val showBar = currentRoute in TABS.map { it.route }
+        Column(Modifier.fillMaxSize()) {
+            GameCornerHeader(container)
+            Row(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(g.bg2, g.bg)))
+            ) {
+                val backStack by nav.currentBackStackEntryAsState()
+                val currentRoute = backStack?.destination?.route
+                val showBar = currentRoute in TABS.map { it.route }
 
-            // ROG-style glass navigation rail pinned to the left edge
-            if (showBar) {
-                GlassNavRail(
-                    nav = nav,
-                    currentRoute = currentRoute
-                )
-            }
-            Box(Modifier.weight(1f)) {
-                AppNavHost(nav, container)
+                // glass navigation rail pinned to the left edge
+                if (showBar) {
+                    GlassNavRail(
+                        nav = nav,
+                        currentRoute = currentRoute
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    AppNavHost(nav, container)
+                }
             }
         }
+    }
+}
+
+/**
+ * Game-corner top strip: glowing brand mark, live CPU / RAM / TEMP stats and
+ * the master engine switch — the app's identity bar.
+ */
+@Composable
+private fun GameCornerHeader(container: AppContainer) {
+    val g = LocalGlass.current
+    val stats by container.monitor.stats.collectAsStateWithLifecycle()
+    val engineOn by container.engine.enabled.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Brush.horizontalGradient(listOf(g.bg, g.bg2, g.bg)))
+            .statusBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 9.dp)
+    ) {
+        Text(
+            "◆ GAMERSHUB",
+            style = MaterialTheme.typography.titleMedium.copy(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = g.accent.copy(alpha = 0.8f),
+                    blurRadius = 24f
+                )
+            ),
+            color = g.accent
+        )
+        Spacer(Modifier.width(18.dp))
+        HeaderStat("CPU", if (stats.cpuUsagePct >= 0) "${stats.cpuUsagePct.toInt()}%" else "--%")
+        HeaderStat(
+            "RAM",
+            if (stats.memTotalMb > 0) "${(stats.memUsedMb * 100 / stats.memTotalMb).toInt()}%" else "--%"
+        )
+        HeaderStat("TEMP", "${stats.batteryTempC.toInt()}°")
+        Spacer(Modifier.weight(1f))
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .clip(CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp))
+                .background(
+                    if (engineOn) Brush.horizontalGradient(listOf(g.accent, g.accent2))
+                    else Brush.verticalGradient(listOf(g.glassHi, g.glass))
+                )
+                .clickable {
+                    scope.launch { runCatching { container.engine.setEnabled(!engineOn) } }
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text(
+                if (engineOn) "ENGINE ON" else "ENGINE OFF",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (engineOn) androidx.compose.ui.graphics.Color.White else g.textDim
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeaderStat(name: String, value: String) {
+    val g = LocalGlass.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(name, style = MaterialTheme.typography.labelSmall, color = g.textDim)
+        Spacer(Modifier.width(5.dp))
+        Text(value, style = MaterialTheme.typography.labelSmall, color = g.accent)
+        Spacer(Modifier.width(12.dp))
     }
 }
 

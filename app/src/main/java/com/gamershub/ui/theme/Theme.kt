@@ -23,15 +23,15 @@ import androidx.compose.ui.unit.sp
 // ---------------------------------------------------------------------------
 
 object GhColors {
-    // ---- Dark (deep graphite glass) ----
-    val DarkBg = Color(0xFF0B0D12)
-    val DarkBg2 = Color(0xFF10131A)
-    val DarkSurface = Color(0xFF161A22)
+    // ---- Dark (game-corner black) ----
+    val DarkBg = Color(0xFF07080C)
+    val DarkBg2 = Color(0xFF0B0E14)
+    val DarkSurface = Color(0xFF12151D)
     val DarkGlass = Color(0x0FFFFFFF)      // 6% frosted white
     val DarkGlassHi = Color(0x1AFFFFFF)    // 10% highlight layer
-    val DarkStroke = Color(0x21FFFFFF)     // hairline edge
-    val DarkText = Color(0xFFECEFF4)
-    val DarkTextDim = Color(0x99B7BDC7)
+    val DarkStroke = Color(0x26FFFFFF)     // hairline edge
+    val DarkText = Color(0xFFF2F4F8)
+    val DarkTextDim = Color(0x99A8AEB9)
 
     // ---- Light (soft porcelain glass) ----
     val LightBg = Color(0xFFEEF1F6)
@@ -48,8 +48,8 @@ object GhColors {
     val Violet = Color(0xFF8E86C4)         // mist violet (secondary)
     val Magenta = Color(0xFFC4899F)        // dusty rose (tertiary)
     val Lime = Color(0xFF7FB69E)           // sage
-    val Amber = Color(0xFFD2A15E)          // soft amber
-    val Red = Color(0xFFD27070)            // muted red
+    val Amber = Color(0xFFFF7A2F)          // flame orange
+    val Red = Color(0xFFFF2E43)            // corner red (vivid)
     val Green = Color(0xFF6FBF97)          // soft green
 
     // ---- Light-bg accent variants (slightly deeper for contrast) ----

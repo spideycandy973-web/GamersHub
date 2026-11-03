@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,7 +57,8 @@ fun GlassCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val g = LocalGlass.current
-    val shape = RoundedCornerShape(corner)
+    // Cut-corner "red corner" identity: two diagonal corners per surface.
+    val shape = CutCornerShape(topStart = corner * 0.5f, bottomEnd = corner * 0.5f)
     val interaction = remember { MutableInteractionSource() }
     val pressed = if (onClick != null) interaction.collectIsPressedAsState().value else false
     val scale by animateFloatAsState(
@@ -116,14 +119,20 @@ fun GlassButton(
     )
     val alpha by animateFloatAsState(if (enabled) 1f else 0.45f, label = "btn-alpha")
 
-    val shape = RoundedCornerShape(18.dp)
+    val shape = CutCornerShape(topStart = 9.dp, bottomEnd = 9.dp)
     Box(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
-            .shadow(if (primary) 6.dp else 2.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f))
+            .shadow(
+                if (primary) 10.dp else 2.dp, shape,
+                ambientColor = if (primary) g.accent.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.12f),
+                spotColor = if (primary) g.accent else Color.Black.copy(alpha = 0.12f)
+            )
             .clip(shape)
             .then(
-                if (primary) Modifier.background(g.accent)
+                if (primary) Modifier.background(
+                    Brush.horizontalGradient(listOf(g.accent, g.accent2))
+                )
                 else Modifier.background(Brush.verticalGradient(listOf(g.glassHi, g.glass)))
             )
             .border(1.dp, if (primary) Color.Transparent else g.stroke, shape)
@@ -221,6 +230,7 @@ fun GlassChip(
     onClick: () -> Unit
 ) {
     val g = LocalGlass.current
+    val chipShape = CutCornerShape(topStart = 7.dp, bottomEnd = 7.dp)
     val bg by animateColorAsState(
         if (selected) g.accent else g.glassHi, tween(200), label = "chip-bg"
     )
@@ -229,9 +239,14 @@ fun GlassChip(
     )
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(13.dp))
+            .shadow(
+                if (selected) 8.dp else 0.dp, chipShape,
+                ambientColor = g.accent.copy(alpha = 0.5f),
+                spotColor = g.accent
+            )
+            .clip(chipShape)
             .background(bg)
-            .border(1.dp, if (selected) Color.Transparent else g.stroke, RoundedCornerShape(13.dp))
+            .border(1.dp, if (selected) Color.Transparent else g.stroke, chipShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 15.dp, vertical = 9.dp)
     ) {
@@ -246,12 +261,23 @@ fun GlassChip(
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     val g = LocalGlass.current
-    Text(
-        text.uppercase(),
-        modifier = modifier.padding(vertical = 10.dp),
-        style = MaterialTheme.typography.labelLarge,
-        color = g.textDim
-    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(vertical = 10.dp)
+    ) {
+        Box(
+            Modifier
+                .width(18.dp)
+                .height(3.dp)
+                .background(Brush.horizontalGradient(listOf(g.accent, g.accent2)))
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelLarge,
+            color = g.text
+        )
+    }
 }
 
 /** Hairline divider. */
