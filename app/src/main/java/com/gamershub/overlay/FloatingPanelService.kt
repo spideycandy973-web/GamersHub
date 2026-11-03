@@ -323,8 +323,8 @@ private fun QuickPanel(onClose: () -> Unit) {
                                 refreshStep = i
                                 val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
                                 try {
-                                    Settings.System.putFloat(context.contentResolver, Settings.System.PEAK_REFRESH_RATE, hz)
-                                    Settings.System.putFloat(context.contentResolver, Settings.System.MIN_REFRESH_RATE, hz)
+                                    Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz)
+                                    Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
                                 } catch (_: Throwable) {}
                             }
                             .padding(horizontal = 11.dp, vertical = 7.dp)

@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,12 +122,12 @@ private fun GameSpaceScreen(
         try {
             val pm = context.packageManager
             val info = pm.getApplicationInfo(pkg, 0)
-            val icon = run {
+            val icon: androidx.compose.ui.graphics.ImageBitmap = run {
                 val d = pm.getApplicationIcon(pkg)
                 val bmp = android.graphics.Bitmap.createBitmap(128, 128, android.graphics.Bitmap.Config.ARGB_8888)
                 val c = android.graphics.Canvas(bmp)
                 d.setBounds(0, 0, 128, 128); d.draw(c)
-                androidx.compose.ui.graphics.asImageBitmap(bmp)
+                bmp.asImageBitmap()
             }
             Triple(pm.getApplicationLabel(info).toString(), pm.getPackageInfo(pkg, 0).versionName ?: "?", icon)
         } catch (_: Throwable) {

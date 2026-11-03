@@ -68,6 +68,7 @@ import com.gamershub.data.InstalledApp
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.BigButton
+import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.Grabber
 import com.gamershub.ui.components.IconChip
 import com.gamershub.ui.components.StatusPill
