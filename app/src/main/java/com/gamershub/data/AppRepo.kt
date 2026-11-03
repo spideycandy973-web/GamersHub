@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 
 data class InstalledApp(val name: String, val pkg: String, val icon: ImageBitmap)
 
-/** Installed launchable apps + local GamersHub state (added set, energy, play time). */
+/** Installed launchable apps + local GamersHub state (added set, play time, gfx). */
 class AppRepo(private val context: Context) {
 
     private val prefs: SharedPreferences =
@@ -26,11 +26,6 @@ class AppRepo(private val context: Context) {
         }
         return id
     }
-
-    fun energy(): Int = prefs.getInt("energy", 0)
-    fun addEnergy(delta: Int) = prefs.edit().putInt("energy", (energy() + delta).coerceAtLeast(0)).apply()
-    fun premium(): Boolean = prefs.getBoolean("premium", false)
-    fun setPremium(v: Boolean) = prefs.edit().putBoolean("premium", v).apply()
 
     fun added(): Set<String> = prefs.getStringSet("added", emptySet()) ?: emptySet()
     fun isAdded(pkg: String): Boolean = added().contains(pkg)
