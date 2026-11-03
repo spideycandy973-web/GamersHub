@@ -179,10 +179,15 @@ class LosslessScalingEngine(private val shizuku: ShizukuManager) {
             // silently drops the refresh-rate override
             runCatching { lockRefreshHz(st.refreshHz, out) }
         }
-        // Heal the input mapper + animation scales right after the display
-        // writes (staggered internally) — this is the fix for the glitchy /
-        // jumpy rendering and miss-targeted touches after scaling.
-        runCatching { healTouch() }
+        // ONE idempotent size re-write nudges InputManager to re-read the
+        // touch mapping. (The old code ran healTouch() here — 3 extra display
+        // writes per change — which churned the input mapper and made touch
+        // noticeably worse. Minimal writes = stable touch.)
+        if (mode != ScaleMode.NATIVE) {
+            kotlinx.coroutines.delay(300)
+            shizuku.exec("wm size ${w}x${h}")
+            out += "Input mapping nudged ✓"
+        }
 
         _state.value = st.copy(
             mode = mode, renderW = w, renderH = h,

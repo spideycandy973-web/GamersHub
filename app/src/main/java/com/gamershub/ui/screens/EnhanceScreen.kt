@@ -123,6 +123,11 @@ fun EnhanceScreen(container: AppContainer) {
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            com.gamershub.ui.components.EffectPreview(
+                com.gamershub.R.raw.preview_sharpen,
+                "sharpness before / after"
+            )
             if (proof.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 proof.forEach { line ->
@@ -295,6 +300,11 @@ fun EnhanceScreen(container: AppContainer) {
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(8.dp))
+            com.gamershub.ui.components.EffectPreview(
+                com.gamershub.R.raw.preview_color,
+                "colour vibrance before / after"
+            )
             if (qLog.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 qLog.forEach { line ->
@@ -336,6 +346,11 @@ fun EnhanceScreen(container: AppContainer) {
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            com.gamershub.ui.components.EffectPreview(
+                com.gamershub.R.raw.preview_scale,
+                "supersampling before / after"
+            )
             if (scalingState.active && scalingState.renderW > scalingState.panelW) {
                 Spacer(Modifier.height(8.dp))
                 Text(

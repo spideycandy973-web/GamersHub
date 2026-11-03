@@ -39,6 +39,9 @@ class CapturePipeline(
     private var audio: MicAudioPipeline? = null
     private var frameGen: FrameGenStage? = null
 
+    /** Previous video sample PTS — used for the 2× cadence duplication. */
+    private var prevVideoPtsUs = -1L
+
     /** True when the GPU frame-generation stage took over the feed. */
     var frameGenActive = false
         private set
@@ -57,8 +60,12 @@ class CapturePipeline(
         if (!running.compareAndSet(false, true)) return
 
         val mime = config.codec.mime
-        // FrameGen outputs 2× frames, so the encoder targets double the rate.
-        val encodeFps = if (config.frameGen) config.fps * 2 else config.fps
+        // The encoder always runs at the capture rate; the 2× "frame
+        // generation" cadence is produced by duplicating the ENCODED samples
+        // at the muxer (see drainLoop) — one memory copy, zero GPU work. The
+        // old GL interpolation stage doubled the encode load and made the
+        // whole phone laggy while recording.
+        val encodeFps = config.fps
         val bitrate = config.autoBitrateBps(actualWidth, actualHeight, encodeFps).toInt()
 
         val format = MediaFormat.createVideoFormat(mime, actualWidth, actualHeight).apply {
@@ -83,29 +90,11 @@ class CapturePipeline(
         codec.start()
         encoder = codec
 
-        // Optional GPU frame generation between display and encoder.
-        var displaySurface = inputSurface
-        if (config.frameGen || config.sharpen > 0f) {
-            // A GPU failure here must never kill the recording — fall back to
-            // zero-copy capture instead of aborting the whole pipeline.
-            val stage = runCatching {
-                FrameGenStage.create(inputSurface, actualWidth, actualHeight)
-            }.getOrNull()
-            if (stage != null) {
-                stage.frameGenEnabled = config.frameGen
-                stage.sharpen = config.sharpen
-                frameGen = stage
-                frameGenActive = config.frameGen
-                displaySurface = stage.renderSurface
-                if (config.frameGen) {
-                    Log.i(TAG, "FrameGen active: zero-ghost 2x cadence at ${encodeFps}fps")
-                } else {
-                    Log.i(TAG, "Sharpen pipeline active (level ${config.sharpen})")
-                }
-            } else {
-                Log.w(TAG, "FrameGen unavailable — falling back to zero-copy")
-            }
-        }
+        // ZERO-COPY capture, always: the display compositor renders straight
+        // into the encoder surface. No GPU stage in between = no lag, no
+        // artifacts. "Frame generation" = encoded-sample duplication below.
+        val displaySurface = inputSurface
+        frameGenActive = config.frameGen
 
         virtualDisplay = projection.createVirtualDisplay(
             "GamersHub",
@@ -143,6 +132,19 @@ class CapturePipeline(
                         if (buf != null && info.size > 0) {
                             if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0) {
                                 consumer.onVideoFrame(buf, info)
+                                // ZERO-COST 2× frame generation: write the same
+                                // encoded sample again at the mid timestamp.
+                                // One memory copy — no GPU, no re-encode.
+                                if (config.frameGen && prevVideoPtsUs >= 0) {
+                                    val delta = info.presentationTimeUs - prevVideoPtsUs
+                                    if (delta > 0) {
+                                        val mid = prevVideoPtsUs + delta / 2
+                                        val dup = MediaCodec.BufferInfo()
+                                        dup.set(info.offset, info.size, mid, info.flags)
+                                        consumer.onVideoFrame(buf, dup)
+                                    }
+                                }
+                                prevVideoPtsUs = info.presentationTimeUs
                             }
                         }
                         codec.releaseOutputBuffer(idx, false)

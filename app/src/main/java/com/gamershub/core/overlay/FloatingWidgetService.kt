@@ -1069,14 +1069,16 @@ class FloatingWidgetService : Service() {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SliderRow("🎮", brightness, Modifier.weight(1f)) {
-                        brightness = it
-                        setBrightnessPct(it)
-                    }
-                    SliderRow("🎵", volume, Modifier.weight(1f)) {
-                        volume = it
-                        setMediaVolume((it * 15).toInt())
-                    }
+                    SliderRow(
+                        "🎮", brightness, Modifier.weight(1f),
+                        onChange = { brightness = it },
+                        onCommit = { setBrightnessPct(it) }
+                    )
+                    SliderRow(
+                        "🎵", volume, Modifier.weight(1f),
+                        onChange = { volume = it },
+                        onCommit = { setMediaVolume((it * 15).toInt()) }
+                    )
                 }
 
                 Spacer(Modifier.height(6.dp))
@@ -1199,6 +1201,40 @@ class FloatingWidgetService : Service() {
                     }
                 }
 
+                // ---- real 3D-quality controls (applied to the game) --------
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val shadows by container.settings.q3dShadows.collectAsStateWithLifecycle(2)
+                    val textures by container.settings.q3dTextures.collectAsStateWithLifecycle(2)
+                    val chars by container.settings.q3dCharacters.collectAsStateWithLifecycle(2)
+                    val aa3d by container.settings.q3dAa.collectAsStateWithLifecycle(2)
+                    val qNames = listOf("Low", "Med", "High", "Ultra")
+                    QualityCycle("🌑", "Shadow", shadows, Modifier.weight(1f)) { next ->
+                        scope.launch(Dispatchers.IO) {
+                            container.settings.setQ3dShadows(next)
+                            applyQualityFromPanel(next, textures, chars, aa3d)
+                            lastAction.value = "Shadows → ${qNames[next]}"
+                        }
+                    }
+                    QualityCycle("🧱", "Texture", textures, Modifier.weight(1f)) { next ->
+                        scope.launch(Dispatchers.IO) {
+                            container.settings.setQ3dTextures(next)
+                            applyQualityFromPanel(shadows, next, chars, aa3d)
+                            lastAction.value = "Textures → ${qNames[next]}"
+                        }
+                    }
+                    QualityCycle("🛡", "AA", aa3d, Modifier.weight(1f)) { next ->
+                        scope.launch(Dispatchers.IO) {
+                            container.settings.setQ3dAa(next)
+                            applyQualityFromPanel(shadows, textures, chars, next)
+                            lastAction.value = "Anti-aliasing → ${qNames[next]}"
+                        }
+                    }
+                }
+
                 // ---- logo + settings, like the reference bar ---------------
                 Spacer(Modifier.height(4.dp))
                 Row(
@@ -1256,8 +1292,14 @@ class FloatingWidgetService : Service() {
         icon: String,
         value: Float,
         modifier: Modifier = Modifier,
-        onChange: (Float) -> Unit
+        onChange: (Float) -> Unit,
+        onCommit: (Float) -> Unit
     ) {
+        // The thumb follows the finger live via onChange (state only); the
+        // SYSTEM write fires once per gesture via onCommit. The old code wrote
+        // the system value on EVERY drag pixel — flooding the shell, lagging
+        // the panel and making the sliders feel broken.
+        var lastFrac = value
         Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
             Text(icon, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.width(8.dp))
@@ -1268,11 +1310,17 @@ class FloatingWidgetService : Service() {
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { pos ->
-                                onChange((pos.x / size.width).coerceIn(0f, 1f))
+                                val f = (pos.x / size.width).coerceIn(0f, 1f)
+                                lastFrac = f
+                                onChange(f)
                             },
+                            onDragEnd = { onCommit(lastFrac) },
+                            onDragCancel = { onCommit(lastFrac) },
                             onDrag = { change, _ ->
                                 change.consume()
-                                onChange((change.position.x / size.width).coerceIn(0f, 1f))
+                                val f = (change.position.x / size.width).coerceIn(0f, 1f)
+                                lastFrac = f
+                                onChange(f)
                             }
                         )
                     },
@@ -1312,6 +1360,79 @@ class FloatingWidgetService : Service() {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Applies the current 3D-quality sliders to the FOREGROUND game (real
+     * engine config write + universal colour pipeline) — used by the panel's
+     * Shadow / Texture / AA controls.
+     */
+    private suspend fun applyQualityFromPanel(s: Int, t: Int, ch: Int, a: Int) {
+        val pkg = container.monitor.stats.value.foregroundPackage
+        if (pkg.isBlank()) {
+            lastAction.value = "Open a game first — 3D quality needs a target"
+            return
+        }
+        val label = runCatching {
+            val ai = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(ai).toString()
+        }.getOrDefault(pkg)
+        val preset = com.gamershub.core.unlock.GameUnlockPresets.quality3D(
+            com.gamershub.core.unlock.GameUnlockPresets.forAnyPackage(pkg, label),
+            s, t, ch, a
+        )
+        val report = container.unlocker.unlock(preset)
+        container.enhancer.setVibrance((s + t + ch + a) / 4)
+        val patched = report.lines.count { it.startsWith("Patched") }
+        lastAction.value =
+            "3D quality → $label ($patched config files) — restart the game to see it"
+    }
+
+    /** Cycling quality control (Shadow / Texture / AA): tap = next level. */
+    @Composable
+    private fun QualityCycle(
+        icon: String,
+        label: String,
+        level: Int,
+        modifier: Modifier = Modifier,
+        onCycle: (Int) -> Unit
+    ) {
+        val interaction = remember { MutableInteractionSource() }
+        val pressed by interaction.collectIsPressedAsState()
+        val scale by animateFloatAsState(
+            if (pressed) 0.90f else 1f,
+            spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium),
+            label = "q-scale"
+        )
+        val names = listOf("LOW", "MED", "HIGH", "ULTRA")
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(interaction, indication = null) { onCycle((level + 1) % 4) }
+                .padding(vertical = 6.dp, horizontal = 2.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(
+                        Brush.verticalGradient(listOf(Color(0x33FF5B6E), Color(0x1AFF5B6E)))
+                    )
+                    .border(1.dp, Color(0x55FF5B6E), RoundedCornerShape(13.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(icon, style = MaterialTheme.typography.titleSmall)
+            }
+            Spacer(Modifier.height(3.dp))
+            Text(
+                "$label · ${names[level]}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFFFF8A7A),
+                maxLines = 1
+            )
         }
     }
 
