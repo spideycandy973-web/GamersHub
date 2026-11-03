@@ -9,18 +9,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +39,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.theme.GC
+import com.gamershub.theme.LocalAccent
+import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.IconChip
 import com.gamershub.ui.components.SectionLabel
 import com.gamershub.ui.components.StatusPill
@@ -43,107 +48,193 @@ import com.gamershub.ui.components.Toggle
 
 enum class LabsTab { ALL, VISUAL, CONFIGS }
 
-/** Game-Labs — feature toggles under All / Visual / Configs. */
+/**
+ * Game-Labs — Touch Settings (Magic Mapper / HW Touch), Display Settings
+ * (Preset Manager / Display Tuning) and Feature Settings, all stateful
+ * and animated. Matched to the reference screenshots.
+ */
 @Composable
 fun GameLabsScreen(
-    activeCount: Int,
+    envLevel: Int,
     toggleState: (String) -> Boolean,
-    onToggle: (String, Boolean) -> Unit
+    onToggle: (String, Boolean) -> Unit,
+    onExportPresets: () -> Unit,
+    onManagePresets: () -> Unit,
+    onTuneDisplay: () -> Unit,
+    displayInfo: String
 ) {
+    val accent = LocalAccent.current
     var tab by remember { mutableStateOf(LabsTab.ALL) }
     Column(
         Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(horizontal = 22.dp)
-            .padding(top = 18.dp, bottom = 130.dp)
+            .padding(horizontal = 18.dp)
+            .padding(top = 14.dp, bottom = 120.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Game-Labs", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 38.sp)
-            Spacer(Modifier.weight(1f))
-            StatusPill("LV.${if (activeCount >= 2) 1 else 0}")
-            Spacer(Modifier.width(10.dp))
-            StatusPill(if (activeCount > 0) "Active" else "Inactive", orange = activeCount > 0)
+            Text("Game-Labs", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp, modifier = Modifier.weight(1f))
+            StatusPill("LV.${envLevel.coerceIn(0, 3)}")
+            Spacer(Modifier.width(8.dp))
+            StatusPill(if (envLevel >= 2) "Advanced" else if (envLevel >= 1) "Basic" else "Inactive", orange = envLevel >= 2)
         }
 
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(14.dp))
 
         Row {
             LabsChip("All", tab == LabsTab.ALL) { tab = LabsTab.ALL }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
             LabsChip("Visual", tab == LabsTab.VISUAL) { tab = LabsTab.VISUAL }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
             LabsChip("Configs", tab == LabsTab.CONFIGS) { tab = LabsTab.CONFIGS }
         }
 
-        SectionLabel("Feature Settings")
+        if (tab != LabsTab.VISUAL) {
+            SectionLabel("Touch Settings")
+            Card {
+                FeatureRow(
+                    icon = Icons.Filled.TouchApp,
+                    title = "Magic Mapper Listener",
+                    desc = "Enable Magic Mapper service",
+                    on = toggleState("magic_mapper"),
+                    onChange = { onToggle("magic_mapper", it) }
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+                    SmallActionButton("Show Taps", Modifier.weight(1f)) { onToggle("show_taps", !toggleState("show_taps")) }
+                    SmallActionButton("Show Coordinates", Modifier.weight(1f)) { onToggle("show_coords", !toggleState("show_coords")) }
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
+                FeatureRow(
+                    icon = Icons.Filled.OpenWith,
+                    title = "HW Touch Enhancer",
+                    desc = "Boost touch response via Hardware Composer",
+                    on = toggleState("hw_touch"),
+                    onChange = { onToggle("hw_touch", it) }
+                )
+            }
 
-        val features = when (tab) {
-            LabsTab.ALL -> listOf(
-                Feature("dns", Icons.Filled.Dns, "DNS & Latency Tuner", "Keep connection warm & reduce latency spikes"),
-                Feature("session", Icons.Filled.GraphicEq, "Session Monitor", "Track device performance while you play")
-            )
-            LabsTab.VISUAL -> listOf(
-                Feature("quality", Icons.Filled.Palette, "3D Quality Pipeline", "Boost shadows & texture detail in games"),
-                Feature("clarity", Icons.Filled.Tune, "Color & Clarity", "Vivid colors and sharpened frames")
-            )
-            LabsTab.CONFIGS -> listOf(
-                Feature("dns", Icons.Filled.Dns, "DNS & Latency Tuner", "Keep connection warm & reduce latency spikes"),
-                Feature("touch", Icons.Filled.Shield, "Touch Profile", "Tune touch response for fast taps")
-            )
+            SectionLabel("Display Settings")
+            Card {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(Icons.Filled.Save, size = 44)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Preset Manager", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                        Text("Save or load display configurations.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+                    SmallActionButton("Export", Modifier.weight(1f), onClick = onExportPresets)
+                    SmallActionButton("Manage", Modifier.weight(1f), primary = true, onClick = onManagePresets)
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
+                    IconChip(Icons.Filled.Gamepad, size = 44)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Display Tuning", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                        Text(displayInfo, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 13.sp)
+                    }
+                    SmallActionButton("Tune", Modifier.width(92.dp), primary = true, onClick = onTuneDisplay)
+                }
+            }
         }
 
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(GC.Surface)
-                .padding(horizontal = 18.dp, vertical = 6.dp)
-        ) {
-            features.forEachIndexed { i, f ->
-                if (i > 0) {
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 18.dp)) {
-                    IconChip(f.icon, size = 48)
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(f.title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            f.desc,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = GC.TextDim,
-                            fontSize = 15.sp,
-                            lineHeight = 21.sp
-                        )
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Toggle(on = toggleState(f.key)) { onToggle(f.key, it) }
-                }
+        if (tab != LabsTab.CONFIGS) {
+            SectionLabel("Feature Settings")
+            Card {
+                FeatureRow(
+                    icon = Icons.Filled.Bolt,
+                    title = "Game Ready",
+                    desc = "System health & stability index",
+                    on = toggleState("game_ready"),
+                    onChange = { onToggle("game_ready", it) }
+                )
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
+                FeatureRow(
+                    icon = Icons.Filled.Dns,
+                    title = "DNS & Latency Tuner",
+                    desc = "Keep connection warm & reduce latency spikes",
+                    on = toggleState("dns"),
+                    onChange = { onToggle("dns", it) }
+                )
+                Spacer(Modifier.height(10.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
+                FeatureRow(
+                    icon = Icons.Filled.GraphicEq,
+                    title = "Session Monitor",
+                    desc = "Track device performance while you play",
+                    on = toggleState("session"),
+                    onChange = { onToggle("session", it) }
+                )
             }
         }
     }
 }
 
-private data class Feature(val key: String, val icon: ImageVector, val title: String, val desc: String)
+@Composable
+private fun FeatureRow(
+    icon: ImageVector,
+    title: String,
+    desc: String,
+    on: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+        IconChip(icon, size = 44)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp)
+            Spacer(Modifier.height(2.dp))
+            Text(desc, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp)
+        }
+        Spacer(Modifier.width(10.dp))
+        Toggle(on = on, onCheckedChange = onChange)
+    }
+}
 
 @Composable
-private fun LabsChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) GC.Orange else GC.SurfaceHi)
+private fun SmallActionButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+    onClick: () -> Unit
+) {
+    val accent = LocalAccent.current
+    Box(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (primary) accent else GC.SurfaceHi)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 11.dp)
+            .padding(vertical = 13.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (selected) Color.White else GC.TextSoft,
-            fontSize = 16.sp
+            color = if (primary) Color.White else GC.Text,
+            fontSize = 14.sp
         )
+    }
+}
+
+@Composable
+private fun LabsChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) accent else GC.SurfaceHi)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else GC.TextSoft, fontSize = 15.sp)
     }
 }

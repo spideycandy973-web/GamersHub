@@ -64,4 +64,20 @@ object DeviceStats {
     } catch (_: Throwable) {
         -1
     }
+
+    /** Battery percent + temperature C from the sticky battery intent (real). */
+    fun battery(context: Context): Pair<Int, Double> = try {
+        val intent = context.registerReceiver(
+            null,
+            android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED)
+        )
+        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val tempTenths = intent?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+        val pct = if (level >= 0 && scale > 0) level * 100 / scale else -1
+        val temp = if (tempTenths > 0) tempTenths / 10.0 else -1.0
+        pct to temp
+    } catch (_: Throwable) {
+        -1 to -1.0
+    }
 }

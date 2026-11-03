@@ -28,9 +28,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Science
@@ -40,6 +43,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -52,15 +57,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.gamershub.GameSpaceActivity
 import com.gamershub.data.AppRepo
 import com.gamershub.data.DeviceStats
 import com.gamershub.data.InstalledApp
 import com.gamershub.theme.GC
+import com.gamershub.theme.GameCornerTheme
+import com.gamershub.theme.LocalAccent
+import com.gamershub.ui.components.BigButton
+import com.gamershub.ui.components.CircleIconButton
+import com.gamershub.ui.components.Grabber
 import com.gamershub.ui.sheets.AppSelectorSheet
-import com.gamershub.ui.sheets.LowEnergySheet
 import com.gamershub.ui.sheets.LaunchModeSheet
 import com.gamershub.ui.sheets.PERM_CONFIGS
+import com.gamershub.ui.sheets.PermKind
 import com.gamershub.ui.sheets.PermissionSheet
+import com.gamershub.ui.sheets.SheetFrame
+import com.gamershub.ui.sheets.SettingsSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -73,280 +87,352 @@ enum class Tab(val icon: ImageVector, val label: String) {
 
 sealed interface SheetState {
     data object None : SheetState
-    data object LowEnergy : SheetState
     data object AppSelector : SheetState
+    data object Settings : SheetState
+    data object Presets : SheetState
     data class Launch(val app: InstalledApp) : SheetState
     data class Permission(val index: Int) : SheetState
 }
 
-/** Root shell: tabs, octagon bottom nav and the sheet overlay host. */
+/** Root shell: tabs, octagon nav, sheets, live state. */
 @Composable
 fun RootShell(repo: AppRepo) {
     val context = LocalContext.current
-    var tab by remember { mutableStateOf(Tab.LOBBY) }
-    var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
-    var uid by remember { mutableStateOf(repo.userId()) }
-    var energy by remember { mutableStateOf(repo.energy()) }
-    var premium by remember { mutableStateOf(repo.premium()) }
+    var accentIdx by remember { mutableIntStateOf(repo.accentIndex()) }
 
-    val apps by produceState(initialValue = emptyList<InstalledApp>()) {
-        value = withContext(Dispatchers.IO) { repo.installedApps() }
-    }
-    val library = remember(apps, sheet) { apps.filter { repo.isAdded(it.pkg) } }
+    GameCornerTheme(accentIdx) {
+        val accent = LocalAccent.current
+        var tab by remember { mutableStateOf(Tab.LOBBY) }
+        var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
+        val uid = remember { repo.userId() }
 
-    // Live device stats (3 s cadence) + ping (background).
-    var cpu by remember { mutableStateOf(DeviceStats.cpu()) }
-    var mem by remember { mutableStateOf(DeviceStats.mem(context)) }
-    var storage by remember { mutableStateOf(DeviceStats.storage()) }
-    var ping by remember { mutableStateOf(-1) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            cpu = DeviceStats.cpu()
-            mem = DeviceStats.mem(context)
-            storage = DeviceStats.storage()
-            delay(3000)
+        // Stateful toggles — the source of truth for animated Toggle composables.
+        val toggles = remember { mutableStateMapOf<String, Boolean>() }
+        fun toggleGet(key: String): Boolean = toggles[key] ?: repo.toggle(key).also { toggles[key] = it }
+        fun toggleSet(key: String, v: Boolean) {
+            toggles[key] = v
+            repo.setToggle(key, v)
         }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            ping = withContext(Dispatchers.IO) { DeviceStats.pingMs() }
-            delay(8000)
+
+        val apps by produceState(initialValue = emptyList<InstalledApp>()) {
+            value = withContext(Dispatchers.IO) { repo.installedApps() }
         }
-    }
+        val addedVersion = remember { mutableIntStateOf(0) }
+        val library = remember(apps, addedVersion.intValue) { apps.filter { repo.isAdded(it.pkg) } }
 
-    // Environment level: overlay + write-settings + usage access (real checks).
-    val envLevel = envLevel(context)
-    val envScore = (envLevel * 20 + (if (hasNotification(context)) 20 else 0) + (if (ping >= 0) 20 else 0))
-        .coerceIn(0, 100)
-
-    val notifLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* state read live on next recomposition */ }
-
-    // First-run permission flow, one sheet at a time (like the reference).
-    LaunchedEffect(Unit) {
-        if (!repo.firstRunDone()) {
-            sheet = SheetState.Permission(0)
+        // Live stats
+        var cpu by remember { mutableStateOf(DeviceStats.cpu()) }
+        var mem by remember { mutableStateOf(DeviceStats.mem(context)) }
+        var storage by remember { mutableStateOf(DeviceStats.storage()) }
+        var ping by remember { mutableStateOf(-1) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                cpu = DeviceStats.cpu(); mem = DeviceStats.mem(context); storage = DeviceStats.storage()
+                delay(3000)
+            }
         }
-    }
+        LaunchedEffect(Unit) {
+            while (true) {
+                ping = withContext(Dispatchers.IO) { DeviceStats.pingMs() }
+                delay(8000)
+            }
+        }
 
-    fun allowPermission(index: Int) {
-        val kind = PERM_CONFIGS[index].kind
-        try {
-            when (kind) {
-                com.gamershub.ui.sheets.PermKind.NOTIFICATION ->
-                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                com.gamershub.ui.sheets.PermKind.OVERLAY -> context.startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:${context.packageName}")
-                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Session timer
+        var sessionSeconds by remember { mutableIntStateOf(0) }
+        LaunchedEffect(Unit) {
+            while (true) { delay(1000); sessionSeconds++ }
+        }
+        val sessionTime = String.format("%02d:%02d:%02d", sessionSeconds / 3600, (sessionSeconds % 3600) / 60, sessionSeconds % 60)
+
+        // Permission status — refreshed every time the app resumes (this is
+        // what makes "grant in Settings → come back" actually update the UI).
+        var resumeTick by remember { mutableIntStateOf(0) }
+        LifecycleResumeEffect(Unit) {
+            resumeTick++
+            onPauseOrDispose { }
+        }
+        val envLevel = run {
+            resumeTick
+            var level = 0
+            if (Settings.canDrawOverlays(context)) level++
+            if (Settings.System.canWrite(context)) level++
+            if (hasUsage(context)) level++
+            level
+        }
+        val notifGranted = run {
+            resumeTick
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        }
+        val envScore = (envLevel * 20 + (if (notifGranted) 20 else 0) + (if (ping >= 0) 20 else 0)).coerceIn(0, 100)
+
+        val notifLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { resumeTick++ }
+
+        val displayInfo = run {
+            val dm = context.resources.displayMetrics
+            "${dm.widthPixels}x${dm.heightPixels} · ${dm.densityDpi}dp"
+        }
+
+        LaunchedEffect(Unit) {
+            if (!repo.firstRunDone()) sheet = SheetState.Permission(0)
+        }
+
+        fun openAppDetails() {
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
-                com.gamershub.ui.sheets.PermKind.WRITE_SETTINGS -> context.startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                        Uri.parse("package:${context.packageName}")
-                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-                com.gamershub.ui.sheets.PermKind.USAGE -> context.startActivity(
-                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-                com.gamershub.ui.sheets.PermKind.SHIZUKU -> {
-                    val intent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
-                    if (intent != null) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                    } else {
-                        Toast.makeText(context, "Install Shizuku to enable advanced service", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        fun allowPermission(index: Int) {
+            val kind = PERM_CONFIGS[index].kind
+            val opened = runCatching {
+                when (kind) {
+                    PermKind.NOTIFICATION -> notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    PermKind.OVERLAY -> context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    PermKind.WRITE_SETTINGS -> context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}"))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    PermKind.USAGE -> context.startActivity(
+                        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    PermKind.SHIZUKU -> {
+                        val intent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                        if (intent != null) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(context, "Install Shizuku to enable the advanced service", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
+            }.isSuccess
+            // If the vendor settings page is missing, fall back to app details
+            // where every permission can still be granted by hand.
+            if (!opened && kind != PermKind.NOTIFICATION && kind != PermKind.SHIZUKU) {
+                Toast.makeText(context, "Opening app details — grant the permission there", Toast.LENGTH_LONG).show()
+                openAppDetails()
             }
-        } catch (_: Throwable) {
-            Toast.makeText(context, "Opening settings failed — grant it manually", Toast.LENGTH_SHORT).show()
-        }
-        val next = index + 1
-        if (next < PERM_CONFIGS.size) sheet = SheetState.Permission(next)
-        else {
-            repo.setFirstRunDone()
-            sheet = SheetState.None
-        }
-    }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(GC.Bg)
-    ) {
-        when (tab) {
-            Tab.PROFILE -> ProfileScreen(
-                uid = uid,
-                version = "V4.0.0-20",
-                premium = premium,
-                cpu = cpu, mem = mem, storage = storage, ping = ping,
-                envLevel = envLevel, envScore = envScore,
-                onBuyRenew = { premium = true; repo.setPremium(true) },
-                onPrivilege = { sheet = SheetState.Permission(0) },
-                onSettings = { sheet = SheetState.Permission(0) }
-            )
-            Tab.LOBBY -> LobbyScreen(
-                uid = uid,
-                energy = energy,
-                library = library,
-                version = "V4.0.0-20",
-                playMinutes = { pkg -> repo.playMinutes(pkg) },
-                onAddGames = { sheet = SheetState.AppSelector },
-                onGameTap = { app -> sheet = SheetState.Launch(app) },
-                onGameSpace = {
-                    if (library.isEmpty()) sheet = SheetState.AppSelector
-                    else if (energy >= 80) sheet = SheetState.Launch(library.first())
-                    else sheet = SheetState.LowEnergy
-                }
-            )
-            Tab.LABS -> GameLabsScreen(
-                activeCount = listOf("dns", "session", "quality", "clarity", "touch").count { repo.toggle(it) },
-                toggleState = { key -> repo.toggle(key) },
-                onToggle = { key, v -> repo.setToggle(key, v) }
-            )
         }
 
-        // Floating octagon bottom nav
         Box(
             Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 18.dp)
+                .fillMaxSize()
+                .background(GC.Bg)
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(CutCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                    .background(GC.SurfaceHi)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            when (tab) {
+                Tab.PROFILE -> ProfileScreen(
+                    uid = uid,
+                    version = "V4.1.0-21",
+                    sessionTime = sessionTime,
+                    cpu = cpu, mem = mem, storage = storage, ping = ping,
+                    envLevel = envLevel, envScore = envScore,
+                    onPrivilege = { sheet = SheetState.Permission(0) },
+                    onSettings = { sheet = SheetState.Settings }
+                )
+                Tab.LOBBY -> LobbyScreen(
+                    uid = uid,
+                    cpuPct = cpu.pct,
+                    library = library,
+                    version = "V4.1.0-21",
+                    playMinutes = { pkg -> repo.playMinutes(pkg) },
+                    onAddGames = { sheet = SheetState.AppSelector },
+                    onGameTap = { app -> sheet = SheetState.Launch(app) },
+                    onGameSpace = {
+                        if (library.isEmpty()) sheet = SheetState.AppSelector
+                        else openGameSpace(context, library.first().pkg)
+                    }
+                )
+                Tab.LABS -> GameLabsScreen(
+                    envLevel = envLevel,
+                    toggleState = ::toggleGet,
+                    onToggle = ::toggleSet,
+                    onExportPresets = {
+                        repo.addPreset(displayInfo)
+                        Toast.makeText(context, "Preset exported: $displayInfo", Toast.LENGTH_SHORT).show()
+                    },
+                    onManagePresets = { sheet = SheetState.Presets },
+                    onTuneDisplay = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    },
+                    displayInfo = displayInfo
+                )
+            }
+
+            // Floating octagon bottom nav
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp)
             ) {
-                Tab.entries.forEach { t ->
-                    val selected = t == tab
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(if (selected) GC.BrownPill else Color.Transparent)
-                            .clickable { tab = t }
-                            .padding(horizontal = if (selected) 20.dp else 16.dp, vertical = 13.dp)
-                    ) {
-                        Icon(
-                            t.icon, contentDescription = t.label,
-                            tint = if (selected) GC.Orange else GC.TextDim,
-                            modifier = Modifier.size(26.dp)
-                        )
-                        if (selected) {
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                t.label,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = GC.Orange,
-                                fontSize = 18.sp
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(CutCornerShape(topStart = 15.dp, topEnd = 15.dp, bottomStart = 15.dp, bottomEnd = 15.dp))
+                        .background(GC.SurfaceHi)
+                        .padding(horizontal = 8.dp, vertical = 7.dp)
+                ) {
+                    Tab.entries.forEach { t ->
+                        val selected = t == tab
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selected) GC.BrownPill else Color.Transparent)
+                                .clickable { tab = t }
+                                .padding(horizontal = if (selected) 18.dp else 15.dp, vertical = 12.dp)
+                        ) {
+                            Icon(
+                                t.icon, contentDescription = t.label,
+                                tint = if (selected) accent else GC.TextDim,
+                                modifier = Modifier.size(23.dp)
                             )
+                            if (selected) {
+                                Spacer(Modifier.width(9.dp))
+                                Text(t.label, style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 16.sp)
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Sheet overlay host
-        val current = sheet
-        AnimatedVisibility(
-            visible = current != SheetState.None,
-            enter = slideInVertically { it },
-            exit = slideOutVertically { it },
-            modifier = Modifier.fillMaxSize()
-        ) {
-            when (current) {
-                SheetState.LowEnergy -> LowEnergySheet(
-                    onWatchAd = {
-                        repo.addEnergy(120); energy = repo.energy(); sheet = SheetState.None
-                    },
-                    onBuyPremium = {
-                        premium = true; repo.setPremium(true); sheet = SheetState.None
-                    },
-                    onDismiss = { sheet = SheetState.None }
-                )
-                SheetState.AppSelector -> AppSelectorSheet(
-                    apps = apps,
-                    added = repo.added(),
-                    isGame = { pkg ->
-                        try {
-                            val ai = context.packageManager.getApplicationInfo(pkg, 0)
-                            ai.category == android.content.pm.ApplicationInfo.CATEGORY_GAME
-                        } catch (_: Throwable) { false }
-                    },
-                    playMinutes = { pkg -> repo.playMinutes(pkg) },
-                    onToggle = { pkg, v ->
-                        repo.setAdded(pkg, v)
-                        // trigger recomposition of library
-                        sheet = SheetState.AppSelector
-                    },
-                    onDismiss = { sheet = SheetState.None }
-                )
-                is SheetState.Launch -> LaunchModeSheet(
-                    app = current.app,
-                    version = "App",
-                    playMinutes = repo.playMinutes(current.app.pkg),
-                    energy = energy,
-                    onLaunch = { gameSpace ->
-                        val cost = if (gameSpace) 80 else 40
-                        repo.addEnergy(-cost)
-                        energy = repo.energy()
-                        repo.launch(current.app.pkg)
-                        sheet = SheetState.None
-                    },
-                    onLowEnergy = { sheet = SheetState.LowEnergy },
-                    onDismiss = { sheet = SheetState.None }
-                )
-                is SheetState.Permission -> PermissionSheet(
-                    config = PERM_CONFIGS[current.index],
-                    onAllow = { allowPermission(current.index) },
-                    onLater = {
-                        if (current.index + 1 < PERM_CONFIGS.size) sheet = SheetState.Permission(current.index + 1)
-                        else { repo.setFirstRunDone(); sheet = SheetState.None }
-                    },
-                    onOpenDetail = {
-                        context.startActivity(
-                            Intent(
-                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.parse("package:${context.packageName}")
-                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        )
-                    }
-                )
-                SheetState.None -> {}
+            // Sheet overlay host
+            val current = sheet
+            AnimatedVisibility(
+                visible = current != SheetState.None,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when (current) {
+                    SheetState.AppSelector -> AppSelectorSheet(
+                        apps = apps,
+                        added = repo.added(),
+                        isGame = { pkg ->
+                            try {
+                                context.packageManager.getApplicationInfo(pkg, 0)
+                                    .category == android.content.pm.ApplicationInfo.CATEGORY_GAME
+                            } catch (_: Throwable) { false }
+                        },
+                        playMinutes = { pkg -> repo.playMinutes(pkg) },
+                        onToggle = { pkg, v ->
+                            repo.setAdded(pkg, v)
+                            addedVersion.intValue++
+                        },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Settings -> SettingsSheet(
+                        accentIndex = accentIdx,
+                        onAccent = { i ->
+                            accentIdx = i
+                            repo.setAccentIndex(i)
+                        },
+                        onLanguage = {
+                            runCatching {
+                                context.startActivity(Intent(Settings.ACTION_LOCALE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            }
+                        },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Presets -> PresetsSheet(
+                        presets = repo.presets(),
+                        onClear = { repo.clearPresets(); sheet = SheetState.None },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    is SheetState.Launch -> LaunchModeSheet(
+                        app = current.app,
+                        version = "App",
+                        playMinutes = repo.playMinutes(current.app.pkg),
+                        onLaunch = { gameSpace ->
+                            if (gameSpace) openGameSpace(context, current.app.pkg)
+                            else repo.launch(current.app.pkg)
+                            sheet = SheetState.None
+                        },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    is SheetState.Permission -> PermissionSheet(
+                        config = PERM_CONFIGS[current.index],
+                        granted = when (PERM_CONFIGS[current.index].kind) {
+                            PermKind.NOTIFICATION -> notifGranted
+                            PermKind.OVERLAY -> Settings.canDrawOverlays(context)
+                            PermKind.WRITE_SETTINGS -> Settings.System.canWrite(context)
+                            PermKind.USAGE -> hasUsage(context)
+                            PermKind.SHIZUKU -> context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api") != null
+                        },
+                        onAllow = { allowPermission(current.index) },
+                        onLater = {
+                            if (current.index + 1 < PERM_CONFIGS.size) sheet = SheetState.Permission(current.index + 1)
+                            else { repo.setFirstRunDone(); sheet = SheetState.None }
+                        },
+                        onOpenDetail = { openAppDetails() }
+                    )
+                    SheetState.None -> {}
+                }
             }
         }
     }
 }
 
-private fun envLevel(context: Context): Int {
-    var level = 0
-    if (Settings.canDrawOverlays(context)) level++
-    if (Settings.System.canWrite(context)) level++
-    if (hasUsage(context)) level++
-    return level
+private fun openGameSpace(context: Context, pkg: String) {
+    runCatching {
+        context.startActivity(
+            Intent(context, GameSpaceActivity::class.java)
+                .putExtra(GameSpaceActivity.EXTRA_PKG, pkg)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
 }
 
-private fun hasNotification(context: Context): Boolean =
-    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+@Composable
+private fun PresetsSheet(presets: List<String>, onClear: () -> Unit, onDismiss: () -> Unit) {
+    val accent = LocalAccent.current
+    SheetFrame(onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Display Presets", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
+        }
+        Spacer(Modifier.height(12.dp))
+        if (presets.isEmpty()) {
+            Text("No saved presets yet. Use Export in Game-Labs.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+        } else {
+            presets.forEach { line ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GC.SurfaceHi)
+                        .padding(13.dp)
+                ) {
+                    Text(line, style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        BigButton("Clear All", onClear, Modifier.fillMaxWidth(), primary = false, leadingIcon = Icons.Filled.Delete, textColor = accent)
+    }
+}
 
 private fun hasUsage(context: Context): Boolean = try {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
     val mode = if (android.os.Build.VERSION.SDK_INT >= 29) {
-        appOps.unsafeCheckOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName
-        )
+        appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
     } else {
         @Suppress("DEPRECATION")
-        appOps.checkOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName
-        )
+        appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
     }
     mode == AppOpsManager.MODE_ALLOWED
 } catch (_: Throwable) {

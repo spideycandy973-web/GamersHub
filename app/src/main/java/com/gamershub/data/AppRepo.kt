@@ -49,6 +49,28 @@ class AppRepo(private val context: Context) {
     fun toggle(key: String, default: Boolean = false): Boolean = prefs.getBoolean(key, default)
     fun setToggle(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
 
+
+    fun accentIndex(): Int = prefs.getInt("accent", 0)
+    fun setAccentIndex(i: Int) = prefs.edit().putInt("accent", i).apply()
+
+    /** Per-game graphics config (Texture Filtering panel). */
+    fun gfx(pkg: String, key: String, default: Boolean): Boolean =
+        prefs.getBoolean("gfx_${pkg}_$key", default)
+    fun setGfx(pkg: String, key: String, value: Boolean) =
+        prefs.edit().putBoolean("gfx_${pkg}_$key", value).apply()
+    fun gfxRes(pkg: String): Int = prefs.getInt("gfx_${pkg}_res", 0)
+    fun setGfxRes(pkg: String, index: Int) = prefs.edit().putInt("gfx_${pkg}_res", index).apply()
+    fun gfxPreset(pkg: String): Int = prefs.getInt("gfx_${pkg}_preset", 0)
+    fun setGfxPreset(pkg: String, index: Int) = prefs.edit().putInt("gfx_${pkg}_preset", index).apply()
+
+    /** Display presets (Preset Manager). */
+    fun presets(): List<String> = prefs.getString("display_presets", "")?.split('|')?.filter { it.isNotBlank() } ?: emptyList()
+    fun addPreset(line: String) {
+        val cur = prefs.getString("display_presets", "") ?: ""
+        prefs.edit().putString("display_presets", if (cur.isEmpty()) line else "$cur|$line").apply()
+    }
+    fun clearPresets() = prefs.edit().putString("display_presets", "").apply()
+
     fun firstRunDone(): Boolean = prefs.getBoolean("first_run", false)
     fun setFirstRunDone() = prefs.edit().putBoolean("first_run", true).apply()
 
