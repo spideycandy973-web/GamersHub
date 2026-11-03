@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -136,6 +137,8 @@ private fun GameSpaceScreen(
     }
     var showControl by remember { mutableStateOf(false) }
     var showTexture by remember { mutableStateOf(false) }
+    var showTouch by remember { mutableStateOf(false) }
+    var showDisplay by remember { mutableStateOf(false) }
     var panelRunning by remember { mutableStateOf(FloatingPanelService.isRunning) }
 
     // Live stats
@@ -346,6 +349,8 @@ private fun GameSpaceScreen(
         if (showControl) {
             ControlCenter(
                 onDismiss = { showControl = false },
+                onTouchSettings = { showControl = false; showTouch = true },
+                onDisplaySettings = { showControl = false; showDisplay = true },
                 onOpenPanel = {
                     panelRunning = !panelRunning
                     if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
@@ -357,6 +362,14 @@ private fun GameSpaceScreen(
         // ---- Texture Filtering panel ----
         if (showTexture) {
             TexturePanel(pkg = pkg, repo = repo, appName = app.first, onDismiss = { showTexture = false })
+        }
+
+        // ---- Touch / Display settings panels ----
+        if (showTouch) {
+            TouchPanel(repo = repo, onDismiss = { showTouch = false })
+        }
+        if (showDisplay) {
+            DisplayPanel(onDismiss = { showDisplay = false })
         }
     }
 }
@@ -397,7 +410,13 @@ private fun StatCard(title: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun ControlCenter(onDismiss: () -> Unit, onOpenPanel: () -> Unit, panelRunning: Boolean) {
+private fun ControlCenter(
+    onDismiss: () -> Unit,
+    onTouchSettings: () -> Unit,
+    onDisplaySettings: () -> Unit,
+    onOpenPanel: () -> Unit,
+    panelRunning: Boolean
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { AppRepo(context) }
     var dns by remember { mutableStateOf(repo.toggle("dns")) }
@@ -436,15 +455,16 @@ private fun ControlCenter(onDismiss: () -> Unit, onOpenPanel: () -> Unit, panelR
                 ControlCard(Icons.Filled.GraphicEq, "VISUAL", "Session Monitor", showState = true, on = session, onToggle = {
                     session = it; repo.setToggle("session", it)
                 }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.Apps, "CONFIGS", if (panelRunning) "Pop-up Panel (ON)" else "Pop-up Panel", showState = false, on = panelRunning, onToggle = { onOpenPanel() }, modifier = Modifier.weight(1f))
+                ControlCard(Icons.Filled.TouchApp, "CONFIGS", "Touch Settings", showState = false, on = false, onToggle = {
+                    onTouchSettings()
+                }, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ControlCard(Icons.Filled.Bolt, "CONFIGS", "Show Taps", showState = true, on = taps, onToggle = {
-                    taps = it; repo.setToggle("show_taps", it)
-                    putSystemSetting(context, "show_touches", if (it) 1 else 0)
+                ControlCard(Icons.Filled.Tune, "CONFIGS", "Display Settings", showState = false, on = false, onToggle = {
+                    onDisplaySettings()
                 }, modifier = Modifier.weight(1f))
-                Spacer(Modifier.weight(1f))
+                ControlCard(Icons.Filled.Apps, "CONFIGS", if (panelRunning) "Pop-up Panel (ON)" else "Pop-up Panel", showState = false, on = panelRunning, onToggle = { onOpenPanel() }, modifier = Modifier.weight(1f))
                 Spacer(Modifier.weight(1f))
             }
         }
@@ -688,5 +708,131 @@ internal fun putSystemSetting(context: Context, name: String, value: Int) {
         android.provider.Settings.System.putInt(context.contentResolver, name, value)
     } catch (_: Throwable) {
         // needs WRITE_SETTINGS; the permission sheet covers it
+    }
+}
+
+/** Touch Settings side panel — real system writes for taps / coordinates. */
+@Composable
+private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var magic by remember { mutableStateOf(repo.toggle("magic_mapper")) }
+    var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
+    var coords by remember { mutableStateOf(repo.toggle("show_coords")) }
+    var hw by remember { mutableStateOf(repo.toggle("hw_touch")) }
+    SidePanel(title = "Touch Settings", subtitle = "CONFIGS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
+        GfxRow("Magic Mapper Listener", "Enable Magic Mapper service", magic) {
+            magic = it; repo.setToggle("magic_mapper", it)
+        }
+        Divider()
+        GfxRow("Show Taps", "Draw a visible marker where you touch.", taps) {
+            taps = it; repo.setToggle("show_taps", it)
+            putSystemSetting(context, "show_touches", if (it) 1 else 0)
+        }
+        Divider()
+        GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
+            coords = it; repo.setToggle("show_coords", it)
+            putSystemSetting(context, "pointer_location", if (it) 1 else 0)
+        }
+        Divider()
+        GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
+            hw = it; repo.setToggle("hw_touch", it)
+        }
+    }
+}
+
+/** Display Settings side panel — real refresh-rate and rotation control. */
+@Composable
+private fun DisplayPanel(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var refreshStep by remember { mutableStateOf(0) }
+    var autoRotate by remember {
+        mutableStateOf(
+            try {
+                Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 1
+            } catch (_: Throwable) { true }
+        )
+    }
+    SidePanel(title = "Display Settings", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
+        Text("Refresh Rate", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
+                PresetChip(label, refreshStep == i) {
+                    refreshStep = i
+                    val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
+                    try {
+                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz)
+                        Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
+                    } catch (_: Throwable) {}
+                }
+            }
+        }
+        Divider()
+        GfxRow("Auto-rotate", "Rotate the screen with the device orientation.", autoRotate) {
+            autoRotate = it
+            try {
+                Settings.System.putInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (it) 1 else 0)
+            } catch (_: Throwable) {}
+        }
+        Divider()
+        val dm = context.resources.displayMetrics
+        Text(
+            "Panel: ${dm.widthPixels}x${dm.heightPixels} · ${dm.densityDpi}dp",
+            style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
+        )
+    }
+}
+
+/** Shared right-side panel frame (same look as Texture Filtering). */
+@Composable
+private fun SidePanel(
+    title: String,
+    subtitle: String,
+    active: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x55000000))
+            .clickable(onClick = onDismiss)
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(14.dp)
+                .width(520.dp)
+                .clip(CutCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomEnd = 6.dp, bottomStart = 22.dp))
+                .background(Color(0xF5170E0F))
+                .clickable(enabled = false) {}
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(subtitle, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.2.sp)
+                    Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 21.sp)
+                    Text(
+                        if (active) "Active" else "Not active",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (active) accent else GC.TextDim, fontSize = 12.sp
+                    )
+                }
+                Box(
+                    Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
+                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+            }
+            Spacer(Modifier.height(16.dp))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1B1213))
+                    .padding(16.dp),
+                content = content
+            )
+        }
     }
 }

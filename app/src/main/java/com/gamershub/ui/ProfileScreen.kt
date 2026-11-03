@@ -196,55 +196,7 @@ fun ProfileScreen(
 
         SectionLabel("Real-time Monitoring")
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Card(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("CPU Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                    IconChip(Icons.Filled.Speed, size = 36)
-                }
-                Spacer(Modifier.height(10.dp))
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = 132)
-                }
-                Spacer(Modifier.height(9.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Max ${String.format("%.2f", cpu.maxGhz)} GHz", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                    Text("${cpu.pct}%", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                Card {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("RAM Usage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        IconChip(Icons.Filled.Storage, size = 36)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("${mem.pct}", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
-                        Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    Text("Total ${mem.totalMb / 1024} GB", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                    Spacer(Modifier.height(8.dp))
-                    SegmentedBar(pct = mem.pct, segments = 8)
-                }
-                Card {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Storage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        IconChip(Icons.Filled.Storage, size = 36, bg = GC.SurfaceHi)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text("${storage.pct}", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
-                        Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    Text("Total ${storage.totalGb} GB", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                    Spacer(Modifier.height(8.dp))
-                    SolidBar(pct = storage.pct)
-                }
-            }
-        }
+        MonitoringGrid(cpu = cpu, mem = mem, storage = storage)
 
         Spacer(Modifier.height(12.dp))
 
@@ -305,4 +257,89 @@ fun ProfileScreen(
 private fun deviceLine(): String {
     val abis = try { android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown" } catch (_: Throwable) { "unknown" }
     return "${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE} · $abis"
+}
+
+/**
+ * Adaptive monitoring grid — two columns when there is room, single
+ * stacked column on narrow screens so text can never overlap.
+ */
+@Composable
+private fun MonitoringGrid(cpu: DeviceStats.Cpu, mem: DeviceStats.Mem, storage: DeviceStats.Storage) {
+    androidx.compose.foundation.layout.BoxWithConstraints {
+        if (maxWidth < 400.dp) {
+            CpuCard(cpu, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            RamCard(mem, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            StorageCard(storage, Modifier.fillMaxWidth())
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CpuCard(cpu, Modifier.weight(1f))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+                    RamCard(mem, Modifier.fillMaxWidth())
+                    StorageCard(storage, Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CpuCard(cpu: DeviceStats.Cpu, modifier: Modifier = Modifier) {
+    val accent = LocalAccent.current
+    Card(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("CPU Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            IconChip(Icons.Filled.Speed, size = 36)
+        }
+        Spacer(Modifier.height(10.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = 132)
+        }
+        Spacer(Modifier.height(9.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Max ${String.format("%.2f", cpu.maxGhz)} GHz", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("${cpu.pct}%", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun RamCard(mem: DeviceStats.Mem, modifier: Modifier = Modifier) {
+    val accent = LocalAccent.current
+    Card(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("RAM Usage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            IconChip(Icons.Filled.Storage, size = 36)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("${mem.pct}", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
+            Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text("Total ${mem.totalMb / 1024} GB", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+        Spacer(Modifier.height(8.dp))
+        SegmentedBar(pct = mem.pct, segments = 8)
+    }
+}
+
+@Composable
+private fun StorageCard(storage: DeviceStats.Storage, modifier: Modifier = Modifier) {
+    val accent = LocalAccent.current
+    Card(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Storage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            IconChip(Icons.Filled.Storage, size = 36, bg = GC.SurfaceHi)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("${storage.pct}", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
+            Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text("Total ${storage.totalGb} GB", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+        Spacer(Modifier.height(8.dp))
+        SolidBar(pct = storage.pct)
+    }
 }
