@@ -47,7 +47,6 @@ private fun BrandStrip() {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(GC.RedBrush.copy(alpha = 0.0f)) // layer hook for gradient strips
             .background(GC.Bg2)
             .statusBarsPadding()
             .padding(horizontal = 18.dp, vertical = 10.dp)

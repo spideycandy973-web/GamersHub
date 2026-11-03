@@ -116,7 +116,10 @@ private fun ModeTile(emoji: String, label: String, selected: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(120.dp)
-            .background(if (selected) GC.Red.copy(alpha = 0.18f) else GC.DarkGlassBrush, CutChip)
+            .then(
+                if (selected) Modifier.background(GC.Red.copy(alpha = 0.18f), CutChip)
+                else Modifier.background(GC.DarkGlassBrush, CutChip)
+            )
             .border(1.dp, if (selected) GC.Red else GC.Stroke, CutChip)
             .padding(vertical = 14.dp)
     ) {
