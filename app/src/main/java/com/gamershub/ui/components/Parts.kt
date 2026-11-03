@@ -46,7 +46,7 @@ import com.gamershub.theme.GC
 
 /** Rounded-square app-style toggle with a squircle knob (off: grey · on: orange). */
 @Composable
-fun Toggle(on: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun Toggle(on: Boolean, modifier: Modifier = Modifier, onCheckedChange: (Boolean) -> Unit) {
     val track by animateColorAsState(
         if (on) GC.Orange else Color(0xFF2B2420), tween(180), label = "track"
     )
