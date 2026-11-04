@@ -37,7 +37,7 @@ jobs:
             echo "file_id=$FILE_ID"
             pip install -q gdown 2>&1 | tail -1
             echo "--- attempt 1: gdown"
-            gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view" -O recording.mp4 2>&1 | tail -5
+            gdown "${FILE_ID}" -O recording.mp4 2>&1 | tail -5
             echo "gdown exit=$? size=$(stat -c%s recording.mp4 2>/dev/null || echo 0)"
             echo "--- head of file:"
             head -c 300 recording.mp4 | cat -v | head -5
