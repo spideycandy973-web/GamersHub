@@ -70,7 +70,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -396,7 +395,8 @@ private fun AxModePanel(onClose: () -> Unit) {
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xE6160A0B))
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
-                            horizontalArrangement             verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             StatMini("FPS", "0")
                             StatMini("CPU", "${stats.cpu}%")
@@ -428,7 +428,7 @@ private fun AxModePanel(onClose: () -> Unit) {
                             .clickable(onClick = onClose)
                             .padding(horizontal = 18.dp, vertical = 2.dp)
                     ) {
-                        AIcon(Icons.Filled.KeyboardArrowD          AIcon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
+                        AIcon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
