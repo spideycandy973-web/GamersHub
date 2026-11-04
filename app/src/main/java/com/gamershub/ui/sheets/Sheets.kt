@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Rocket
 import androidx.compose.material.icons.filled.Search
+import java.util.Locale
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
@@ -569,5 +571,464 @@ private fun ThemeColorTile(name: String, color: Color, selected: Boolean, modifi
         }
         Spacer(Modifier.width(11.dp))
         Text(name, style = MaterialTheme.typography.labelLarge, color = if (selected) color else GC.TextSoft, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Display Tuning — navigation mode, resolution, smallest width        */
+/* ------------------------------------------------------------------ */
+
+@Composable
+fun DisplayTuningSheet(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val accent = LocalAccent.current
+    val dm = context.resources.displayMetrics
+    val cfg = context.resources.configuration
+    var navMode by remember {
+        mutableStateOf(
+            try {
+                android.provider.Settings.Secure.getInt(context.contentResolver, "navigation_mode")
+            } catch (_: Throwable) { 2 }
+        )
+    }
+    SheetFrame(onDismiss = onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconChip(Icons.Filled.Palette, size = 50)
+            Spacer(Modifier.width(12.dp))
+            Text("Display Tuning", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
+            CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
+        }
+        Spacer(Modifier.height(14.dp))
+
+        // Navigation Mode
+        TuningCard(icon = Icons.Filled.Language, title = "Navigation Mode", desc = "Change how you navigate your device") {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("3-Button", "2-Button", "Gestual").forEachIndexed { i, label ->
+                    val selected = navMode == i
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) accent else GC.SurfaceHi)
+                            .clickable {
+                                val ok = try {
+                                    android.provider.Settings.Secure.putInt(context.contentResolver, "navigation_mode", i)
+                                } catch (_: Throwable) { false }
+                                if (ok) navMode = i
+                                else {
+                                    android.widget.Toast.makeText(context, "Requires Activation — see Activation Center", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(vertical = 13.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else GC.TextSoft, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Resolution Changer
+        val physW = dm.widthPixels
+        val physH = dm.heightPixels
+        TuningCard(icon = Icons.Filled.Apps, title = "Resolution Changer", desc = "Change screen resolution (Width x Height)") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatPill("Res-Ratio: 1.00")
+                StatPill("W-Scale: 1.00")
+                StatPill("H-Scale: 1.00")
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ValueBox("$physW", "W", Modifier.weight(1f))
+                Text("X", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
+                ValueBox("$physH", "H", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(GC.SurfaceHi)
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Applied", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Smallest Width Changer
+        TuningCard(icon = Icons.Filled.Apps, title = "Smallest Width Changer", desc = "Override screen DPI & smallest width directly") {
+            StatPill("DPI-Proportion: ${String.format(Locale.US, "%.2f", dm.densityDpi / 160f * 100f / 90f)}%")
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ValueBox("${cfg.smallestScreenWidthDp}", "dp", Modifier.weight(1f))
+                Text("=", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
+                ValueBox("${dm.densityDpi}", "ppi", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("Smallest Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(GC.SurfaceHi)
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Applied", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+        }
+    }
+}
+
+@Composable
+private fun TuningCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    desc: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(GC.SurfaceHi)
+            .padding(15.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconChip(icon, size = 42)
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                Text(desc, style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 12.5.sp, lineHeight = 17.sp)
+            }
+        }
+        Spacer(Modifier.height(11.dp))
+        content()
+    }
+}
+
+@Composable
+private fun StatPill(text: String) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(accent.copy(alpha = 0.22f))
+            .padding(horizontal = 11.dp, vertical = 6.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 11.5.sp)
+    }
+}
+
+@Composable
+private fun ValueBox(value: String, suffix: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0x14FFFFFF))
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(value, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp, modifier = Modifier.weight(1f))
+        Text(suffix, style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 14.sp)
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Activation Center — Shizuku + pairing                              */
+/* ------------------------------------------------------------------ */
+
+@Composable
+fun ActivationSheet(
+    envLevel: Int,
+    shizukuActive: Boolean,
+    onOpenShizuku: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val accent = LocalAccent.current
+    var quickStart by remember { mutableStateOf(true) }
+    var logOpen by remember { mutableStateOf(false) }
+    SheetFrame(onDismiss = onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Activation Center", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
+            Box(
+                Modifier.clip(RoundedCornerShape(50)).background(GC.SurfaceHi).clickable(onClick = onDismiss).padding(11.dp)
+            ) {
+                Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            com.gamershub.ui.components.GaugeRing(pct = envLevel * 100 / 3, big = "$envLevel", small = "/ 3", diameter = 128)
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(GC.SurfaceHi).padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
+                Spacer(Modifier.width(8.dp))
+                Text("ADVANCED TIER", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 13.sp, letterSpacing = 1.2.sp)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(GC.SurfaceHi)
+                .padding(5.dp)
+        ) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (quickStart) accent else Color.Transparent)
+                    .clickable { quickStart = true }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Quick Start", style = MaterialTheme.typography.labelLarge, color = if (quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (!quickStart) accent else Color.Transparent)
+                    .clickable { quickStart = false }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Manual Pairing", style = MaterialTheme.typography.labelLarge, color = if (!quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        if (quickStart) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.SurfaceHi)
+                    .padding(15.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(Icons.Filled.Android, size = 44)
+                    Spacer(Modifier.width(11.dp))
+                    Text("Shizuku Access", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(if (shizukuActive) accent.copy(alpha = 0.2f) else GC.Bg)
+                            .clickable(onClick = onOpenShizuku)
+                            .padding(horizontal = 13.dp, vertical = 7.dp)
+                    ) {
+                        if (shizukuActive) {
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+                            Spacer(Modifier.width(5.dp))
+                        }
+                        Text(
+                            if (shizukuActive) "Activated" else "Activate",
+                            style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 13.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { logOpen = !logOpen }
+                        .padding(vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.FastForward, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Shizuku Execution Log", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(if (logOpen) "⌃" else "⌄", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
+                }
+                if (logOpen) {
+                    Spacer(Modifier.height(6.dp))
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(GC.Bg)
+                            .padding(12.dp)
+                    ) {
+                        listOf(
+                            "$ shizuku: binder alive",
+                            "$ settings put system show_touches …",
+                            "$ settings put system pointer_location …",
+                            "$ settings put system peak_refresh_rate …"
+                        ).forEach {
+                            Text(it, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.5.sp, lineHeight = 17.sp)
+                        }
+                    }
+                }
+            }
+        } else {
+            // ---- TCP/IP Mode ----
+            val adbTcp = try {
+                android.provider.Settings.Global.getInt(context.contentResolver, "adb_wifi_enabled") == 1
+            } catch (_: Throwable) { false }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.SurfaceHi)
+                    .padding(15.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(Icons.Filled.Dns, size = 44)
+                    Spacer(Modifier.width(11.dp))
+                    Text("TCP/IP Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(9.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accent.copy(alpha = 0.16f))
+                        .padding(horizontal = 11.dp, vertical = 7.dp)
+                ) {
+                    if (adbTcp) Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        if (adbTcp) "TCP/IP active on port 5555" else "TCP/IP not active",
+                        style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp
+                    )
+                }
+                Spacer(Modifier.height(9.dp))
+                Text(
+                    "ADB TCP/IP looks active on this device, but this app hasn't paired with it yet — it was likely turned on another way. Pair once below to trust this device.",
+                    style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 12.5.sp, lineHeight = 18.sp
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            // ---- Wireless Debugging ----
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.SurfaceHi)
+                    .padding(15.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(Icons.Filled.Dns, size = 44)
+                    Spacer(Modifier.width(11.dp))
+                    Text("Wireless Debugging", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                StatPill("ADB Wireless Debugging")
+                Spacer(Modifier.height(10.dp))
+                listOf(
+                    "Open Wireless Debugging in Developer Options",
+                    "Select 'Pair device with pairing code'",
+                    "Come back here and start discovery"
+                ).forEachIndexed { i, step ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
+                        Box(
+                            Modifier.size(24.dp).clip(CircleShape).background(accent.copy(alpha = 0.22f)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("${i + 1}", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp) }
+                        Spacer(Modifier.width(10.dp))
+                        Text(step, style = MaterialTheme.typography.bodyMedium, color = GC.Text, fontSize = 13.5.sp, lineHeight = 19.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50))
+                            .clickable {
+                                runCatching {
+                                    context.startActivity(
+                                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                            }
+                            .padding(vertical = 13.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("Settings", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp) }
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(accent)
+                            .clickable {
+                                android.widget.Toast.makeText(context, "Searching for pairing codes…", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(vertical = 13.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("Start", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            // ---- ADB via OTG ----
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.SurfaceHi)
+                    .padding(15.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconChip(Icons.Filled.Dns, size = 44)
+                    Spacer(Modifier.width(11.dp))
+                    Text("ADB via OTG", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                }
+                Spacer(Modifier.height(9.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(accent)
+                            .padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("This device = Computer", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp) }
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color(0x14FFFFFF))
+                            .padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("This device = Target", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp) }
+                }
+                Spacer(Modifier.height(10.dp))
+                listOf(
+                    "Enable USB Debugging on the Target device (Settings > Developer options > USB debugging)",
+                    "Plug the OTG adapter into THIS device, then connect the Target via USB cable",
+                    "Tap Scan — approve the USB permission dialog on THIS device",
+                    "Tap Activate — approve the 'Allow USB debugging?' dialog on the Target"
+                ).forEachIndexed { i, step ->
+                    Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 5.dp)) {
+                        Box(
+                            Modifier.size(24.dp).clip(CircleShape).background(accent.copy(alpha = 0.22f)),
+                            contentAlignment = Alignment.Center
+                        ) { Text("${i + 1}", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp) }
+                        Spacer(Modifier.width(10.dp))
+                        Text(step, style = MaterialTheme.typography.bodyMedium, color = GC.Text, fontSize = 13.sp, lineHeight = 18.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(50))
+                        .background(accent)
+                        .clickable {
+                            android.widget.Toast.makeText(context, "Plug in the OTG cable to scan", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) { Text("Scan USB Device", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+            }
+        }
     }
 }

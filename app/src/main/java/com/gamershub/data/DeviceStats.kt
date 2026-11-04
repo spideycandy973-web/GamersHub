@@ -55,8 +55,8 @@ object DeviceStats {
     }
 
     /** Real ICMP ping to 8.8.8.8 in ms, or -1 when unavailable. */
-    fun pingMs(): Int = try {
-        val p = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "2", "8.8.8.8"))
+    fun pingMs(host: String = "8.8.8.8"): Int = try {
+        val p = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "2", host))
         val out = p.inputStream.bufferedReader().readText()
         p.waitFor()
         val m = Regex("time=([0-9.]+)").find(out)

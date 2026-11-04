@@ -102,6 +102,8 @@ sealed interface SheetState {
     data object Presets : SheetState
     data class Launch(val app: InstalledApp) : SheetState
     data class Permission(val index: Int) : SheetState
+    data object DisplayTuning : SheetState
+    data object Activation : SheetState
 }
 
 /** Root shell: tabs, octagon nav, sheets, live state. */
@@ -283,7 +285,7 @@ fun RootShell(repo: AppRepo) {
                     sessionTime = sessionTime,
                     cpu = cpu, mem = mem, storage = storage, ping = ping,
                     envLevel = envLevel, envScore = envScore,
-                    onPrivilege = { sheet = SheetState.Permission(0) },
+                    onPrivilege = { sheet = SheetState.Activation },
                     onSettings = { sheet = SheetState.Settings }
                 )
                 Tab.LOBBY -> LobbyScreen(
@@ -308,11 +310,7 @@ fun RootShell(repo: AppRepo) {
                         Toast.makeText(context, "Preset exported: $displayInfo", Toast.LENGTH_SHORT).show()
                     },
                     onManagePresets = { sheet = SheetState.Presets },
-                    onTuneDisplay = {
-                        runCatching {
-                            context.startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        }
-                    },
+                    onTuneDisplay = { sheet = SheetState.DisplayTuning },
                     displayInfo = displayInfo
                 )
             }
@@ -426,6 +424,24 @@ fun RootShell(repo: AppRepo) {
                             else { repo.setFirstRunDone(); sheet = SheetState.None }
                         },
                         onOpenDetail = { openAppDetails() }
+                    )
+                    SheetState.DisplayTuning -> com.gamershub.ui.sheets.DisplayTuningSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Activation -> com.gamershub.ui.sheets.ActivationSheet(
+                        envLevel = envLevel,
+                        shizukuActive = hasShizuku(),
+                        onOpenShizuku = {
+                            runCatching {
+                                val intent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                                    ?: context.packageManager.getLaunchIntentForPackage("moe.shizuku.manager")
+                                if (intent != null) {
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(intent)
+                                }
+                            }
+                        },
+                        onDismiss = { sheet = SheetState.None }
                     )
                     SheetState.None -> {}
                 }

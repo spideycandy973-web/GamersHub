@@ -1,6 +1,7 @@
 package com.gamershub.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,15 +66,16 @@ fun ProfileScreen(
     onSettings: () -> Unit
 ) {
     val accent = LocalAccent.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
-            .padding(horizontal = 18.dp)
-            .padding(top = 14.dp, bottom = 120.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(GC.Bg)) {
+        // ---- Fixed opaque header: scrolling content can never overlap it ----
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(GC.Bg)
+                .statusBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+        ) {
             Column(Modifier.weight(1f)) {
                 Text("Profile", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -87,7 +89,13 @@ fun ProfileScreen(
             CircleIconButton(Icons.Filled.Settings, onClick = onSettings)
         }
 
-        Spacer(Modifier.height(6.dp))
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .padding(bottom = 120.dp)
+        ) {
         Text(
             "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · v1.3.1",
             Modifier.fillMaxWidth(),
@@ -251,6 +259,7 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(14.dp))
         Text(deviceLine(), Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+        }
     }
 }
 
