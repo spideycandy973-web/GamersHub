@@ -1,6 +1,7 @@
 # Relay workflow: pulls the screen recording from Google Drive,
 # extracts frames with ffmpeg, and publishes them on the
-# `recording-frames` branch so they can be retrieved via codeload.
+# `recording-frames` branch (readable via codeload). It also writes
+# relay-status.txt to that branch so failures are self-describing.
 name: Fetch Recording Frames
 
 on:
@@ -31,34 +32,49 @@ jobs:
         env:
           FILE_ID: ${{ github.event.inputs.file_id || '13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9' }}
         run: |
-          set -eux
-          pip install -q gdown
-          # gdown handles the large-file confirm interstitial
-          gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view" -O recording.mp4 || true
-          # fallback: direct usercontent endpoint
-          if [ ! -s recording.mp4 ] || ! head -c 64 recording.mp4 | grep -q "ftyp\|moov\|mdat" 2>/dev/null; then
-            curl -sL "https://drive.usercontent.google.com/download?id=${FILE_ID}&export=download&confirm=t" -o recording.mp4
-          fi
-          ls -la recording.mp4
-          ffprobe -v error -show_entries format=duration,size -of default=nw=1 recording.mp4
+          {
+            echo "=== relay status $(date -u) ==="
+            echo "file_id=$FILE_ID"
+            pip install -q gdown 2>&1 | tail -1
+            echo "--- attempt 1: gdown"
+            gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view" -O recording.mp4 2>&1 | tail -5
+            echo "gdown exit=$? size=$(stat -c%s recording.mp4 2>/dev/null || echo 0)"
+            echo "--- head of file:"
+            head -c 300 recording.mp4 | cat -v | head -5
+            echo ""
+            if ! head -c 256 recording.mp4 | grep -q "ftyp"; then
+              echo "--- attempt 2: drive.usercontent curl"
+              curl -sL "https://drive.usercontent.google.com/download?id=${FILE_ID}&export=download&confirm=t" -o recording.mp4
+              echo "curl exit=$? size=$(stat -c%s recording.mp4 2>/dev/null || echo 0)"
+              head -c 300 recording.mp4 | cat -v | head -5
+              echo ""
+            fi
+            echo "--- ffprobe:"
+            ffprobe -v error -show_entries format=duration,size -of default=nw=1 recording.mp4 2>&1 || echo "FFPROBE FAILED"
+          } 2>&1 | tee relay-status.txt
+          # fail the step if we do not have a real video
+          head -c 256 recording.mp4 | grep -q "ftyp"
 
       - name: Extract frames
         env:
           FPS: ${{ github.event.inputs.fps || '2' }}
         run: |
           set -eux
-          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg || true
+          which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
           mkdir -p frames
           ffmpeg -y -i recording.mp4 -vf "fps=${FPS},scale=1088:-2" -q:v 4 frames/f_%04d.jpg
           ls frames | wc -l
+          echo "frames=$(ls frames | wc -l)" >> relay-status.txt
 
       - name: Publish frames branch
+        if: always()
         run: |
           set -eux
           git config user.name "recording-relay"
           git config user.email "relay@users.noreply.github.com"
           git checkout --orphan recording-frames
           git rm -rq --cached . || true
-          git add frames/
-          git commit -m "Recording frames (relay)"
+          git add frames/ relay-status.txt 2>/dev/null || git add relay-status.txt
+          git commit -m "Recording relay $(date -u +%H%M%S)"
           git push -f origin recording-frames
+          echo "::notice title=Relay::published to recording-frames ($(ls frames 2>/dev/null | wc -l) frames)"
