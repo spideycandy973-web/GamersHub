@@ -35,6 +35,10 @@ import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.FastForward
@@ -59,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -108,7 +113,7 @@ fun SheetFrame(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Uni
 }
 
 /* ------------------------------------------------------------------ */
-/* Launch mode + slide to open (no energy gate — removed per request)   */
+/* Launch mode + slide to open (energy economy, simulated rewards)     */
 /* ------------------------------------------------------------------ */
 @Composable
 fun LaunchModeSheet(
@@ -120,11 +125,27 @@ fun LaunchModeSheet(
 ) {
     var gameSpace by remember { mutableStateOf(true) }
     SheetFrame(onDismiss) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // ---- game banner ----
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Brush.horizontalGradient(listOf(Color(0xFF132A1C), Color(0xFF0E1512))))
+        ) {
+            Image(
+                painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
+                contentDescription = null,
+                alpha = 0.55f,
+                modifier = Modifier.align(Alignment.CenterEnd).size(120.dp)
+            )
+        }
+        Spacer(Modifier.height(-46.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 2.dp)) {
             Image(
                             painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                 contentDescription = null,
-                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(15.dp))
+                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(15.dp))
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -134,8 +155,14 @@ fun LaunchModeSheet(
                 Row {
                     StatusPill("◌ ${playMinutes}m", orange = false)
                     Spacer(Modifier.width(6.dp))
-                    StatusPill(version, orange = false)
+                    StatusPill("🎮 Game", orange = false)
                 }
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    version,
+                    style = MaterialTheme.typography.labelLarge, color = Color(0xFFE05A2B), fontSize = 13.sp
+                )
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -143,11 +170,11 @@ fun LaunchModeSheet(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LaunchModeCard(
-                icon = Icons.Filled.Rocket, title = "Game Space",
+                icon = Icons.Filled.Rocket, title = "Game Space", cost = "⚡ 80 Energy",
                 selected = gameSpace, onSelect = { gameSpace = true }, modifier = Modifier.weight(1f)
             )
             LaunchModeCard(
-                icon = Icons.Filled.Android, title = "Direct Open",
+                icon = Icons.Filled.Android, title = "Direct Open", cost = "⚡ 40 Energy",
                 selected = !gameSpace, onSelect = { gameSpace = false }, modifier = Modifier.weight(1f)
             )
         }
@@ -160,6 +187,7 @@ fun LaunchModeSheet(
 private fun LaunchModeCard(
     icon: ImageVector,
     title: String,
+    cost: String,
     selected: Boolean,
     onSelect: () -> Unit,
     modifier: Modifier = Modifier
@@ -193,6 +221,15 @@ private fun LaunchModeCard(
         Icon(icon, contentDescription = null, tint = if (selected) accent else GC.TextSoft, modifier = Modifier.size(34.dp))
         Spacer(Modifier.height(8.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, color = if (selected) accent else GC.Text, fontSize = 17.sp)
+        Spacer(Modifier.height(7.dp))
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (selected) accent.copy(alpha = 0.22f) else Color(0x14FFFFFF))
+                .padding(horizontal = 11.dp, vertical = 5.dp)
+        ) {
+            Text(cost, style = MaterialTheme.typography.labelMedium, color = if (selected) accent else GC.TextDim, fontSize = 12.sp)
+        }
     }
 }
 
@@ -1029,6 +1066,227 @@ fun ActivationSheet(
                     contentAlignment = Alignment.Center
                 ) { Text("Scan USB Device", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
             }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Low Energy gate + simulated ad reward + Game Ready                  */
+/* ------------------------------------------------------------------ */
+
+@Composable
+fun LowEnergySheet(
+    needed: Int,
+    onWatchAd: () -> Unit,
+    onBuyPremium: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = LocalAccent.current
+    SheetFrame(onDismiss = onDismiss) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            IconChip(Icons.Filled.Bolt, size = 62)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Low Energy",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.displaySmall,
+            color = GC.Text,
+            fontSize = 30.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "You need at least $needed Energy to open Space. Watch an ad to get 120 Energy instantly!",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = GC.TextDim,
+            fontSize = 15.sp,
+            lineHeight = 22.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(18.dp))
+        BigButton("⚡ Watch Ad (+120 Energy)", onWatchAd, Modifier.fillMaxWidth(), primary = true, leadingIcon = Icons.Filled.Bolt)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Only if the ad is shown",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelMedium,
+            color = GC.TextDim,
+            fontSize = 11.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(10.dp))
+        BigButton("Buy Premium (Optional)", onBuyPremium, Modifier.fillMaxWidth(), primary = false, leadingIcon = Icons.Filled.CheckCircle, textColor = accent)
+        Spacer(Modifier.height(10.dp))
+        BigButton("Maybe Later", onDismiss, Modifier.fillMaxWidth(), primary = false, textColor = GC.TextSoft)
+    }
+}
+
+@Composable
+fun AdLoadingDialog(
+    onFinished: (reward: Int) -> Unit
+) {
+    val accent = LocalAccent.current
+    var secondsLeft by remember { mutableStateOf(15) }
+    var skipLeft by remember { mutableStateOf(3) }
+    val progress by androidx.compose.animation.core.animateFloatAsState(
+        (15 - secondsLeft) / 15f,
+        label = "adprog"
+    )
+    LaunchedEffect(Unit) {
+        while (secondsLeft > 0) {
+            kotlinx.coroutines.delay(1000)
+            secondsLeft--
+            if (skipLeft > 0) skipLeft--
+        }
+        onFinished(120)
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xF51A1314))
+            .padding(20.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Loading ad...", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Stay here — you'll get your reward even if the ad doesn't load.",
+                style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 19.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0x22FFFFFF))
+            ) {
+                Box(Modifier.fillMaxWidth(progress).height(8.dp).background(accent))
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("${secondsLeft}s", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Spacer(Modifier.height(12.dp))
+            RewardRow("If the ad is shown", "120 Energy", orange = true)
+            RewardRow("Alternative reward", "60 Energy", orange = false)
+            RewardRow("If the ad fails", "60 Energy", orange = false)
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(GC.SurfaceHi)
+                    .clickable(enabled = skipLeft == 0) { onFinished(60) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (skipLeft > 0) "Skip ($skipLeft)" else "Skip",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (skipLeft > 0) GC.TextDim else GC.Text,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewardRow(label: String, value: String, orange: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.labelLarge, color = if (orange) Color(0xFFE05A2B) else GC.Text, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
+    val accent = LocalAccent.current
+    SheetFrame(onDismiss = onDismiss) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            IconChip(Icons.Filled.Bolt, size = 62)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Game Ready",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.displaySmall,
+            color = GC.Text,
+            fontSize = 30.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Get your device ready for your next session. Everything goes back to normal when you're done.",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = GC.TextDim,
+            fontSize = 15.sp,
+            lineHeight = 22.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(GC.SurfaceHi)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Icon(Icons.Filled.Info, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Results may vary by device.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.5.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+        SlideControl(label = "Slide to get ready", icon = Icons.Filled.Autorenew, onDone = onDone)
+    }
+}
+
+/** Reusable slide-to-confirm control. */
+@Composable
+fun SlideControl(label: String, icon: ImageVector, onDone: () -> Unit) {
+    val accent = LocalAccent.current
+    var trackPx by remember { mutableStateOf(0f) }
+    var offsetPx by remember { mutableStateOf(0f) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(62.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(GC.SurfaceHi)
+            .onSizeChanged { trackPx = it.width.toFloat() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 19.sp)
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .offset { IntOffset(offsetPx.roundToInt(), 0) }
+                .padding(5.dp)
+                .width(104.dp)
+                .height(52.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(accent)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        offsetPx = (offsetPx + delta).coerceIn(0f, (trackPx - 120f).coerceAtLeast(0f))
+                    },
+                    onDragStopped = {
+                        if (offsetPx > (trackPx - 120f) * 0.65f) onDone()
+                        offsetPx = 0f
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
         }
     }
 }

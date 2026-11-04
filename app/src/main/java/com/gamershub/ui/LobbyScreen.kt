@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Rocket
@@ -51,6 +52,8 @@ fun LobbyScreen(
     library: List<InstalledApp>,
     version: String,
     playMinutes: (String) -> Long,
+    energy: Int,
+    onAddEnergy: () -> Unit,
     onAddGames: () -> Unit,
     onGameTap: (InstalledApp) -> Unit,
     onGameSpace: () -> Unit
@@ -68,7 +71,7 @@ fun LobbyScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Lobby", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
-                Text("By GamersHub", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                Text("By FahrezONE", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -103,8 +106,8 @@ fun LobbyScreen(
             Column {
                 Column(Modifier.padding(start = 18.dp, top = 16.dp, bottom = 12.dp)) {
                     Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp, letterSpacing = 2.sp)
-                    Text("HUB", style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 30.sp)
-                    Text(version, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                    Text("CORNER", style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 30.sp)
+                    Text("V2.5.3-25300", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -114,12 +117,22 @@ fun LobbyScreen(
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Box(Modifier.size(42.dp).clip(CircleShape).background(GC.SurfaceHi), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Speed, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("CPU", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                        Text(if (cpuPct >= 0) "$cpuPct%" else "--%", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                    Column {
+                        Text("Energy", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("$energy", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text(" / 560", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                Modifier.size(22.dp).clip(CircleShape).background(accent).clickable(onClick = onAddEnergy),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = "Add energy", tint = Color.White, modifier = Modifier.size(14.dp))
+                            }
+                        }
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -180,7 +193,7 @@ fun LobbyScreen(
                 Text("No Games / Apps Detected!", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Add prioritized applications to start GamersHub Space.",
+                    "Add prioritized applications to start Axeron Space.",
                     style = MaterialTheme.typography.labelMedium,
                     color = GC.TextDim,
                     fontSize = 14.sp

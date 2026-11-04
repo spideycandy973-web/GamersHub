@@ -48,6 +48,13 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -104,6 +111,9 @@ sealed interface SheetState {
     data class Permission(val index: Int) : SheetState
     data object DisplayTuning : SheetState
     data object Activation : SheetState
+    data object LowEnergy : SheetState
+    data object Ad : SheetState
+    data object GameReady : SheetState
 }
 
 /** Root shell: tabs, octagon nav, sheets, live state. */
@@ -117,6 +127,23 @@ fun RootShell(repo: AppRepo) {
         var tab by remember { mutableStateOf(Tab.LOBBY) }
         var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
         val uid = remember { repo.userId() }
+
+        // ---- energy economy (simulated) + boot intro ----
+        var energy by remember { mutableIntStateOf(repo.energy()) }
+        var pendingLaunch by remember { mutableStateOf<InstalledApp?>(null) }
+        var showIntro by remember { mutableStateOf(true) }
+        LaunchedEffect(Unit) {
+            repo.tickEnergy()
+            energy = repo.energy()
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                repo.tickEnergy()
+                energy = repo.energy()
+            }
+        }
+        if (showIntro) {
+            IntroAnimation(onDone = { showIntro = false })
+        }
 
         // Stateful toggles — the source of truth for animated Toggle composables.
         val toggles = remember { mutableStateMapOf<String, Boolean>() }
@@ -294,11 +321,13 @@ fun RootShell(repo: AppRepo) {
                     library = library,
                     version = "V4.1.0-21",
                     playMinutes = { pkg -> repo.playMinutes(pkg) },
+                    energy = energy,
+                    onAddEnergy = { sheet = SheetState.Ad },
                     onAddGames = { sheet = SheetState.AppSelector },
                     onGameTap = { app -> sheet = SheetState.Launch(app) },
                     onGameSpace = {
                         if (library.isEmpty()) sheet = SheetState.AppSelector
-                        else openGameSpace(context, library.first().pkg)
+                        else sheet = SheetState.Launch(library.first())
                     }
                 )
                 Tab.LABS -> GameLabsScreen(
@@ -311,6 +340,7 @@ fun RootShell(repo: AppRepo) {
                     },
                     onManagePresets = { sheet = SheetState.Presets },
                     onTuneDisplay = { sheet = SheetState.DisplayTuning },
+                    onGameReady = { sheet = SheetState.GameReady },
                     displayInfo = displayInfo
                 )
             }
@@ -353,6 +383,11 @@ fun RootShell(repo: AppRepo) {
                         }
                     }
                 }
+            }
+
+            // Floating session monitor strip (draggable)
+            if (toggleGet("session")) {
+                MonitorStrip(context)
             }
 
             // Sheet overlay host
@@ -403,9 +438,20 @@ fun RootShell(repo: AppRepo) {
                         version = "App",
                         playMinutes = repo.playMinutes(current.app.pkg),
                         onLaunch = { gameSpace ->
-                            if (gameSpace) openGameSpace(context, current.app.pkg)
-                            else repo.launch(current.app.pkg)
-                            sheet = SheetState.None
+                            val cost = if (gameSpace) 80 else 40
+                            if (repo.premium() || energy >= cost) {
+                                if (!repo.premium()) {
+                                    repo.setEnergy(energy - cost)
+                                    energy = repo.energy()
+                                }
+                                pendingLaunch = current.app
+                                sheet = SheetState.None
+                                if (gameSpace) openGameSpace(context, current.app.pkg)
+                                else repo.launch(current.app.pkg)
+                            } else {
+                                pendingLaunch = current.app
+                                sheet = SheetState.LowEnergy
+                            }
                         },
                         onDismiss = { sheet = SheetState.None }
                     )
@@ -440,6 +486,39 @@ fun RootShell(repo: AppRepo) {
                                     context.startActivity(intent)
                                 }
                             }
+                        },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.LowEnergy -> com.gamershub.ui.sheets.LowEnergySheet(
+                        needed = 80,
+                        onWatchAd = { sheet = SheetState.Ad },
+                        onBuyPremium = {
+                            repo.setPremium(true)
+                            Toast.makeText(context, "Premium active — launches are free (demo)", Toast.LENGTH_LONG).show()
+                            sheet = SheetState.None
+                        },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Ad -> Box(
+                        Modifier.fillMaxSize().background(Color(0x99000000)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.gamershub.ui.sheets.AdLoadingDialog(onFinished = { reward ->
+                            repo.addEnergy(reward)
+                            energy = repo.energy()
+                            sheet = pendingLaunch?.let { SheetState.Launch(it) } ?: SheetState.None
+                        })
+                    }
+                    SheetState.GameReady -> com.gamershub.ui.sheets.GameReadySheet(
+                        onDone = {
+                            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                            runCatching {
+                                am.runningAppProcesses?.forEach { p ->
+                                    if (p.processName != context.packageName) am.killBackgroundProcesses(p.processName)
+                                }
+                            }
+                            Toast.makeText(context, "Device ready — background apps cleared", Toast.LENGTH_SHORT).show()
+                            sheet = SheetState.None
                         },
                         onDismiss = { sheet = SheetState.None }
                     )
@@ -511,4 +590,108 @@ private fun hasUsage(context: Context): Boolean = try {
     mode == AppOpsManager.MODE_ALLOWED
 } catch (_: Throwable) {
     false
+}
+
+/** Boot intro: neon creature reveal → logo reveal (pixel copy of the app opener). */
+@Composable
+private fun IntroAnimation(onDone: () -> Unit) {
+    var phase by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        phase = 1
+        kotlinx.coroutines.delay(1500)
+        phase = 2
+        kotlinx.coroutines.delay(1400)
+        onDone()
+    }
+    val creatureAlpha by androidx.compose.animation.core.animateFloatAsState(
+        when (phase) { 0 -> 0f; 1 -> 1f; else -> 0f }, label = "introA"
+    )
+    val logoAlpha by androidx.compose.animation.core.animateFloatAsState(
+        if (phase >= 2) 1f else 0f, label = "introB"
+    )
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .clickable(onClick = onDone),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_creature),
+            contentDescription = null,
+            alpha = creatureAlpha,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        if (phase >= 2) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer { alpha = logoAlpha }
+            ) {
+                com.gamershub.ui.components.HeroMark(Modifier.size(110.dp))
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "GAME CORNER",
+                    style = MaterialTheme.typography.displaySmall,
+                    color = GC.Text,
+                    fontSize = 34.sp,
+                    fontFamily = GC.Display
+                )
+            }
+        }
+    }
+}
+
+/** Draggable floating session-monitor strip (live chips, red drag handle). */
+@Composable
+private fun MonitorStrip(context: android.content.Context) {
+    val accent = LocalAccent.current
+    val stats by produceState(initialValue = Triple("0", "0", "--")) {
+        while (true) {
+            val cpu = com.gamershub.data.DeviceStats.cpu()
+            val mem = com.gamershub.data.DeviceStats.mem(context)
+            val batt = com.gamershub.data.DeviceStats.battery(context)
+            value = Triple(cpu.pct.toString(), mem.pct.toString(), batt.second.toInt().toString() + "°C")
+            kotlinx.coroutines.delay(1200)
+        }
+    }
+    var offX by remember { mutableStateOf(0f) }
+    var offY by remember { mutableStateOf(0f) }
+    Box(Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 54.dp)
+                .offset { androidx.compose.ui.unit.IntOffset(offX.roundToInt(), offY.roundToInt()) }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta -> offX += delta }
+                )
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta -> offY += delta }
+                )
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xF0221314))
+                .padding(horizontal = 8.dp, vertical = 5.dp)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Drag", tint = Color(0xFFFF3B3B), modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            StripChip("CPU", stats.first + "%")
+            StripChip("RAM", stats.second + "%")
+            StripChip("BAT", stats.third)
+            StripChip("FPS", "0")
+            StripChip("CLK", java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date()))
+        }
+    }
+}
+
+@Composable
+private fun StripChip(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 5.dp)) {
+        Text(value, style = MaterialTheme.typography.labelMedium, color = Color.White, fontSize = 10.sp)
+        Spacer(Modifier.width(3.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 8.sp)
+    }
 }

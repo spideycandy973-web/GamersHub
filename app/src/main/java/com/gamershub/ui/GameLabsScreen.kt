@@ -69,6 +69,7 @@ fun GameLabsScreen(
     onExportPresets: () -> Unit,
     onManagePresets: () -> Unit,
     onTuneDisplay: () -> Unit,
+    onGameReady: () -> Unit = {},
     displayInfo: String
 ) {
     val accent = LocalAccent.current
@@ -258,8 +259,22 @@ fun GameLabsScreen(
             if (tab != LabsTab.CONFIGS) {
                 SectionLabel("Feature Settings")
                 Card {
-                    FeatureRow("Game Ready", "System health & stability index", Icons.Filled.Bolt, toggleState("game_ready")) {
-                        onToggle("game_ready", it)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onGameReady)
+                    ) {
+                        IconChip(Icons.Filled.Bolt, size = 46)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Game Ready", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("System health & stability index", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
+                        }
+                        Toggle(on = toggleState("game_ready")) {
+                            onToggle("game_ready", it)
+                            if (it) onGameReady()
+                        }
                     }
                     Divider()
                     DnsTunerCard(toggleState("dns"), onToggle)

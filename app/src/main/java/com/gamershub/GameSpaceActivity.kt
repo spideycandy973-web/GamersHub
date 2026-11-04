@@ -104,14 +104,31 @@ class GameSpaceActivity : ComponentActivity() {
         val repo = AppRepo(applicationContext)
         setContent {
             GameCornerTheme(repo.accentIndex()) {
-                GameSpaceScreen(
-                    pkg = pkg,
-                    repo = repo,
-                    onClose = { finish() },
-                    onLaunch = { p ->
-                        repo.launch(p)
+                var showIntro by remember { mutableStateOf(true) }
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                    GameSpaceScreen(
+                        pkg = pkg,
+                        repo = repo,
+                        onClose = { finish() },
+                        onLaunch = { p ->
+                            repo.launch(p)
+                        }
+                    )
+                    if (showIntro) {
+                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                            kotlinx.coroutines.delay(1900)
+                            showIntro = false
+                        }
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_creature),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable { showIntro = false }
+                        )
                     }
-                )
+                }
             }
         }
     }
@@ -304,6 +321,12 @@ private fun GameSpaceScreen(
                                 .padding(horizontal = 22.dp, vertical = 13.dp)
                         ) {
                             Text("LAUNCH", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 17.sp, letterSpacing = 2.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Box(Modifier.width(1.dp).height(16.dp).background(Color(0x44FFFFFF)))
+                            Spacer(Modifier.width(10.dp))
+                            Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("80", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 16.sp)
                         }
                         Box(
                             Modifier
