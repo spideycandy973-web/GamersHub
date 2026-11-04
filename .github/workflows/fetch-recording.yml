@@ -1,0 +1,64 @@
+# Relay workflow: pulls the screen recording from Google Drive,
+# extracts frames with ffmpeg, and publishes them on the
+# `recording-frames` branch so they can be retrieved via codeload.
+name: Fetch Recording Frames
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-recording.yml'
+  workflow_dispatch:
+    inputs:
+      file_id:
+        description: 'Google Drive file id'
+        required: true
+        default: '13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9'
+      fps:
+        description: 'Frames per second to extract'
+        required: true
+        default: '2'
+
+permissions:
+  contents: write
+
+jobs:
+  frames:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download recording from Google Drive
+        env:
+          FILE_ID: ${{ github.event.inputs.file_id || '13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9' }}
+        run: |
+          set -eux
+          pip install -q gdown
+          # gdown handles the large-file confirm interstitial
+          gdown --fuzzy "https://drive.google.com/file/d/${FILE_ID}/view" -O recording.mp4 || true
+          # fallback: direct usercontent endpoint
+          if [ ! -s recording.mp4 ] || ! head -c 64 recording.mp4 | grep -q "ftyp\|moov\|mdat" 2>/dev/null; then
+            curl -sL "https://drive.usercontent.google.com/download?id=${FILE_ID}&export=download&confirm=t" -o recording.mp4
+          fi
+          ls -la recording.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 recording.mp4
+
+      - name: Extract frames
+        env:
+          FPS: ${{ github.event.inputs.fps || '2' }}
+        run: |
+          set -eux
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg || true
+          mkdir -p frames
+          ffmpeg -y -i recording.mp4 -vf "fps=${FPS},scale=1088:-2" -q:v 4 frames/f_%04d.jpg
+          ls frames | wc -l
+
+      - name: Publish frames branch
+        run: |
+          set -eux
+          git config user.name "recording-relay"
+          git config user.email "relay@users.noreply.github.com"
+          git checkout --orphan recording-frames
+          git rm -rq --cached . || true
+          git add frames/
+          git commit -m "Recording frames (relay)"
+          git push -f origin recording-frames
