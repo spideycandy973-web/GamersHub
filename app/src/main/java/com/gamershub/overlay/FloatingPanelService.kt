@@ -134,6 +134,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
     private fun addBubble() {
         val params = overlayParams()
         val view = ComposeView(this).apply {
+            val self = this
             setContent {
                 GameCornerTheme {
                     val accent = LocalAccent.current
@@ -147,7 +148,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
                                     change.consume()
                                     params.x += drag.x.toInt()
                                     params.y += drag.y.toInt()
-                                    runCatching { windowManager?.updateViewLayout(this, params) }
+                                    runCatching { windowManager?.updateViewLayout(self, params) }
                                 }
                             }
                             .clickable { if (expanded) closePanel() else openPanel() },

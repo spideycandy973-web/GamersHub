@@ -74,7 +74,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.gamershub.R
 import com.gamershub.data.AppRepo
 import com.gamershub.data.DeviceStats
