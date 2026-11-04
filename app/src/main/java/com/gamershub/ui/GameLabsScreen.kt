@@ -105,19 +105,15 @@ fun GameLabsScreen(
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
                     SmallActionButton("Show Taps", Modifier.weight(1f), active = toggleState("show_taps")) {
                         val v = !toggleState("show_taps")
-                        onToggle("show_taps", v)
-                        com.gamershub.feedbackOnWrite(
-                            context,
-                            com.gamershub.putSystemSetting(context, "show_touches", if (v) 1 else 0)
-                        )
+                        val ok = com.gamershub.putSystemSetting(context, "show_touches", if (v) 1 else 0)
+                        if (ok) onToggle("show_taps", v)
+                        com.gamershub.feedbackOnWrite(context, ok)
                     }
                     SmallActionButton("Show Coordinates", Modifier.weight(1f), active = toggleState("show_coords")) {
                         val v = !toggleState("show_coords")
-                        onToggle("show_coords", v)
-                        com.gamershub.feedbackOnWrite(
-                            context,
-                            com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
-                        )
+                        val ok = com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
+                        if (ok) onToggle("show_coords", v)
+                        com.gamershub.feedbackOnWrite(context, ok)
                     }
                 }
                 Spacer(Modifier.height(10.dp))

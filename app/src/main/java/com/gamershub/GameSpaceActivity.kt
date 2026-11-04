@@ -32,6 +32,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
@@ -174,7 +177,7 @@ private fun GameSpaceScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .systemBarsPadding()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             // ---- Top bar ----
@@ -731,12 +734,31 @@ internal fun putSystemSetting(context: Context, name: String, value: Int): Boole
 }
 
 internal fun feedbackOnWrite(context: Context, ok: Boolean) {
-    if (!ok) {
-        android.widget.Toast.makeText(
-            context,
-            "Grant 'Modify System Settings' first (Profile ▸ Setup)",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+    if (ok) return
+    // Never fail silently: tell the user exactly what to do and take them
+    // to the real grant page for THIS app.
+    android.widget.Toast.makeText(
+        context,
+        "Grant 'Modify System Settings' to GamersHub — opening Settings…",
+        android.widget.Toast.LENGTH_LONG
+    ).show()
+    val opened = runCatching {
+        context.startActivity(
+            android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                android.net.Uri.parse("package:${context.packageName}")
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }.isSuccess
+    if (!opened) {
+        runCatching {
+            context.startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:${context.packageName}")
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
     }
 }
 
@@ -754,13 +776,15 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
         }
         Divider()
         GfxRow("Show Taps", "Draw a visible marker where you touch.", taps) {
-            taps = it; repo.setToggle("show_taps", it)
-            feedbackOnWrite(context, putSystemSetting(context, "show_touches", if (it) 1 else 0))
+            val ok = putSystemSetting(context, "show_touches", if (it) 1 else 0)
+            if (ok) { taps = it; repo.setToggle("show_taps", it) }
+            feedbackOnWrite(context, ok)
         }
         Divider()
         GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
-            coords = it; repo.setToggle("show_coords", it)
-            feedbackOnWrite(context, putSystemSetting(context, "pointer_location", if (it) 1 else 0))
+            val ok = putSystemSetting(context, "pointer_location", if (it) 1 else 0)
+            if (ok) { coords = it; repo.setToggle("show_coords", it) }
+            feedbackOnWrite(context, ok)
         }
         Divider()
         GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
@@ -787,21 +811,23 @@ private fun DisplayPanel(onDismiss: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
                 PresetChip(label, refreshStep == i) {
+                    val prev = refreshStep
                     refreshStep = i
                     val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
-                    try {
-                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz)
-                        Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
-                    } catch (_: Throwable) {}
+                    val ok = try {
+                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
+                            Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
+                    } catch (_: Throwable) { false }
+                    if (!ok) refreshStep = prev
+                    feedbackOnWrite(context, ok)
                 }
             }
         }
         Divider()
         GfxRow("Auto-rotate", "Rotate the screen with the device orientation.", autoRotate) {
-            autoRotate = it
-            try {
-                Settings.System.putInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (it) 1 else 0)
-            } catch (_: Throwable) {}
+            val ok = putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (it) 1 else 0)
+            if (ok) autoRotate = it
+            feedbackOnWrite(context, ok)
         }
         Divider()
         val dm = context.resources.displayMetrics

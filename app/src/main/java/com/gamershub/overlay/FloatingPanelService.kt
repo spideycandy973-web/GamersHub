@@ -323,11 +323,9 @@ private fun QuickPanel(onClose: () -> Unit) {
             Spacer(Modifier.width(9.dp))
             Text("Show Taps", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Toggle(on = showTaps) {
-                showTaps = it
-                com.gamershub.feedbackOnWrite(
-                    context,
-                    com.gamershub.putSystemSetting(context, "show_touches", if (it) 1 else 0)
-                )
+                val ok = com.gamershub.putSystemSetting(context, "show_touches", if (it) 1 else 0)
+                if (ok) showTaps = it
+                com.gamershub.feedbackOnWrite(context, ok)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -336,11 +334,9 @@ private fun QuickPanel(onClose: () -> Unit) {
             Spacer(Modifier.width(9.dp))
             Text("Rotation Lock", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Toggle(on = rotationLock) {
-                rotationLock = it
-                com.gamershub.feedbackOnWrite(
-                    context,
-                    com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (it) 0 else 1)
-                )
+                val ok = com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (it) 0 else 1)
+                if (ok) rotationLock = it
+                com.gamershub.feedbackOnWrite(context, ok)
             }
         }
         Spacer(Modifier.height(10.dp))

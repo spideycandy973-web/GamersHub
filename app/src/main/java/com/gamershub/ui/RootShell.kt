@@ -49,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,6 +80,7 @@ import com.gamershub.ui.components.Grabber
 import com.gamershub.ui.sheets.AppSelectorSheet
 import com.gamershub.ui.sheets.LaunchModeSheet
 import com.gamershub.ui.sheets.PERM_CONFIGS
+import rikka.shizuku.Shizuku
 import com.gamershub.ui.sheets.PermKind
 import com.gamershub.ui.sheets.PermissionSheet
 import com.gamershub.ui.sheets.SheetFrame
@@ -178,6 +180,19 @@ fun RootShell(repo: AppRepo) {
             ActivityResultContracts.RequestPermission()
         ) { resumeTick++ }
 
+        // Refresh permission state when the user answers the Shizuku prompt.
+        DisposableEffect(Unit) {
+            val listener = Shizuku.OnRequestPermissionResultListener { _, _ -> resumeTick++ }
+            try {
+                Shizuku.addRequestPermissionResultListener(listener)
+            } catch (_: Throwable) { }
+            onDispose {
+                try {
+                    Shizuku.removeRequestPermissionResultListener(listener)
+                } catch (_: Throwable) { }
+            }
+        }
+
         val displayInfo = run {
             val dm = context.resources.displayMetrics
             "${dm.widthPixels}x${dm.heightPixels} · ${dm.densityDpi}dp"
@@ -213,12 +228,28 @@ fun RootShell(repo: AppRepo) {
                         Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                     PermKind.SHIZUKU -> {
-                        val intent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
-                        if (intent != null) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
+                        val shizukuAlive = try { Shizuku.pingBinder() } catch (_: Throwable) { false }
+                        if (shizukuAlive) {
+                            // Real consent prompt from the Shizuku service — nothing
+                            // is granted implicitly any more.
+                            try {
+                                Shizuku.requestPermission(SHIZUKU_PERMISSION_REQ)
+                                Toast.makeText(context, "Accept the Shizuku prompt to grant access", Toast.LENGTH_SHORT).show()
+                            } catch (_: Throwable) {
+                                Toast.makeText(context, "Shizuku is running but refused the request", Toast.LENGTH_LONG).show()
+                            }
                         } else {
-                            Toast.makeText(context, "Install Shizuku to enable the advanced service", Toast.LENGTH_LONG).show()
+                            val intent = listOf(
+                                "moe.shizuku.privileged.api",
+                                "moe.shizuku.manager"
+                            ).firstNotNullOfOrNull { runCatching { context.packageManager.getLaunchIntentForPackage(it) }.getOrNull() }
+                            if (intent != null) {
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                Toast.makeText(context, "Start the Shizuku service, then come back", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Install Shizuku to enable the advanced service", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
@@ -387,7 +418,7 @@ fun RootShell(repo: AppRepo) {
                             PermKind.OVERLAY -> Settings.canDrawOverlays(context)
                             PermKind.WRITE_SETTINGS -> Settings.System.canWrite(context)
                             PermKind.USAGE -> hasUsage(context)
-                            PermKind.SHIZUKU -> context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api") != null
+                            PermKind.SHIZUKU -> hasShizuku()
                         },
                         onAllow = { allowPermission(current.index) },
                         onLater = {
@@ -442,6 +473,15 @@ private fun PresetsSheet(presets: List<String>, onClear: () -> Unit, onDismiss: 
         Spacer(Modifier.height(10.dp))
         BigButton("Clear All", onClear, Modifier.fillMaxWidth(), primary = false, leadingIcon = Icons.Filled.Delete, textColor = accent)
     }
+}
+
+private const val SHIZUKU_PERMISSION_REQ = 7331
+
+/** True only when the Shizuku service is alive AND the user has granted US access. */
+private fun hasShizuku(): Boolean = try {
+    Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+} catch (_: Throwable) {
+    false
 }
 
 private fun hasUsage(context: Context): Boolean = try {
