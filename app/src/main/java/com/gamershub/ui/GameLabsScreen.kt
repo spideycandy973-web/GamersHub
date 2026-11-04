@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,19 +20,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,16 +42,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.Card
+import com.gamershub.ui.components.CheckMark
 import com.gamershub.ui.components.IconChip
 import com.gamershub.ui.components.Toggle
-import java.util.Locale
 
 private enum class LabsTab(val label: String) { ALL("All"), VISUAL("Visual"), CONFIGS("Configs") }
 
@@ -69,7 +63,7 @@ fun GameLabsScreen(
     onExportPresets: () -> Unit,
     onManagePresets: () -> Unit,
     onTuneDisplay: () -> Unit,
-    onGameReady: () -> Unit = {},
+    onGameReady: () -> Unit,
     displayInfo: String
 ) {
     val accent = LocalAccent.current
@@ -77,7 +71,6 @@ fun GameLabsScreen(
     var tab by remember { mutableStateOf(LabsTab.ALL) }
 
     Column(Modifier.fillMaxSize().background(GC.Bg)) {
-        // ---- Fixed opaque header: content can never collide with it ----
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -86,7 +79,7 @@ fun GameLabsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
-            Text("Game-Labs", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+            Text("Game-Labs", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp, fontFamily = GC.Display)
             Spacer(Modifier.weight(1f))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -105,7 +98,6 @@ fun GameLabsScreen(
             }
         }
 
-        // ---- Everything below scrolls under the header, clipped ----
         Column(
             Modifier
                 .weight(1f)
@@ -135,18 +127,12 @@ fun GameLabsScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(7.dp))
-                        Text(
-                            t.label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (selected) Color.White else GC.TextSoft,
-                            fontSize = 15.sp
-                        )
+                        Text(t.label, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else GC.TextSoft, fontSize = 15.sp)
                     }
                 }
             }
             Spacer(Modifier.height(14.dp))
 
-            // ---- Stop All Features (All tab) ----
             if (tab == LabsTab.ALL) {
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -176,7 +162,6 @@ fun GameLabsScreen(
                 Spacer(Modifier.height(14.dp))
             }
 
-            // ---- Touch Settings ----
             if (tab != LabsTab.VISUAL) {
                 SectionLabel("Touch Settings")
                 Card {
@@ -224,7 +209,6 @@ fun GameLabsScreen(
                 Spacer(Modifier.height(14.dp))
             }
 
-            // ---- Display Settings ----
             if (tab != LabsTab.VISUAL) {
                 SectionLabel("Display Settings")
                 Card {
@@ -255,15 +239,12 @@ fun GameLabsScreen(
                 Spacer(Modifier.height(14.dp))
             }
 
-            // ---- Feature Settings ----
             if (tab != LabsTab.CONFIGS) {
                 SectionLabel("Feature Settings")
                 Card {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onGameReady)
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onGameReady)
                     ) {
                         IconChip(Icons.Filled.Bolt, size = 46)
                         Spacer(Modifier.width(12.dp))
@@ -291,7 +272,6 @@ fun GameLabsScreen(
 
 @Composable
 private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf(0) }
     val hosts = listOf("8.8.8.8", "1.1.1.1", "208.67.222.222", "8.8.8.8")
@@ -320,7 +300,6 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
         }
         if (on && expanded) {
             Spacer(Modifier.height(10.dp))
-            // provider row + latency pill
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
@@ -334,8 +313,6 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                         Text(names[provider], style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp)
                         Spacer(Modifier.weight(1f))
                         Text(hosts[provider], style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Text("⌃", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 13.sp)
                     }
                 }
                 Spacer(Modifier.width(10.dp))
@@ -367,7 +344,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                             .clickable { provider = i }
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
-                        Text(n, style = MaterialTheme.typography.labelLarge, color = if (i == provider) GC.Text else GC.TextSoft, fontSize = 14.sp)
+                        Text(n, style = MaterialTheme.typography.labelLarge, color = if (i == provider) accent() else GC.TextSoft, fontSize = 14.sp)
                         Spacer(Modifier.width(12.dp))
                         Text(hosts[i], style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
                     }
@@ -386,11 +363,7 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
             val cpu = DeviceStats.cpu()
             val mem = DeviceStats.mem(context)
             val batt = DeviceStats.battery(context)
-            value = Triple(
-                cpu.pct.toString(),
-                mem.pct.toString(),
-                batt.first.toString()
-            )
+            value = Triple(cpu.pct.toString(), mem.pct.toString(), batt.first.toString())
             kotlinx.coroutines.delay(1500)
         }
     }
@@ -412,7 +385,6 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
         }
         if (on && expanded) {
             Spacer(Modifier.height(10.dp))
-            // live monitor strip
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -425,19 +397,18 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
                 StripStat("RAM", "${live.second}%")
                 StripStat("BAT", "${live.third}%")
                 StripStat("FPS", "0")
-                StripStat("CLK", java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(java.util.Date()))
+                StripStat("CLK", java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date()))
             }
             Spacer(Modifier.height(10.dp))
-            val checks = listOf(
+            CheckRow("RAM Used/Available", "ram_mode", toggleState, onToggle, ramToggle = true)
+            listOf(
                 Triple("sm_cpu", "CPU Usage", Icons.Filled.Speed),
-                Triple("sm_gpu", "GPU Usage", Icons.Filled.Memory),
+                Triple("sm_gpu", "GPU Usage", Icons.Filled.Storage),
                 Triple("sm_batt", "Battery Level", Icons.Filled.Bolt),
                 Triple("sm_batt_temp", "Battery Temperature", Icons.Filled.Storage),
                 Triple("sm_fps", "Frame Rate (FPS)", Icons.Filled.GraphicEq),
                 Triple("sm_clock", "Clock", Icons.Filled.Dns)
-            )
-            CheckRow("RAM Used/Available", "ram_mode", toggleState, onToggle, ramToggle = true)
-            checks.forEach { (key, label, icon) ->
+            ).forEach { (key, label, icon) ->
                 CheckRow(label, key, toggleState, onToggle, icon = icon)
             }
         }
@@ -450,24 +421,18 @@ private fun CheckRow(
     key: String,
     toggleState: (String) -> Boolean,
     onToggle: (String, Boolean) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    icon: ImageVector? = null,
     ramToggle: Boolean = false
 ) {
     val accent = LocalAccent.current
     val checked = toggleState(key)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp)
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = GC.Text, fontSize = 15.sp, modifier = Modifier.weight(1f))
         if (ramToggle) {
-            Row(
-                Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(GC.SurfaceHi)
-            ) {
+            Row(Modifier.clip(RoundedCornerShape(8.dp)).background(GC.SurfaceHi)) {
                 Box(
                     Modifier
                         .background(if (checked) accent else Color.Transparent)
@@ -482,16 +447,7 @@ private fun CheckRow(
                 ) { Text("Available", style = MaterialTheme.typography.labelMedium, color = if (!checked) Color.White else GC.TextSoft, fontSize = 12.sp) }
             }
         } else {
-            Box(
-                Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(if (checked) accent else GC.SurfaceHi)
-                    .clickable { onToggle(key, !checked) },
-                contentAlignment = Alignment.Center
-            ) {
-                if (checked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-            }
+            CheckMark(checked = checked)
         }
     }
 }
@@ -505,23 +461,7 @@ private fun StripStat(label: String, value: String) {
 }
 
 @Composable
-private fun FeatureRow(
-    title: String,
-    desc: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    on: Boolean,
-    onChange: (Boolean) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconChip(icon, size = 46)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
-            Text(desc, style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp)
-        }
-        Toggle(on = on, onCheckedChange = onChange)
-    }
-}
+private fun accent() = LocalAccent.current
 
 @Composable
 private fun SectionLabel(text: String) {

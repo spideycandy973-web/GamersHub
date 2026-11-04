@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Rocket
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,17 +39,14 @@ import androidx.compose.ui.unit.sp
 import com.gamershub.data.InstalledApp
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
-import com.gamershub.ui.components.CircleIconButton
-import com.gamershub.ui.components.HeroMark
+import com.gamershub.ui.components.BrandMark
+import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.IconChip
 
-/** Lobby — hero card, game library, rows / empty state. Fit-safe on all screens. */
 @Composable
 fun LobbyScreen(
     uid: String,
-    cpuPct: Int,
     library: List<InstalledApp>,
-    version: String,
     playMinutes: (String) -> Long,
     energy: Int,
     onAddEnergy: () -> Unit,
@@ -70,7 +66,7 @@ fun LobbyScreen(
         // ---- Header ----
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Lobby", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+                Text("Lobby", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp, fontFamily = GC.Display)
                 Text("By FahrezONE", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
             }
             Row(
@@ -97,17 +93,17 @@ fun LobbyScreen(
                 .clip(RoundedCornerShape(22.dp))
                 .background(GC.HeroBrush)
         ) {
-            HeroMark(
+            BrandMark(
                 Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 6.dp)
-                    .size(170.dp, 120.dp)
+                    .padding(end = 12.dp)
+                    .size(150.dp, 110.dp)
             )
             Column {
                 Column(Modifier.padding(start = 18.dp, top = 16.dp, bottom = 12.dp)) {
-                    Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp, letterSpacing = 2.sp)
-                    Text("CORNER", style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 30.sp)
-                    Text("V2.5.3-25300", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                    Text("GAME", style = MaterialTheme.typography.labelMedium, color = Color(0xFFBBA99A), fontSize = 13.sp, letterSpacing = 2.sp)
+                    Text("CORNER", style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 30.sp, fontFamily = GC.Display)
+                    Text("V2.5.3-25300", style = MaterialTheme.typography.labelMedium, color = Color(0xFFBBA99A), fontSize = 12.sp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -116,15 +112,15 @@ fun LobbyScreen(
                         .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp))
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
-                    Box(Modifier.size(42.dp).clip(CircleShape).background(GC.SurfaceHi), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0x33000000)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("Energy", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                        Text("Energy", style = MaterialTheme.typography.labelMedium, color = Color(0xFFBBA99A), fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("$energy", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
-                            Text(" / 560", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                            Text(" / 560", style = MaterialTheme.typography.labelMedium, color = Color(0xFFBBA99A), fontSize = 13.sp)
                             Spacer(Modifier.width(8.dp))
                             Box(
                                 Modifier.size(22.dp).clip(CircleShape).background(accent).clickable(onClick = onAddEnergy),
@@ -134,17 +130,18 @@ fun LobbyScreen(
                             }
                         }
                     }
+                    Spacer(Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(RoundedCornerShape(15.dp))
-                            .background(GC.SurfaceHi)
+                            .background(Color(0x33000000))
                             .clickable(onClick = onGameSpace)
                             .padding(start = 14.dp, end = 12.dp, top = 9.dp, bottom = 9.dp)
                     ) {
                         Column {
-                            Text("Game", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                            Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text("Game", style = MaterialTheme.typography.labelMedium, color = Color(0xFFBBA99A), fontSize = 12.sp)
+                            Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, fontFamily = GC.Display)
                         }
                         Spacer(Modifier.width(8.dp))
                         Icon(Icons.Filled.Rocket, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
@@ -203,7 +200,7 @@ fun LobbyScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(accent.copy(alpha = 0.85f))
+                        .background(accent)
                         .clickable(onClick = onAddGames)
                         .padding(horizontal = 22.dp, vertical = 11.dp)
                 ) {
@@ -227,19 +224,17 @@ fun LobbyScreen(
                         Image(
                             painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                             contentDescription = null,
-                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(15.dp))
+                            modifier = Modifier.size(52.dp).clip(RoundedCornerShape(13.dp))
                         )
-                        Spacer(Modifier.width(13.dp))
+                        Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(app.name, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(3.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(13.dp).clip(CircleShape).border(2.dp, GC.TextDim, CircleShape))
-                                Spacer(Modifier.width(5.dp))
-                                Text("${playMinutes(app.pkg)}m", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
-                            }
+                            Text(app.name, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "◌ ${playMinutes(app.pkg)}m",
+                                style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
+                            )
                         }
-                        CircleIconButton(Icons.Filled.ChevronRight, onClick = { onGameTap(app) })
+                        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(22.dp))
                     }
                 }
             }

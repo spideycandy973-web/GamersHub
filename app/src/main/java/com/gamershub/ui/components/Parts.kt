@@ -1,20 +1,17 @@
 package com.gamershub.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,122 +21,76 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+import kotlin.math.roundToInt
 
-/**
- * Animated squircle toggle. The knob slides with a spring, the track
- * cross-fades — driven purely by [on], so callers must pass state that
- * actually changes (see RootShell/GameLabs state maps).
- */
+/** Squircle switch with spring knob + animated track. */
 @Composable
 fun Toggle(on: Boolean, modifier: Modifier = Modifier, onCheckedChange: (Boolean) -> Unit) {
     val accent = LocalAccent.current
-    val track by animateColorAsState(
-        if (on) accent else Color(0xFF2B2420), tween(220), label = "track"
-    )
-    val knob by animateColorAsState(
-        if (on) Color.White else Color(0xFF7E7A76), tween(220), label = "knob"
-    )
-    val shift by animateDpAsState(
-        if (on) 26.dp else 3.dp, spring(stiffness = Spring.StiffnessMediumLow), label = "shift"
-    )
+    val track by animateColorAsState(if (on) accent else Color(0xFF4A4441), label = "track")
+    val knob by animateDpAsState(if (on) 26.dp else 3.dp, spring(dampingRatio = 0.7f), label = "knob")
     Box(
         modifier
-            .size(width = 54.dp, height = 31.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .width(52.dp)
+            .height(30.dp)
+            .clip(RoundedCornerShape(50))
             .background(track)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onCheckedChange(!on) },
+            .clickable { onCheckedChange(!on) },
         contentAlignment = Alignment.CenterStart
     ) {
         Box(
             Modifier
-                .offset(x = shift)
-                .size(25.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(knob)
+                .offset(x = knob)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (on) Color.White else Color(0xFFB9B2AC))
         )
     }
 }
 
-/** Small accent tag pill: "● REQUIRED · APP DETECTION". */
+/** Standard rounded card with content slot. */
 @Composable
-fun TagPill(text: String, modifier: Modifier = Modifier) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(GC.tagBgFor(idx))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
-        Spacer(Modifier.width(7.dp))
-        Text(text, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
-    }
-}
-
-/** Dark rounded-square icon chip. */
-@Composable
-fun IconChip(
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    size: Int = 52,
-    tint: Color? = null,
-    bg: Color? = null
-) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
-    Box(
+fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
         modifier
-            .size(size.dp)
-            .clip(RoundedCornerShape((size * 0.30f).dp))
-            .background(bg ?: GC.brownFor(idx)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = null, tint = tint ?: accent, modifier = Modifier.size((size * 0.55f).dp))
-    }
-}
-
-@Composable
-fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        modifier = modifier.padding(top = 14.dp, bottom = 8.dp),
-        style = MaterialTheme.typography.titleMedium,
-        color = GC.TextSoft,
-        fontSize = 18.sp
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(GC.Surface)
+            .padding(16.dp),
+        content = content
     )
 }
 
-/** Big rounded action button with press animation. */
+/** Big pill button. */
 @Composable
 fun BigButton(
     text: String,
@@ -147,84 +98,81 @@ fun BigButton(
     modifier: Modifier = Modifier,
     primary: Boolean = true,
     leadingIcon: ImageVector? = null,
-    textColor: Color? = null
+    textColor: Color = Color.White
 ) {
     val accent = LocalAccent.current
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        if (pressed) 0.96f else 1f, spring(Spring.DampingRatioNoBouncy), label = "press"
-    )
-    Box(
-        modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (primary) accent else GC.SurfaceHi)
-            .clickable(interaction, indication = null, onClick = onClick)
-            .padding(vertical = 15.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (leadingIcon != null) {
-                Icon(
-                    leadingIcon, contentDescription = null,
-                    tint = textColor ?: if (primary) Color.White else accent,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(9.dp))
-            }
-            Text(
-                text,
-                style = MaterialTheme.typography.labelLarge,
-                fontSize = 16.sp,
-                color = textColor ?: if (primary) Color.White else GC.Text
-            )
-        }
-    }
-}
-
-/** Status pill (e.g. "● Not Activated", "Good", "Advanced"). */
-@Composable
-fun StatusPill(text: String, modifier: Modifier = Modifier, orange: Boolean = true) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(if (orange) GC.tagBgFor(idx) else GC.SurfaceHi)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .background(if (primary) accent else GC.SurfaceHi)
+            .clickable(onClick = onClick)
+            .padding(vertical = 15.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
     ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(if (orange) accent else GC.TextDim))
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text,
-            style = MaterialTheme.typography.labelMedium,
-            fontSize = 13.sp,
-            color = if (orange) accent else GC.TextDim
-        )
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge, color = textColor, fontSize = 15.sp)
+    }
+}
+
+@Composable
+fun StatusPill(text: String, orange: Boolean = true) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (orange) GC.TagBg else GC.SurfaceHi)
+            .padding(horizontal = 11.dp, vertical = 6.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.labelMedium, color = if (orange) accent else GC.TextSoft, fontSize = 12.sp)
+    }
+}
+
+@Composable
+fun TagPill(text: String) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(GC.TagBg)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Text("● $text", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 10.sp, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+fun IconChip(icon: ImageVector, size: Int = 44, bg: Color = GC.BrownPill) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .size(size.dp)
+            .clip(RoundedCornerShape(size / 3.2f))
+            .background(bg),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size((size * 0.5f).dp))
     }
 }
 
 @Composable
 fun CircleIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(Spring.DampingRatioNoBouncy), label = "cbtn")
     Box(
         modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .size(44.dp)
+            .size(42.dp)
             .clip(CircleShape)
             .background(GC.SurfaceHi)
-            .clickable(interaction, indication = null, onClick = onClick),
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = GC.TextSoft, modifier = Modifier.size(21.dp))
+        Icon(icon, contentDescription = null, tint = GC.Text, modifier = Modifier.size(19.dp))
     }
 }
 
-/** Circular progress gauge. */
+/** Circular gauge whose text scales with the ring. */
 @Composable
 fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifier, diameter: Int = 150) {
     val accent = LocalAccent.current
@@ -253,17 +201,17 @@ fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifie
 }
 
 @Composable
-fun SegmentedBar(pct: Int, segments: Int, modifier: Modifier = Modifier, height: Int = 8) {
+fun SegmentedBar(pct: Int, segments: Int = 10, height: Int = 7, modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        val filled = (segments * pct.coerceIn(0, 100)) / 100
+    Row(modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(3.dp)) {
         repeat(segments) { i ->
+            val on = i < (pct * segments / 100f).toInt() + if (pct > 0) 1 else 0
             Box(
                 Modifier
                     .weight(1f)
                     .height(height.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (i < filled) accent else Color(0xFF2E2119))
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (on && i < pct * segments / 100f + 1) accent else accent.copy(alpha = 0.18f))
             )
         }
     }
@@ -275,72 +223,112 @@ fun SolidBar(pct: Int, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(9.dp)
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFF2E2119))
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(accent.copy(alpha = 0.18f))
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth(pct.coerceIn(0, 100) / 100f)
-                .height(9.dp)
-                .clip(RoundedCornerShape(50))
-                .background(accent)
-        )
+        Box(Modifier.fillMaxWidth(pct.coerceIn(0, 100) / 100f).height(8.dp).background(accent))
     }
 }
 
+/** Slide-to-confirm control (Slide to Open / Slide to get ready). */
 @Composable
-fun Grabber(modifier: Modifier = Modifier) {
+fun SlideControl(label: String, icon: ImageVector, onDone: () -> Unit) {
+    val accent = LocalAccent.current
+    var trackPx by remember { mutableStateOf(0f) }
+    var offsetPx by remember { mutableStateOf(0f) }
     Box(
-        modifier
-            .padding(vertical = 8.dp)
-            .width(44.dp)
-            .height(5.dp)
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFF4A4340))
-    )
+        Modifier
+            .fillMaxWidth()
+            .height(62.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(GC.SurfaceHi)
+            .onSizeChanged { trackPx = it.width.toFloat() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 19.sp)
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .offset { IntOffset(offsetPx.roundToInt(), 0) }
+                .padding(5.dp)
+                .width(104.dp)
+                .height(52.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(accent)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        offsetPx = (offsetPx + delta).coerceIn(0f, (trackPx - 120f).coerceAtLeast(0f))
+                    },
+                    onDragStopped = {
+                        if (offsetPx > (trackPx - 120f) * 0.65f) onDone()
+                        offsetPx = 0f
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
+    }
 }
 
-/** Original angular hero emblem. */
+/** The angular brand mark (pentagon + bolt), drawn with Canvas. */
 @Composable
-fun HeroMark(modifier: Modifier = Modifier) {
+fun BrandMark(modifier: Modifier = Modifier, tint: Color = Color(0xFFC9B3A4)) {
     Canvas(modifier) {
         val w = size.width
         val h = size.height
-        val ring = Path().apply {
-            moveTo(w * 0.55f, h * 0.06f)
-            lineTo(w * 0.97f, h * 0.32f)
-            lineTo(w * 0.84f, h * 0.90f)
-            lineTo(w * 0.26f, h * 0.94f)
-            lineTo(w * 0.05f, h * 0.42f)
+        val path = Path().apply {
+            moveTo(w * 0.5f, 0f)
+            lineTo(w, h * 0.36f)
+            lineTo(w * 0.82f, h)
+            lineTo(w * 0.18f, h)
+            lineTo(0f, h * 0.36f)
             close()
         }
-        drawPath(
-            ring, GC.Beige.copy(alpha = 0.40f),
-            style = Stroke(width = h * 0.055f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
+        drawPath(path, tint.copy(alpha = 0.35f), style = Stroke(w * 0.055f))
         val bolt = Path().apply {
-            moveTo(w * 0.58f, h * 0.18f)
-            lineTo(w * 0.34f, h * 0.55f)
+            moveTo(w * 0.56f, h * 0.16f)
+            lineTo(w * 0.36f, h * 0.55f)
             lineTo(w * 0.50f, h * 0.55f)
-            lineTo(w * 0.40f, h * 0.82f)
-            lineTo(w * 0.70f, h * 0.44f)
-            lineTo(w * 0.53f, h * 0.44f)
+            lineTo(w * 0.42f, h * 0.86f)
+            lineTo(w * 0.68f, h * 0.44f)
+            lineTo(w * 0.52f, h * 0.44f)
             close()
         }
-        drawPath(bolt, GC.Beige.copy(alpha = 0.55f))
+        drawPath(bolt, tint)
     }
 }
 
-/** Section card used across screens — compact, wrap-friendly. */
+/** Octagon-ish chip used for nav + angular buttons. */
 @Composable
-fun Card(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Column(
+fun CutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    bg: Color = GC.SurfaceHi,
+    content: @Composable () -> Unit
+) {
+    Box(
         modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(GC.Surface)
-            .padding(15.dp),
-        content = content
-    )
+            .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
+
+@Composable
+fun CheckMark(checked: Boolean) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .size(30.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (checked) accent else GC.SurfaceHi),
+        contentAlignment = Alignment.Center
+    ) {
+        if (checked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+    }
 }

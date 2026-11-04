@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 
 data class InstalledApp(val name: String, val pkg: String, val icon: ImageBitmap)
 
-/** Installed launchable apps + local GamersHub state (added set, play time, gfx). */
+/** Installed launchable apps + local state (added set, play time, toggles, energy). */
 class AppRepo(private val context: Context) {
 
     private val prefs: SharedPreferences =
@@ -27,7 +27,43 @@ class AppRepo(private val context: Context) {
         return id
     }
 
+    // ---- library ----
     fun added(): Set<String> = prefs.getStringSet("added", emptySet()) ?: emptySet()
+
+    fun setAdded(pkg: String, on: Boolean) {
+        val cur = added().toMutableSet()
+        if (on) cur.add(pkg) else cur.remove(pkg)
+        prefs.edit().putStringSet("added", cur).apply()
+    }
+
+    fun installedApps(): List<InstalledApp> {
+        val pm = context.packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        return pm.queryIntentActivities(intent, 0).mapNotNull { ri ->
+            val pkg = ri.activityInfo?.packageName ?: return@mapNotNull null
+            if (pkg == context.packageName) return@mapNotNull null
+            try {
+                val name = pm.getApplicationLabel(ri.activityInfo.applicationInfo).toString()
+                InstalledApp(name, pkg, iconBitmap(ri.activityInfo.applicationInfo))
+            } catch (_: Throwable) {
+                null
+            }
+        }.sortedBy { it.name.lowercase() }
+    }
+
+    private fun iconBitmap(info: android.content.pm.ApplicationInfo): ImageBitmap {
+        val bmp = Bitmap.createBitmap(148, 148, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        try {
+            val d: Drawable = context.packageManager.getApplicationIcon(info)
+            d.setBounds(0, 0, 148, 148)
+            d.draw(canvas)
+        } catch (_: Throwable) {
+        }
+        return bmp.asImageBitmap()
+    }
+
+    fun playMinutes(pkg: String): Long = prefs.getLong("play_$pkg", 0L)
 
     // ---- energy economy (simulated — no real ads or billing) ----
     fun energy(): Int = prefs.getInt("energy", 0)
@@ -36,9 +72,7 @@ class AppRepo(private val context: Context) {
         prefs.edit().putInt("energy", v.coerceIn(0, 560)).apply()
     }
 
-    fun addEnergy(v: Int) {
-        setEnergy(energy() + v)
-    }
+    fun addEnergy(v: Int) = setEnergy(energy() + v)
 
     /** +10 energy per minute of real time, capped at 560. */
     fun tickEnergy() {
@@ -57,82 +91,31 @@ class AppRepo(private val context: Context) {
         prefs.edit().putBoolean("premium", v).apply()
     }
 
-    fun isAdded(pkg: String): Boolean = added().contains(pkg)
-    fun setAdded(pkg: String, value: Boolean) {
-        val cur = added().toMutableSet()
-        if (value) cur.add(pkg) else cur.remove(pkg)
-        prefs.edit().putStringSet("added", cur).apply()
+    // ---- toggles / accent / first run ----
+    fun toggle(key: String): Boolean = prefs.getBoolean("t_$key", false)
+
+    fun setToggle(key: String, v: Boolean) {
+        prefs.edit().putBoolean("t_$key", v).apply()
     }
-
-    fun playMinutes(pkg: String): Long = prefs.getLong("play_$pkg", 0) / 60
-    fun addPlaySeconds(pkg: String, seconds: Long) {
-        if (seconds <= 0) return
-        prefs.edit().putLong("play_$pkg", prefs.getLong("play_$pkg", 0) + seconds).apply()
-    }
-
-    fun toggle(key: String, default: Boolean = false): Boolean = prefs.getBoolean(key, default)
-    fun setToggle(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
-
 
     fun accentIndex(): Int = prefs.getInt("accent", 0)
-    fun setAccentIndex(i: Int) = prefs.edit().putInt("accent", i).apply()
 
-    /** Per-game graphics config (Texture Filtering panel). */
-    fun gfx(pkg: String, key: String, default: Boolean): Boolean =
-        prefs.getBoolean("gfx_${pkg}_$key", default)
-    fun setGfx(pkg: String, key: String, value: Boolean) =
-        prefs.edit().putBoolean("gfx_${pkg}_$key", value).apply()
-    fun gfxRes(pkg: String): Int = prefs.getInt("gfx_${pkg}_res", 0)
-    fun setGfxRes(pkg: String, index: Int) = prefs.edit().putInt("gfx_${pkg}_res", index).apply()
-    fun gfxPreset(pkg: String): Int = prefs.getInt("gfx_${pkg}_preset", 0)
-    fun setGfxPreset(pkg: String, index: Int) = prefs.edit().putInt("gfx_${pkg}_preset", index).apply()
-
-    /** Display presets (Preset Manager). */
-    fun presets(): List<String> = prefs.getString("display_presets", "")?.split('|')?.filter { it.isNotBlank() } ?: emptyList()
-    fun addPreset(line: String) {
-        val cur = prefs.getString("display_presets", "") ?: ""
-        prefs.edit().putString("display_presets", if (cur.isEmpty()) line else "$cur|$line").apply()
+    fun setAccentIndex(i: Int) {
+        prefs.edit().putInt("accent", i).apply()
     }
-    fun clearPresets() = prefs.edit().putString("display_presets", "").apply()
 
     fun firstRunDone(): Boolean = prefs.getBoolean("first_run", false)
-    fun setFirstRunDone() = prefs.edit().putBoolean("first_run", true).apply()
 
-    fun installedApps(): List<InstalledApp> {
-        val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        return pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
-            .asSequence()
-            .filter { it.activityInfo?.packageName != context.packageName }
-            .map { it.activityInfo.packageName to pm.getApplicationLabel(it.activityInfo.applicationInfo).toString() }
-            .distinctBy { it.first }
-            .map { (pkg, label) -> InstalledApp(label, pkg, iconBitmap(pkg)) }
-            .sortedBy { it.name.lowercase() }
-            .toList()
+    fun setFirstRunDone() {
+        prefs.edit().putBoolean("first_run", true).apply()
     }
 
-    fun launch(pkg: String): Boolean = try {
-        val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-            true
-        } else false
-    } catch (_: Throwable) {
-        false
-    }
-
-    private fun iconBitmap(pkg: String): ImageBitmap {
-        val drawable: Drawable = try {
-            context.packageManager.getApplicationIcon(pkg)
-        } catch (_: Throwable) {
-            context.packageManager.defaultActivityIcon
+    fun launch(pkg: String) {
+        runCatching {
+            context.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(it)
+            }
         }
-        val size = 144
-        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        drawable.setBounds(0, 0, size, size)
-        drawable.draw(canvas)
-        return bmp.asImageBitmap()
     }
 }

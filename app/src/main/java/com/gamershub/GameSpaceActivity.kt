@@ -1,11 +1,8 @@
 package com.gamershub
 
-import android.os.BatteryManager
-import android.os.Bundle
 import android.content.Context
 import android.content.Intent
-import android.provider.Settings
-import android.content.IntentFilter
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -14,14 +11,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -30,21 +26,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.GraphicEq
@@ -59,19 +53,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.data.AppRepo
@@ -80,52 +69,36 @@ import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
+import com.gamershub.ui.components.BrandMark
 import com.gamershub.ui.components.GaugeRing
-import com.gamershub.ui.components.HeroMark
 import com.gamershub.ui.components.SegmentedBar
 import com.gamershub.ui.components.Toggle
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Game Space — the landscape in-game hub: game card + LAUNCH, live stats
- * (ping / temperature / CPU), Control Center and per-game Texture Filtering.
- */
 class GameSpaceActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep edge-to-edge but DO NOT zero the insets — the top bar must
-        // never slide under the status bar (that was the overlap bug).
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val pkg = intent.getStringExtra(EXTRA_PKG) ?: ""
         val repo = AppRepo(applicationContext)
         setContent {
             GameCornerTheme(repo.accentIndex()) {
                 var showIntro by remember { mutableStateOf(true) }
-                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-                    GameSpaceScreen(
-                        pkg = pkg,
-                        repo = repo,
-                        onClose = { finish() },
-                        onLaunch = { p ->
-                            repo.launch(p)
-                        }
-                    )
+                Box(Modifier.fillMaxSize()) {
+                    GameSpaceScreen(pkg = pkg, repo = repo, onClose = { finish() }, onLaunch = { p -> repo.launch(p) })
                     if (showIntro) {
-                        androidx.compose.runtime.LaunchedEffect(Unit) {
+                        LaunchedEffect(Unit) {
                             kotlinx.coroutines.delay(1900)
                             showIntro = false
                         }
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_creature),
+                        Image(
+                            painter = androidx.compose.ui.res.painterResource(R.drawable.intro_creature),
                             contentDescription = null,
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { showIntro = false }
+                            modifier = Modifier.fillMaxSize().clickable { showIntro = false }
                         )
                     }
                 }
@@ -138,59 +111,35 @@ class GameSpaceActivity : ComponentActivity() {
     }
 }
 
+/* ------------------------------------------------------------------ */
+
 @Composable
-private fun GameSpaceScreen(
-    pkg: String,
-    repo: AppRepo,
-    onClose: () -> Unit,
-    onLaunch: (String) -> Unit
-) {
+private fun GameSpaceScreen(pkg: String, repo: AppRepo, onClose: () -> Unit, onLaunch: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
-    val app = remember(pkg) {
-        try {
-            val pm = context.packageManager
-            val info = pm.getApplicationInfo(pkg, 0)
-            val icon: androidx.compose.ui.graphics.ImageBitmap = run {
-                val d = pm.getApplicationIcon(pkg)
-                val bmp = android.graphics.Bitmap.createBitmap(128, 128, android.graphics.Bitmap.Config.ARGB_8888)
-                val c = android.graphics.Canvas(bmp)
-                d.setBounds(0, 0, 128, 128); d.draw(c)
-                bmp.asImageBitmap()
-            }
-            Triple(pm.getApplicationLabel(info).toString(), pm.getPackageInfo(pkg, 0).versionName ?: "?", icon)
-        } catch (_: Throwable) {
-            Triple(pkg, "?", null)
-        }
-    }
     var showControl by remember { mutableStateOf(false) }
     var showTexture by remember { mutableStateOf(false) }
     var showTouch by remember { mutableStateOf(false) }
     var showDisplay by remember { mutableStateOf(false) }
-    var panelRunning by remember { mutableStateOf(FloatingPanelService.isRunning) }
-
-    // Live stats
-    val cpu by produceState(initialValue = DeviceStats.cpu()) {
-        while (true) { value = DeviceStats.cpu(); delay(2500) }
+    val cpu by androidx.compose.runtime.produceState(initialValue = DeviceStats.cpu()) {
+        while (true) {
+            value = DeviceStats.cpu()
+            kotlinx.coroutines.delay(1500)
+        }
     }
-    val battery by produceState(initialValue = DeviceStats.battery(context)) {
-        while (true) { value = DeviceStats.battery(context); delay(5000) }
+    val battery by androidx.compose.runtime.produceState(initialValue = DeviceStats.battery(context)) {
+        while (true) {
+            value = DeviceStats.battery(context)
+            kotlinx.coroutines.delay(15000)
+        }
     }
-    val ping by produceState(initialValue = -1) {
-        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.pingMs() }; delay(6000) }
-    }
-    var clock by remember { mutableStateOf(currentTime()) }
-    LaunchedEffect(Unit) {
-        while (true) { clock = currentTime(); delay(1000) }
-    }
+    val clock = SimpleDateFormat("hh:mm a", Locale.US).format(Date())
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF1A0B0B), Color(0xFF120708), Color(0xFF0B0506))))
+            .background(Brush.radialGradient(listOf(Color(0xFF241012), Color(0xFF120A0B))))
     ) {
-        HexBackdrop(Modifier.fillMaxSize())
-
         Column(
             Modifier
                 .fillMaxSize()
@@ -199,210 +148,191 @@ private fun GameSpaceScreen(
         ) {
             // ---- Top bar ----
             Row(verticalAlignment = Alignment.CenterVertically) {
-                HeroMark(Modifier.size(46.dp))
+                BrandMark(Modifier.size(42.dp))
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 2.sp)
-                    Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.Text, fontSize = 22.sp)
+                    Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 2.sp)
+                    Text("CORNER", style = MaterialTheme.typography.titleLarge, color = GC.Text, fontSize = 19.sp, fontFamily = GC.Display)
                 }
                 Spacer(Modifier.width(14.dp))
-                Box(Modifier.width(1.dp).height(34.dp).background(Color(0x33FFFFFF)))
+                Box(Modifier.width(1.dp).height(30.dp).background(Color(0x33FFFFFF)))
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("LVL ${envLevelOf(context)}/3", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 13.sp)
+                    Text("LVL ${envLevelOf(context)}/3", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 12.sp)
                     Spacer(Modifier.height(3.dp))
-                    SegmentedBar(pct = envLevelOf(context) * 100 / 3, segments = 3, height = 5, modifier = Modifier.width(70.dp))
+                    SegmentedBar(pct = envLevelOf(context) * 100 / 3, segments = 3, height = 4, modifier = Modifier.width(64.dp))
                 }
-
                 Spacer(Modifier.weight(1f))
-
-                // Chevron tabs
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    ChevronTab(Icons.Filled.Bolt, selected = !showControl && !showTexture) {
-                        showControl = false; showTexture = false
+                    ChevronTab(Icons.Filled.Bolt, selected = !showControl && !showTexture && !showTouch && !showDisplay) {
+                        showControl = false; showTexture = false; showTouch = false; showDisplay = false
                     }
                     ChevronTab(Icons.Filled.GraphicEq, selected = showControl) {
-                        showControl = true; showTexture = false
+                        showControl = true; showTexture = false; showTouch = false; showDisplay = false
                     }
                     ChevronTab(Icons.Filled.Memory, selected = showTexture) {
-                        showTexture = true; showControl = false
+                        showTexture = true; showControl = false; showTouch = false; showDisplay = false
                     }
                     ChevronTab(Icons.Filled.Apps, selected = false) {
-                        panelRunning = !panelRunning
-                        if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
+                        if (FloatingPanelService.isRunning) FloatingPanelService.stop(context)
+                        else FloatingPanelService.start(context)
                     }
                 }
-
                 Spacer(Modifier.weight(1f))
-
                 Column(horizontalAlignment = Alignment.End) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text("${cpu.pct.coerceIn(0, 100)}%", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Box(Modifier.width(1.dp).height(16.dp).background(Color(0x33FFFFFF)))
-                        Spacer(Modifier.width(6.dp))
-                        Text("${clock}", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp)
+                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("${repo.energy()} / 560", style = MaterialTheme.typography.labelMedium, color = GC.Text, fontSize = 12.sp)
                     }
                     Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("${battery.first.coerceAtLeast(0)}%", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
                         Spacer(Modifier.width(6.dp))
-                        Box(Modifier.width(34.dp).height(8.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x33FFFFFF))) {
-                            Box(Modifier.fillMaxWidth((battery.first.coerceIn(0, 100)) / 100f).height(8.dp).background(accent))
+                        Box(Modifier.width(30.dp).height(7.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x33FFFFFF))) {
+                            Box(Modifier.fillMaxWidth((battery.first.coerceIn(0, 100)) / 100f).height(7.dp).background(accent))
                         }
+                        Spacer(Modifier.width(8.dp))
+                        Text(clock, style = MaterialTheme.typography.labelMedium, color = GC.Text, fontSize = 12.sp)
                     }
                 }
                 Spacer(Modifier.width(10.dp))
                 Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onClose),
+                    Modifier.size(38.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onClose),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(20.dp))
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             // ---- Main row ----
             Row(Modifier.weight(1f)) {
-                // Left: game card + launch
                 Column(Modifier.weight(1f)) {
                     Box(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
                             .clip(CutCornerShape(topStart = 4.dp, topEnd = 22.dp, bottomEnd = 4.dp, bottomStart = 22.dp))
-                            .background(Brush.horizontalGradient(listOf(Color(0xFF5A1418), Color(0xFF2A0D10))))
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF3A1215), Color(0xFF1E0C0E))))
                     ) {
                         Box(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(10.dp)
-                                .size(40.dp)
+                                .size(38.dp)
                                 .clip(CutCornerShape(topStart = 4.dp, topEnd = 12.dp, bottomEnd = 4.dp, bottomStart = 12.dp))
                                 .background(Color(0xCC150A0C))
-                                .clickable { showTexture = true; showControl = false },
+                                .clickable { showTexture = true; showControl = false; showTouch = false; showDisplay = false },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.Tune, contentDescription = "Graphics", tint = accent, modifier = Modifier.size(20.dp))
-                        }
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
-                        ) {
-                            if (app.third != null) {
-                                Image(
-                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.third!!),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
-                                )
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(app.first, style = MaterialTheme.typography.titleMedium, color = Color.White, fontSize = 20.sp)
-                                Text("0m · v${app.second}", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 12.sp)
-                            }
+                            Icon(Icons.Filled.Tune, contentDescription = "Graphics", tint = accent, modifier = Modifier.size(19.dp))
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Text(app.first, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 26.sp)
-                    Text(pkg, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(pkg.substringAfterLast('.'), style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 22.sp, fontFamily = GC.Display)
+                    Text(pkg, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                    Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // LAUNCH (angular)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
-                                .background(accent)
+                                .background(Color(0xFFD31F26))
                                 .clickable { onLaunch(pkg) }
-                                .padding(horizontal = 22.dp, vertical = 13.dp)
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
-                            Text("LAUNCH", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 17.sp, letterSpacing = 2.sp)
+                            Text("LAUNCH", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 16.sp, letterSpacing = 2.sp)
                             Spacer(Modifier.width(10.dp))
-                            Box(Modifier.width(1.dp).height(16.dp).background(Color(0x44FFFFFF)))
+                            Box(Modifier.width(1.dp).height(15.dp).background(Color(0x44FFFFFF)))
                             Spacer(Modifier.width(10.dp))
-                            Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("80", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 16.sp)
+                            Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("80", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp)
                         }
+                        Spacer(Modifier.width(8.dp))
                         Box(
                             Modifier
                                 .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
                                 .background(Color(0x22FFFFFF))
-                                .clickable { showControl = true; showTexture = false }
-                                .padding(13.dp),
+                                .clickable { showControl = true; showTexture = false; showTouch = false; showDisplay = false }
+                                .padding(12.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.Apps, contentDescription = "Control Center", tint = GC.Text, modifier = Modifier.size(22.dp))
+                            Icon(Icons.Filled.Apps, contentDescription = "Control Center", tint = GC.Text, modifier = Modifier.size(20.dp))
                         }
                         Spacer(Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
                             Row(verticalAlignment = Alignment.Bottom) {
-                                Text("${cpu.pct.coerceIn(0, 100)}", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 24.sp)
-                                Text("%  PERFORM", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                                Text("${cpu.pct.coerceIn(0, 100)}", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 22.sp)
+                                Text("%  PERFORM", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp)
                             }
-                            Spacer(Modifier.height(5.dp))
-                            SegmentedBar(pct = cpu.pct.coerceIn(0, 100), segments = 10, height = 6, modifier = Modifier.width(150.dp))
+                            Spacer(Modifier.height(4.dp))
+                            SegmentedBar(pct = cpu.pct.coerceIn(0, 100), segments = 10, height = 5, modifier = Modifier.width(130.dp))
                         }
                     }
                 }
 
                 Spacer(Modifier.width(16.dp))
 
-                // Right: watermark + stat cards
                 Column(
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.fillMaxHeight()
+                    Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        "${repo.userId()} · ${android.os.Process.myPid()}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0x55FFFFFF),
-                        fontSize = 11.sp
+                        "${repo.userId()}-14781",
+                        style = MaterialTheme.typography.labelMedium, color = Color(0x66FFFFFF), fontSize = 11.sp
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("PING INTERVAL", if (ping >= 0) "$ping ms" else "-- ms", Modifier.width(150.dp)) {
-                            SegmentedBar(pct = if (ping in 0..120) 80 else 30, segments = 3, height = 5)
-                        }
-                        StatCard("TEMPERATURE", String.format("%.1f°C", battery.second.coerceAtLeast(0.0)), Modifier.width(150.dp)) {
-                            SegmentedBar(pct = ((battery.second.coerceIn(0.0, 60.0)) / 60.0 * 100).toInt(), segments = 6, height = 5)
-                        }
-                        StatCard("CPU SPEED", String.format("%.2f GHz", cpu.curGhz), Modifier.width(160.dp)) {
-                            GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = 74)
+                        StatCard("PING INTERVAL", "${DeviceStats.pingMs()} ms", Modifier.width(150.dp))
+                        StatCard("TEMPERATURE", "${battery.second.toInt()}°C", Modifier.width(150.dp))
+                        Column(
+                            Modifier
+                                .width(150.dp)
+                                .clip(CutCornerShape(topStart = 4.dp, topEnd = 14.dp, bottomEnd = 4.dp, bottomStart = 14.dp))
+                                .background(Color(0xE61A1214))
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("CPU SPEED", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 1.5.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Text("${String.format(Locale.US, "%.2f", cpu.curGhz)} GHz", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 15.sp)
+                            Spacer(Modifier.height(6.dp))
+                            GaugeRing(pct = cpu.pct, big = String.format(Locale.US, "%.2f", cpu.curGhz), small = "GHz", diameter = 76)
                         }
                     }
                 }
             }
         }
 
-        // ---- Control Center overlay ----
-        if (showControl) {
+        // ---- Overlays ----
+        AnimatedVisibility(
+            visible = showControl,
+            enter = slideInHorizontally(tween(300)) { -it / 3 } + fadeIn(tween(260)),
+            exit = slideOutHorizontally(tween(200)) { -it / 3 } + fadeOut(tween(180))
+        ) {
             ControlCenter(
                 onDismiss = { showControl = false },
                 onTouchSettings = { showControl = false; showTouch = true },
-                onDisplaySettings = { showControl = false; showDisplay = true },
-                onOpenPanel = {
-                    panelRunning = !panelRunning
-                    if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
-                },
-                panelRunning = panelRunning
+                onDisplaySettings = { showControl = false; showDisplay = true }
             )
         }
-
-        // ---- Texture Filtering panel ----
         AnimatedVisibility(
             visible = showTexture,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
             exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
         ) {
-            TexturePanel(pkg = pkg, repo = repo, appName = app.first, onDismiss = { showTexture = false })
+            SidePanel("Texture Filtering", "GRAPHICS", true, { showTexture = false }) {
+                Text("ANGLE renderer", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
+                Text(
+                    "Runs this game on ANGLE (OpenGL ES over Vulkan). Required for texture filtering.",
+                    style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 12.sp, lineHeight = 17.sp
+                )
+            }
         }
-
-        // ---- Touch / Display settings panels ----
         AnimatedVisibility(
             visible = showTouch,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
@@ -420,54 +350,51 @@ private fun GameSpaceScreen(
     }
 }
 
-/* ------------------------------------------------------------------ */
+internal fun envLevelOf(context: Context): Int {
+    var level = 0
+    if (android.provider.Settings.canDrawOverlays(context)) level++
+    if (android.provider.Settings.System.canWrite(context)) level++
+    level++
+    return level
+}
 
 @Composable
 private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     val accent = LocalAccent.current
     Box(
         Modifier
-            .padding(horizontal = 2.dp)
+            .padding(horizontal = 1.dp)
             .clip(CutCornerShape(topStart = 2.dp, topEnd = 10.dp, bottomEnd = 2.dp, bottomStart = 10.dp))
             .background(if (selected) accent else Color(0x22FFFFFF))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = if (selected) Color.White else GC.TextSoft, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = if (selected) Color.White else GC.TextSoft, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun StatCard(title: String, value: String, modifier: Modifier = Modifier, footer: @Composable () -> Unit) {
+private fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier
-            .clip(CutCornerShape(topStart = 2.dp, topEnd = 14.dp, bottomEnd = 2.dp, bottomStart = 14.dp))
-            .background(Color(0xCC120A0B))
-            .border(1.dp, Color(0x22FFFFFF), CutCornerShape(topStart = 2.dp, topEnd = 14.dp, bottomEnd = 2.dp, bottomStart = 14.dp))
-            .padding(13.dp)
+            .clip(CutCornerShape(topStart = 4.dp, topEnd = 14.dp, bottomEnd = 4.dp, bottomStart = 14.dp))
+            .background(Color(0xE61A1214))
+            .padding(12.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
-        Text(value, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
-        Spacer(Modifier.height(8.dp))
-        footer()
+        Text(title, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 1.5.sp)
+        Spacer(Modifier.height(5.dp))
+        Text(value, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp)
+        Spacer(Modifier.height(7.dp))
+        SegmentedBar(pct = 62, segments = 6, height = 4)
     }
 }
 
+/* ------------------------------------------------------------------ */
+
 @Composable
-private fun ControlCenter(
-    onDismiss: () -> Unit,
-    onTouchSettings: () -> Unit,
-    onDisplaySettings: () -> Unit,
-    onOpenPanel: () -> Unit,
-    panelRunning: Boolean
-) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val repo = remember { AppRepo(context) }
-    var dns by remember { mutableStateOf(repo.toggle("dns")) }
-    var session by remember { mutableStateOf(repo.toggle("session")) }
-    var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
+private fun ControlCenter(onDismiss: () -> Unit, onTouchSettings: () -> Unit, onDisplaySettings: () -> Unit) {
+    val accent = LocalAccent.current
     Box(
         Modifier
             .fillMaxSize()
@@ -476,41 +403,33 @@ private fun ControlCenter(
     ) {
         Column(
             Modifier
-                .align(Alignment.BottomCenter)
+                .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(16.dp)
-                .clip(CutCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomEnd = 6.dp, bottomStart = 22.dp))
-                .background(Color(0xF5160E0F))
+                .clip(CutCornerShape(topStart = 22.dp, topEnd = 6.dp, bottomEnd = 22.dp, bottomStart = 6.dp))
+                .background(Color(0xF51A1214))
                 .clickable(enabled = false) {}
                 .padding(18.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.width(4.dp).height(22.dp).background(LocalAccent.current))
+                Box(Modifier.width(4.dp).height(22.dp).background(accent))
                 Spacer(Modifier.width(10.dp))
-                Text("Control Center", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
+                Text("Control Center", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 21.sp)
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(17.dp)) }
             }
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ControlCard(Icons.Filled.Dns, "VISUAL", "DNS & Latency Tuner", showState = true, on = dns, onToggle = {
-                    dns = it; repo.setToggle("dns", it)
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.GraphicEq, "VISUAL", "Session Monitor", showState = true, on = session, onToggle = {
-                    session = it; repo.setToggle("session", it)
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.TouchApp, "CONFIGS", "Touch Settings", showState = false, on = false, onToggle = {
-                    onTouchSettings()
-                }, modifier = Modifier.weight(1f))
+                ControlCard(Icons.Filled.Dns, "VISUAL", "DNS & Latency Tuner", showState = true, on = false, onToggle = {}, modifier = Modifier.weight(1f))
+                ControlCard(Icons.Filled.GraphicEq, "VISUAL", "Session Monitor", showState = true, on = false, onToggle = {}, modifier = Modifier.weight(1f))
+                ControlCard(Icons.Filled.TouchApp, "CONFIGS", "Touch Settings", showState = false, on = false, onToggle = { onTouchSettings() }, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ControlCard(Icons.Filled.Tune, "CONFIGS", "Display Settings", showState = false, on = false, onToggle = {
-                    onDisplaySettings()
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.Apps, "CONFIGS", if (panelRunning) "Pop-up Panel (ON)" else "Pop-up Panel", showState = false, on = panelRunning, onToggle = { onOpenPanel() }, modifier = Modifier.weight(1f))
+                ControlCard(Icons.Filled.Tune, "CONFIGS", "Display Settings", showState = false, on = false, onToggle = { onDisplaySettings() }, modifier = Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
                 Spacer(Modifier.weight(1f))
             }
         }
@@ -520,355 +439,52 @@ private fun ControlCenter(
 @Composable
 private fun ControlCard(
     icon: ImageVector,
-    category: String,
+    tag: String,
     title: String,
     showState: Boolean,
     on: Boolean,
-    onToggle: (Boolean) -> Unit,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val accent = LocalAccent.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
-            .background(Color(0xFF1C1213))
-            .clickable { onToggle(!on) }
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF221315))
+            .clickable(onClick = onToggle)
             .padding(13.dp)
     ) {
-        Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+        Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0x33FFFFFF)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = GC.Text, modifier = Modifier.size(20.dp))
         }
-        Spacer(Modifier.width(11.dp))
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(category, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 1.2.sp)
-            Text(title, style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(tag, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 1.5.sp)
+            Text(title, style = MaterialTheme.typography.labelMedium, color = GC.Text, fontSize = 13.sp, maxLines = 1)
         }
         if (showState) {
             Box(
                 Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF241718))
-                    .padding(horizontal = 11.dp, vertical = 6.dp)
+                    .background(Color(0x33FFFFFF))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
-                Text(if (on) "ON" else "OFF", style = MaterialTheme.typography.labelMedium, color = if (on) accent else GC.TextDim, fontSize = 11.sp)
+                Text(if (on) "ON" else "OFF", style = MaterialTheme.typography.labelMedium, color = GC.TextSoft, fontSize = 10.sp)
             }
         }
     }
 }
 
-/** Per-game Texture Filtering panel (right side). */
-@Composable
-private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss: () -> Unit) {
-    val accent = LocalAccent.current
-    var sharp by remember { mutableStateOf(repo.gfx(pkg, "sharp", false)) }
-    var hard by remember { mutableStateOf(repo.gfx(pkg, "hard", false)) }
-    var aniso by remember { mutableStateOf(repo.gfx(pkg, "aniso", false)) }
-    var angle by remember { mutableStateOf(repo.gfx(pkg, "angle", false)) }
-    var res by remember { mutableStateOf(repo.gfxRes(pkg)) }
-    var preset by remember { mutableStateOf(repo.gfxPreset(pkg)) }
+/* ------------------------------------------------------------------ */
 
-    fun applyPreset(i: Int) {
-        preset = i
-        when (i) {
-            1 -> { sharp = true; hard = false; aniso = false; res = 1 }
-            2 -> { sharp = true; hard = true; aniso = true; res = 2 }
-            3 -> { sharp = false; hard = false; aniso = true; res = 3 }
-            else -> { sharp = false; hard = false; aniso = false; res = 0 }
-        }
-    }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color(0x55000000))
-            .clickable(onClick = onDismiss)
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .padding(14.dp)
-                .width(560.dp)
-                .clip(CutCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomEnd = 6.dp, bottomStart = 22.dp))
-                .background(Color(0xF5170E0F))
-                .clickable(enabled = false) {}
-                .padding(20.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Memory, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("GRAPHICS · $appName", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.2.sp)
-                    Text("Texture Filtering", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 21.sp)
-                    Text(
-                        if (sharp || hard || aniso || res != 0 || angle) "Active" else "Not active",
-                        style = MaterialTheme.typography.labelMedium, color = if (sharp || hard || aniso || res != 0 || angle) accent else GC.TextDim, fontSize = 12.sp
-                    )
-                }
-                Box(
-                    Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
-            }
-            Spacer(Modifier.height(16.dp))
-            Column(
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1B1213))
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                GfxRow("ANGLE renderer", "Runs this game on ANGLE (OpenGL ES over Vulkan).", angle) {
-                    angle = it; repo.setGfx(pkg, "angle", it)
-                }
-                Divider()
-                SectionBar("QUICK PRESETS")
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    PresetChip("Original", preset == 0) { applyPreset(0) }
-                    PresetChip("Pixel", preset == 1) { applyPreset(1) }
-                    PresetChip("Retro", preset == 2) { applyPreset(2) }
-                    PresetChip("Lite", preset == 3) { applyPreset(3) }
-                }
-                Text(
-                    when (preset) {
-                        1 -> "Sharp blocky textures at half resolution."
-                        2 -> "Banded detail, soft anisotropy, quarter resolution."
-                        3 -> "Lighter GPU load at eighth resolution."
-                        else -> "The game's own filtering."
-                    },
-                    style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
-                )
-                Divider()
-                SectionBar("FINE TUNING")
-                GfxRow("Sharp pixels", "Textures are not smoothed, giving a blocky look up close.", sharp) {
-                    sharp = it; repo.setGfx(pkg, "sharp", it)
-                }
-                Divider()
-                GfxRow("Hard detail steps", "Visible bands where texture detail changes in the distance.", hard) {
-                    hard = it; repo.setGfx(pkg, "hard", it)
-                }
-                Divider()
-                GfxRow("Anisotropic off", "Angled ground and roads look softer. Slightly lighter on the GPU.", aniso) {
-                    aniso = it; repo.setGfx(pkg, "aniso", it)
-                }
-                Divider()
-                Text("Texture resolution", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val labels = listOf("Full", "½", "¼", "⅛", "1/16")
-                    labels.forEachIndexed { i, label ->
-                        PresetChip(label, res == i) {
-                            res = i; repo.setGfxRes(pkg, i)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Saved automatically. Applied every time you launch the game from here.",
-                style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun GfxRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 9.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
-            Spacer(Modifier.height(2.dp))
-            Text(desc, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp, lineHeight = 17.sp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Toggle(on = on, onCheckedChange = onChange)
-    }
-}
-
-@Composable
-private fun SectionBar(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-        Box(Modifier.width(3.dp).height(16.dp).background(LocalAccent.current))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 12.sp, letterSpacing = 1.5.sp)
-    }
-}
-
-@Composable
-private fun Divider() {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x22FFFFFF)))
-}
-
-@Composable
-private fun PresetChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val accent = LocalAccent.current
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) accent else Color(0xFF241718))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 11.dp)
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else GC.TextSoft, fontSize = 13.sp)
-    }
-}
-
-@Composable
-private fun HexBackdrop(modifier: Modifier) {
-    Canvas(modifier) {
-        val step = 46f
-        val paintDot = Color(0x14FF6B4A)
-        var y = 0f
-        var row = 0
-        while (y < size.height) {
-            var x = if (row % 2 == 0) 0f else step / 2
-            while (x < size.width) {
-                drawCircle(paintDot, radius = 2.2f, center = Offset(x, y))
-                x += step
-            }
-            y += step * 0.86f
-            row++
-        }
-    }
-}
-
-private fun currentTime(): String {
-    val cal = Calendar.getInstance()
-    val h = cal.get(Calendar.HOUR)
-    val m = cal.get(Calendar.MINUTE)
-    val ampm = if (cal.get(Calendar.AM_PM) == Calendar.AM) "AM" else "PM"
-    return String.format("%d:%02d %s", if (h == 0) 12 else h, m, ampm)
-}
-
-private fun envLevelOf(context: android.content.Context): Int {
-    var level = 0
-    if (Settings.canDrawOverlays(context)) level++
-    if (Settings.System.canWrite(context)) level++
-    return level.coerceAtMost(3)
-}
-
-internal fun putSystemSetting(context: Context, name: String, value: Int): Boolean = try {
-    android.provider.Settings.System.putInt(context.contentResolver, name, value)
-} catch (_: Throwable) {
-    false
-}
-
-internal fun feedbackOnWrite(context: Context, ok: Boolean) {
-    if (ok) return
-    // Never fail silently: tell the user exactly what to do and take them
-    // to the real grant page for THIS app.
-    android.widget.Toast.makeText(
-        context,
-        "Grant 'Modify System Settings' to GamersHub — opening Settings…",
-        android.widget.Toast.LENGTH_LONG
-    ).show()
-    val opened = runCatching {
-        context.startActivity(
-            android.content.Intent(
-                android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                android.net.Uri.parse("package:${context.packageName}")
-            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
-    }.isSuccess
-    if (!opened) {
-        runCatching {
-            context.startActivity(
-                android.content.Intent(
-                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    android.net.Uri.parse("package:${context.packageName}")
-                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        }
-    }
-}
-
-/** Touch Settings side panel — real system writes for taps / coordinates. */
-@Composable
-private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var magic by remember { mutableStateOf(repo.toggle("magic_mapper")) }
-    var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
-    var coords by remember { mutableStateOf(repo.toggle("show_coords")) }
-    var hw by remember { mutableStateOf(repo.toggle("hw_touch")) }
-    SidePanel(title = "Touch Settings", subtitle = "CONFIGS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
-        GfxRow("Magic Mapper Listener", "Enable Magic Mapper service", magic) {
-            magic = it; repo.setToggle("magic_mapper", it)
-        }
-        Divider()
-        GfxRow("Show Taps", "Draw a visible marker where you touch.", taps) {
-            val ok = putSystemSetting(context, "show_touches", if (it) 1 else 0)
-            if (ok) { taps = it; repo.setToggle("show_taps", it) }
-            feedbackOnWrite(context, ok)
-        }
-        Divider()
-        GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
-            val ok = putSystemSetting(context, "pointer_location", if (it) 1 else 0)
-            if (ok) { coords = it; repo.setToggle("show_coords", it) }
-            feedbackOnWrite(context, ok)
-        }
-        Divider()
-        GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
-            hw = it; repo.setToggle("hw_touch", it)
-        }
-    }
-}
-
-/** Display Settings side panel — real refresh-rate and rotation control. */
-@Composable
-private fun DisplayPanel(onDismiss: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var refreshStep by remember { mutableStateOf(0) }
-    var autoRotate by remember {
-        mutableStateOf(
-            try {
-                Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) == 1
-            } catch (_: Throwable) { true }
-        )
-    }
-    SidePanel(title = "Display Settings", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
-        Text("Refresh Rate", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
-                PresetChip(label, refreshStep == i) {
-                    val prev = refreshStep
-                    refreshStep = i
-                    val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
-                    val ok = try {
-                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
-                            Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
-                    } catch (_: Throwable) { false }
-                    if (!ok) refreshStep = prev
-                    feedbackOnWrite(context, ok)
-                }
-            }
-        }
-        Divider()
-        GfxRow("Auto-rotate", "Rotate the screen with the device orientation.", autoRotate) {
-            val ok = putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (it) 1 else 0)
-            if (ok) autoRotate = it
-            feedbackOnWrite(context, ok)
-        }
-        Divider()
-        val dm = context.resources.displayMetrics
-        Text(
-            "Panel: ${dm.widthPixels}x${dm.heightPixels} · ${dm.densityDpi}dp",
-            style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
-        )
-    }
-}
-
-/** Shared right-side panel frame (same look as Texture Filtering). */
 @Composable
 private fun SidePanel(
     title: String,
     subtitle: String,
     active: Boolean,
     onDismiss: () -> Unit,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
     val accent = LocalAccent.current
     Box(
@@ -892,11 +508,7 @@ private fun SidePanel(
                 Column(Modifier.weight(1f)) {
                     Text(subtitle, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.2.sp)
                     Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 21.sp)
-                    Text(
-                        if (active) "Active" else "Not active",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (active) accent else GC.TextDim, fontSize = 12.sp
-                    )
+                    Text(if (active) "Active" else "Not active", style = MaterialTheme.typography.labelMedium, color = if (active) accent else GC.TextDim, fontSize = 12.sp)
                 }
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
@@ -912,6 +524,76 @@ private fun SidePanel(
                     .padding(16.dp),
                 content = content
             )
+        }
+    }
+}
+
+@Composable
+private fun GfxRow(title: String, desc: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 15.sp)
+            Text(desc, style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 11.5.sp, lineHeight = 16.sp)
+        }
+        Toggle(on = on, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
+    var coords by remember { mutableStateOf(repo.toggle("show_coords")) }
+    var hw by remember { mutableStateOf(repo.toggle("hw_touch")) }
+    SidePanel(title = "Touch Settings", subtitle = "CONFIGS", active = taps || coords || hw, onDismiss = onDismiss) {
+        GfxRow("Show Taps", "Draw a visible marker where you touch.", taps) {
+            val ok = putSystemSetting(context, "show_touches", if (it) 1 else 0)
+            if (ok) { taps = it; repo.setToggle("show_taps", it) }
+            feedbackOnWrite(context, ok)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
+        GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
+            val ok = putSystemSetting(context, "pointer_location", if (it) 1 else 0)
+            if (ok) { coords = it; repo.setToggle("show_coords", it) }
+            feedbackOnWrite(context, ok)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
+        GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
+            hw = it; repo.setToggle("hw_touch", it)
+        }
+    }
+}
+
+@Composable
+private fun DisplayPanel(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var refreshStep by remember { mutableStateOf(0) }
+    SidePanel(title = "Display Settings", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
+        Text("Refresh Rate", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
+                val selected = refreshStep == i
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) LocalAccent.current else Color(0xFF241718))
+                        .clickable {
+                            val prev = refreshStep
+                            refreshStep = i
+                            val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
+                            val ok = try {
+                                android.provider.Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
+                                    android.provider.Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
+                            } catch (_: Throwable) { false }
+                            if (!ok) refreshStep = prev
+                            feedbackOnWrite(context, ok)
+                        }
+                        .padding(horizontal = 13.dp, vertical = 9.dp)
+                ) {
+                    Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else GC.TextSoft, fontSize = 12.sp)
+                }
+            }
         }
     }
 }
