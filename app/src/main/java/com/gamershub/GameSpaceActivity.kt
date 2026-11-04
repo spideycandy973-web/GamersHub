@@ -788,7 +788,7 @@ internal fun boostNow(context: Context): Int {
     }
     com.gamershub.core.shizuku.Shell.ok("echo 3 > /proc/sys/vm/drop_caches")
     val after = com.gamershub.data.DeviceStats.mem(context).let { it.totalMb - it.usedMb }
-    return (after - before).coerceAtLeast(0)
+    return (after - before).coerceAtLeast(0L).toInt()
 }
 
 internal fun feedbackOnWrite(context: Context, ok: Boolean) {
