@@ -1,9 +1,14 @@
 package com.gamershub.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -49,6 +54,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+
+/**
+ * Animated icon — every icon in the app gently breathes (scale + glow),
+ * so the whole UI feels alive.
+ */
+@Composable
+fun AIcon(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = androidx.compose.material3.LocalContentColor.current
+) {
+    val transition = rememberInfiniteTransition(label = "aicon")
+    val breathe by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.07f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breathe"
+    )
+    val glow by transition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "glow"
+    )
+    androidx.compose.material3.Icon(
+        imageVector,
+        contentDescription = contentDescription,
+        tint = tint.copy(alpha = tint.alpha * glow),
+        modifier = modifier.graphicsLayer { scaleX = breathe; scaleY = breathe }
+    )
+}
 
 /**
  * Animated squircle toggle. The knob slides with a spring, the track
@@ -230,6 +267,7 @@ fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifie
     val accent = LocalAccent.current
     val bigSp = (diameter / 5).coerceIn(13, 28)
     val smallSp = (diameter / 11).coerceIn(9, 13)
+    val animatedPct by animateFloatAsState(pct.coerceIn(0, 100).toFloat(), label = "gauge")
     Box(modifier.size(diameter.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(diameter.dp)) {
             val stroke = 13.dp.toPx()
@@ -241,7 +279,7 @@ fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifie
             )
             drawArc(
                 color = accent, startAngle = -90f,
-                sweepAngle = 360f * pct.coerceIn(0, 100) / 100f, useCenter = false,
+                sweepAngle = 360f * animatedPct / 100f, useCenter = false,
                 topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round)
             )
         }

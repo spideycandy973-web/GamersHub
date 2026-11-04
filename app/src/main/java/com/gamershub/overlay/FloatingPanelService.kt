@@ -1,5 +1,7 @@
 package com.gamershub.overlay
 
+import com.gamershub.ui.components.AIcon
+
 import android.app.ActivityManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -34,6 +36,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.BrightnessHigh
@@ -50,7 +56,6 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -317,20 +323,40 @@ private fun rememberLiveStats(): LiveStats {
     return stats
 }
 
+
 /**
- * The AX-MODE panel — pixel copy of the reference design.
+ * The AX-MODE panel — exact copy of the reference screenshots:
+ * tab pills + live stats strip / quick tabs, the AX-MODE band with
+ * clock + battery, the icon rows around the GAME CORNER wordmark,
+ * live CPU (left) and RAM (right) chevron bars, home/logo/gear row.
  */
 @Composable
 private fun AxModePanel(onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
-    val stats = rememberLiveStats()
-    var infoTab by remember { mutableStateOf(false) }
+    val stats by produceState(initialValue = LiveStats()) {
+        while (true) {
+            runCatching {
+                val cpu = DeviceStats.cpu()
+                val mem = DeviceStats.mem(context)
+                val b = DeviceStats.battery(context)
+                value = LiveStats(
+                    cpu = cpu.pct.coerceIn(0, 100),
+                    ram = mem.pct.coerceIn(0, 100),
+                    tempC = b.second.toInt(),
+                    ping = DeviceStats.pingMs(),
+                    ghz = String.format(java.util.Locale.US, "%.2f", cpu.curGhz),
+                    batt = b.first.coerceIn(0, 100),
+                    clock = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.US).format(java.util.Date())
+                )
+            }
+            kotlinx.coroutines.delay(900)
+        }
+    }
+    var showInfo by remember { mutableStateOf(true) }
+    var showTaps by remember { mutableStateOf(false) }
     var crosshair by remember { mutableStateOf(false) }
     var refreshLabel by remember { mutableStateOf("AUTO") }
-    var dnsIdx by remember { mutableStateOf(0) }
-    var touchBoost by remember { mutableStateOf(false) }
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Box(
         Modifier
@@ -338,263 +364,230 @@ private fun AxModePanel(onClose: () -> Unit) {
             .background(Color(0x66000000))
             .clickable(enabled = false) {}
     ) {
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp)
-        ) {
-            // ---- CPU bar (left) + RAM bar (right) flanking the panel ----
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                LiveBar(label = "CPU", pct = stats.cpu, color = Color(0xFFFF2D2D), right = true, modifier = Modifier.width(64.dp))
-                // ---- panel body ----
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .padding(horizontal = 2.dp)
-                ) {
-                    // handle + AX-MODE band
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Box(
-                            Modifier
-                                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                                .background(Color(0xFFB31217))
-                                .clickable(onClick = onClose)
-                                .padding(horizontal = 26.dp, vertical = 4.dp)
-                        ) {
-                            Text("AX-MODE", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp, letterSpacing = 3.sp)
-                        }
-                    }
-                    Row(
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            LiveBar("CPU", stats.cpu, Color(0xFFFF2D2D), right = true, modifier = Modifier.width(64.dp))
+            Column(Modifier.weight(1f)) {
+                // ---- tabs + stats strip / quick tabs ----
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Box(
                         Modifier
-                            .fillMaxWidth()
-                            .clip(CutCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                            .background(Color(0xE622090B))
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .clip(CutCornerShape(topStart = 2.dp, topEnd = 10.dp, bottomEnd = 2.dp, bottomStart = 10.dp))
+                            .background(if (!showInfo) Color(0xFFD31F26) else Color(0x33FFFFFF))
+                            .clickable { showInfo = false }
+                            .padding(horizontal = 13.dp, vertical = 7.dp)
                     ) {
-                        Spacer(Modifier.width(12.dp))
-                        Text("PM " + stats.clock, style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 11.sp)
-                        Spacer(Modifier.width(8.dp))
-                        // segmented battery bar
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            repeat(10) { i ->
-                                Box(
-                                    Modifier
-                                        .width(9.dp).height(11.dp)
-                                        .background(if (i < stats.batt / 10) Color(0xFFE8E3DD) else Color(0x33FFFFFF))
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        Text("${stats.batt}%", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 11.sp)
-                        Spacer(Modifier.weight(1f))
-                        Text("9:07", style = MaterialTheme.typography.labelMedium, color = Color(0x66FFFFFF), fontSize = 11.sp)
-                        Spacer(Modifier.width(12.dp))
+                        AIcon(Icons.Filled.SportsEsports, contentDescription = "Controls", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // ---- tabs (gamepad | info) ----
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        Modifier
+                            .clip(CircleShape)
+                            .background(if (showInfo) Color(0xFFD31F26) else Color(0x33FFFFFF))
+                            .clickable { showInfo = true }
+                            .padding(8.dp)
+                    ) {
+                        AIcon(Icons.Filled.Info, contentDescription = "Monitor", tint = Color.White, modifier = Modifier.size(15.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    if (showInfo) {
+                        Row(
                             Modifier
-                                .clip(CutCornerShape(topStart = 2.dp, topEnd = 10.dp, bottomEnd = 2.dp, bottomStart = 10.dp))
-                                .background(if (!infoTab) Color(0xFFD31F26) else Color(0x33FFFFFF))
-                                .clickable { infoTab = false }
-                                .padding(horizontal = 13.dp, vertical = 7.dp)
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xE6160A0B))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Controls", tint = Color.White, modifier = Modifier.size(16.dp))
+                            StatMini("FPS", "0")
+                            StatMini("CPU", "${stats.cpu}%")
+                            StatMini("TEMP", "${stats.tempC}°C")
+                            StatMini("PING", if (stats.ping >= 0) "${stats.ping}ms" else "--")
+                            StatMini("GPU·CPU", "${stats.ghz}GHz")
                         }
-                        Spacer(Modifier.width(6.dp))
-                        Box(
-                            Modifier
-                                .clip(CircleShape)
-                                .background(if (infoTab) Color(0xFFD31F26) else Color(0x33FFFFFF))
-                                .clickable { infoTab = true }
-                                .padding(8.dp)
+                    } else {
+                        Row(
+                            Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Icon(Icons.Filled.Info, contentDescription = "Monitor", tint = Color.White, modifier = Modifier.size(15.dp))
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        if (infoTab) {
-                            // live stats strip (Information Monitor)
-                            Row(
-                                Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xE6160A0B))
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                StatMini("FPS", "0")
-                                StatMini("CPU", "${stats.cpu}%")
-                                StatMini("TEMP", "${stats.tempC}°C")
-                                StatMini("PING", if (stats.ping >= 0) "${stats.ping}ms" else "--")
-                                StatMini("GPU·CPU", "${stats.ghz}GHz")
-                            }
+                            QuickTab(Icons.Filled.Diamond)
+                            QuickTab(Icons.Filled.Speed)
+                            QuickTab(Icons.Filled.BatteryFull)
+                            QuickTab(Icons.Filled.ManageAccounts)
                         }
                     }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    if (!infoTab) {
-                        // ---- icon grid: two rows, center logo block ----
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                GridButton(Icons.Filled.Autorenew, "Refresh Rate", refreshLabel) {
-                                    refreshLabel = when (refreshLabel) {
-                                        "AUTO" -> "60Hz"; "60Hz" -> "90Hz"; "90Hz" -> "120Hz"; "120Hz" -> "144Hz"
-                                        else -> "AUTO"
-                                    }
-                                    val hz = when (refreshLabel) {
-                                        "60Hz" -> 60f; "90Hz" -> 90f; "120Hz" -> 120f; "144Hz" -> 144f
-                                        else -> 120f
-                                    }
-                                    val ok = try {
-                                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
-                                            Settings.System.putFloat(context.contentResolver, "min_refresh_rate", if (refreshLabel == "AUTO") 60f else hz)
-                                    } catch (_: Throwable) { false }
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                                GridButton(Icons.Filled.Info, "Information Monitor", if (infoTab) "ON" else "OFF") { infoTab = true }
-                                GridButton(Icons.Filled.Dns, "DNS Tuner", listOf("Google", "Cloudflare", "OpenDNS")[dnsIdx % 3]) {
-                                    dnsIdx++
-                                    val spec = when (dnsIdx % 3) {
-                                        0 -> "dns.google"; 1 -> "one.one.one.one"; else -> "doh.opendns.com"
-                                    }
-                                    val ok = try {
-                                        Settings.Global.putString(context.contentResolver, "private_dns_mode", "hostname") &&
-                                            Settings.Global.putString(context.contentResolver, "private_dns_specifier", spec)
-                                    } catch (_: Throwable) { false }
-                                    if (!ok) android.widget.Toast.makeText(context, "Private DNS set to $spec (may require Activation)", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            // center logo block
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            ) {
-                                Text("GAMERSHUB", style = MaterialTheme.typography.labelMedium, color = Color(0x88FFFFFF), fontSize = 8.sp, letterSpacing = 3.sp)
-                                Text("GAME CORNER", style = MaterialTheme.typography.titleLarge, color = Color.White, fontSize = 17.sp, fontFamily = GC.Display)
-                                Spacer(Modifier.height(2.dp))
-                                HeroMark(Modifier.size(22.dp))
-                            }
-                            Column(Modifier.weight(1f)) {
-                                GridButton(Icons.Filled.GpsFixed, "Crosshair", if (crosshair) "ON" else "OFF") { crosshair = !crosshair }
-                                GridButton(Icons.Filled.Speed, "Quick Boost", "FREE") {
-                                    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                                    val before = DeviceStats.mem(context).let { it.totalMb - it.usedMb }
-                                    runCatching {
-                                        am.runningAppProcesses?.forEach { p ->
-                                            if (p.processName != context.packageName) am.killBackgroundProcesses(p.processName)
-                                        }
-                                    }
-                                    val gained = (DeviceStats.mem(context).let { it.totalMb - it.usedMb } - before).coerceAtLeast(0)
-                                    android.widget.Toast.makeText(context, "Boosted — ${gained} MB freed", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                                GridButton(Icons.Filled.ScreenRotation, "Gyro Calibration", "CALIBRATE") {
-                                    val ok = com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, 1)
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                GridButton(Icons.Filled.ScreenLockPortrait, "Rotation Lock", "LOCK") {
-                                    val cur = try { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) } catch (_: Throwable) { 1 }
-                                    val ok = com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (cur == 1) 0 else 1)
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                                GridButton(Icons.Filled.NotificationsOff, "Do Not Disturb", "DND") {
-                                    val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                                    val ok = try {
-                                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY); true
-                                    } catch (_: Throwable) { false }
-                                    if (!ok) {
-                                        android.widget.Toast.makeText(context, "Grant Do Not Disturb access to GamersHub", android.widget.Toast.LENGTH_SHORT).show()
-                                        runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                                    }
-                                }
-                                GridButton(Icons.Filled.BrightnessHigh, "Lock Brightness", "LOCK") {
-                                    val cur = try { Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) } catch (_: Throwable) { 128 }
-                                    val ok = com.gamershub.putSystemSetting(context, Settings.System.SCREEN_BRIGHTNESS_MODE, 0) &&
-                                        com.gamershub.putSystemSetting(context, Settings.System.SCREEN_BRIGHTNESS, cur)
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                GridButton(Icons.Filled.TouchApp, "Touch Enhancer", if (touchBoost) "ON" else "OFF") {
-                                    touchBoost = !touchBoost
-                                    val ok = com.gamershub.putSystemSetting(context, "show_touches", if (touchBoost) 1 else 0)
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                                GridButton(Icons.Filled.Screenshot, "Screenshot", "CAPTURE") {
-                                    android.widget.Toast.makeText(context, "Screenshot — requires Activation (Shizuku)", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                                GridButton(Icons.Filled.Adjust, "Show Taps", "TAP") {
-                                    val cur = try { Settings.System.getInt(context.contentResolver, "show_touches") } catch (_: Throwable) { 0 }
-                                    val ok = com.gamershub.putSystemSetting(context, "show_touches", if (cur == 1) 0 else 1)
-                                    com.gamershub.feedbackOnWrite(context, ok)
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // ---- bottom row: home | logo | gear ----
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Filled.Home, contentDescription = "Home", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
-                        }
-                        HeroMark(Modifier.size(24.dp))
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(6.dp))
                 }
-                LiveBar(label = "RAM", pct = stats.ram, color = Color(0xFFE0359B), right = false, modifier = Modifier.width(64.dp))
+
+                Spacer(Modifier.height(6.dp))
+
+                // ---- handle + AX-MODE band ----
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                            .background(Color(0xFFB31217))
+                            .clickable(onClick = onClose)
+                            .padding(horizontal = 18.dp, vertical = 2.dp)
+                    ) {
+                        AIcon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                }
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.62f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFB31217))
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("AX-MODE", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp, letterSpacing = 3.sp)
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(Modifier.width(14.dp))
+                    Text("PM " + stats.clock, style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 11.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        repeat(10) { i ->
+                            Box(
+                                Modifier.width(8.dp).height(10.dp)
+                                    .background(if (i < stats.batt / 10) Color(0xFFE8E3DD) else Color(0x33FFFFFF))
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text("${stats.batt}%", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 11.sp)
+                    Spacer(Modifier.weight(1f))
+                    Text("9:07", style = MaterialTheme.typography.labelMedium, color = Color(0x66FFFFFF), fontSize = 11.sp)
+                    Spacer(Modifier.width(14.dp))
+                }
+
+                // ---- icon rows around the wordmark ----
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        GridButton(Icons.Filled.Autorenew, "Refresh Rate", refreshLabel) {
+                            refreshLabel = when (refreshLabel) {
+                                "AUTO" -> "60Hz"; "60Hz" -> "90Hz"; "90Hz" -> "120Hz"; "120Hz" -> "144Hz"; else -> "AUTO"
+                            }
+                            val hz = when (refreshLabel) { "60Hz" -> 60f; "90Hz" -> 90f; "120Hz" -> 120f; "144Hz" -> 144f; else -> 120f }
+                            val ok = try {
+                                Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
+                                    Settings.System.putFloat(context.contentResolver, "min_refresh_rate", if (refreshLabel == "AUTO") 60f else hz)
+                            } catch (_: Throwable) { false }
+                            com.gamershub.feedbackOnWrite(context, ok)
+                        }
+                        GridButton(Icons.Filled.Info, "Information Monitor", if (showInfo) "ON" else "OFF") { showInfo = true }
+                        GridButton(Icons.Filled.Dns, "DNS Tuner", "SECURE") {
+                            com.gamershub.feedbackOnWrite(
+                                context,
+                                com.gamershub.putGlobalSetting(context, "private_dns_mode", "hostname") &&
+                                    com.gamershub.putGlobalSetting(context, "private_dns_specifier", "dns.google")
+                            )
+                        }
+                    }
+                    Column(Modifier.weight(1f)) {
+                        GridButton(Icons.Filled.GpsFixed, "Crosshair", if (crosshair) "ON" else "OFF") { crosshair = !crosshair }
+                        GridButton(Icons.Filled.Speed, "Quick Boost", "FREE") {
+                            val freed = com.gamershub.boostNow(context)
+                            android.widget.Toast.makeText(context, "Boosted — $freed MB freed", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        GridButton(Icons.Filled.ScreenRotation, "Gyro Calibration", "CALIBRATE") {
+                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, 1))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        GridButton(Icons.Filled.ScreenLockPortrait, "Rotation Lock", "LOCK") {
+                            val cur = try { Settings.System.getInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION) } catch (_: Throwable) { 1 }
+                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (cur == 1) 0 else 1))
+                        }
+                        GridButton(Icons.Filled.NotificationsOff, "Do Not Disturb", "DND") {
+                            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            val ok = try { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY); true } catch (_: Throwable) { false }
+                            if (!ok) {
+                                android.widget.Toast.makeText(context, "Grant Do Not Disturb access to GamersHub", android.widget.Toast.LENGTH_SHORT).show()
+                                runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            }
+                        }
+                        GridButton(Icons.Filled.BrightnessHigh, "Lock Brightness", "LOCK") {
+                            val cur = try { Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) } catch (_: Throwable) { 128 }
+                            com.gamershub.feedbackOnWrite(
+                                context,
+                                com.gamershub.putSystemSetting(context, Settings.System.SCREEN_BRIGHTNESS_MODE, 0) &&
+                                    com.gamershub.putSystemSetting(context, Settings.System.SCREEN_BRIGHTNESS, cur)
+                            )
+                        }
+                    }
+                    // center wordmark between the rows
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("AXERON", style = MaterialTheme.typography.labelMedium, color = Color(0x88FFFFFF), fontSize = 8.sp, letterSpacing = 3.sp)
+                        Text("GAME CORNER", style = MaterialTheme.typography.titleLarge, color = Color.White, fontSize = 17.sp, fontFamily = GC.Display)
+                        Spacer(Modifier.height(2.dp))
+                        BrandMark(Modifier.size(20.dp), tint = Color.White)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        GridButton(Icons.Filled.TouchApp, "Touch Enhancer", if (showTaps) "ON" else "OFF") {
+                            showTaps = !showTaps
+                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, "show_touches", if (showTaps) 1 else 0))
+                        }
+                        GridButton(Icons.Filled.Screenshot, "Screenshot", "CAPTURE") {
+                            com.gamershub.shellExec(context, "screencap -p /sdcard/Pictures/gamershub_capture.png")
+                            android.widget.Toast.makeText(context, "Screenshot saved to Pictures", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        GridButton(Icons.Filled.Adjust, "Show Taps", "TAP") {
+                            val cur = try { Settings.System.getInt(context.contentResolver, "show_touches") } catch (_: Throwable) { 0 }
+                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, "show_touches", if (cur == 1) 0 else 1))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // ---- bottom row: home | logo | gear ----
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        AIcon(Icons.Filled.Home, contentDescription = "Home", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
+                    }
+                    BrandMark(Modifier.size(24.dp))
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        AIcon(Icons.Filled.Settings, contentDescription = "Settings", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
             }
+            LiveBar("RAM", stats.ram, Color(0xFFE0359B), right = false, modifier = Modifier.width(64.dp))
+        }
 
-            // crosshair overlay (drawn above panel content)
-            if (crosshair) {
-                Canvas(Modifier.fillMaxWidth().height(120.dp)) {
-                    val c = Color(0xFFFF2D2D)
-                    drawLine(c, androidx.compose.ui.geometry.Offset(size.width / 2, 0f), androidx.compose.ui.geometry.Offset(size.width / 2, size.height), 2.5f)
-                    drawLine(c, androidx.compose.ui.geometry.Offset(0f, size.height / 2), androidx.compose.ui.geometry.Offset(size.width, size.height / 2), 2.5f)
-                    drawCircle(c, radius = 10f, style = Stroke(2.5f))
-                }
+        if (crosshair) {
+            Canvas(Modifier.fillMaxWidth().height(140.dp)) {
+                val c = Color(0xFFFF2D2D)
+                drawLine(c, androidx.compose.ui.geometry.Offset(size.width / 2, 0f), androidx.compose.ui.geometry.Offset(size.width / 2, size.height), 2.5f)
+                drawLine(c, androidx.compose.ui.geometry.Offset(0f, size.height / 2), androidx.compose.ui.geometry.Offset(size.width, size.height / 2), 2.5f)
+                drawCircle(c, radius = 12f, style = Stroke(2.5f))
             }
         }
     }
 }
 
-/** One circular icon button with two label lines (state under the name). */
 @Composable
-private fun GridButton(icon: ImageVector, label: String, sub: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick)
+private fun QuickTab(icon: ImageVector) {
+    Box(
+        Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(Color(0x22FFFFFF)),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF8C1013)),
-            contentAlignment = Alignment.Center
-        ) { Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(17.dp)) }
-        Spacer(Modifier.width(7.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White, fontSize = 10.5.sp, maxLines = 1)
-            Text(sub, style = MaterialTheme.typography.labelMedium, color = Color(0x99FFFFFF), fontSize = 8.5.sp, maxLines = 1)
-        }
+        AIcon(icon, contentDescription = null, tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
     }
 }
 
@@ -606,30 +599,41 @@ private fun StatMini(label: String, value: String) {
     }
 }
 
-/**
- * The animated CPU / RAM chevron column. Ten arrow segments; the
- * filled count follows the live percentage with smooth transitions.
- */
+@Composable
+private fun GridButton(icon: ImageVector, label: String, sub: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Box(
+            Modifier.size(33.dp).clip(CircleShape).background(Color(0xFF8C1013)),
+            contentAlignment = Alignment.Center
+        ) { AIcon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(16.dp)) }
+        Spacer(Modifier.width(7.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White, fontSize = 10.5.sp, maxLines = 1)
+            Text(sub, style = MaterialTheme.typography.labelMedium, color = Color(0x99FFFFFF), fontSize = 8.5.sp, maxLines = 1)
+        }
+    }
+}
+
+/** Animated CPU / RAM chevron column — labels at the bottom like the reference. */
 @Composable
 private fun LiveBar(label: String, pct: Int, color: Color, right: Boolean, modifier: Modifier = Modifier) {
     Column(
         modifier.padding(horizontal = 4.dp),
         horizontalAlignment = if (right) Alignment.Start else Alignment.End
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontSize = 15.sp, letterSpacing = 1.sp)
-        Spacer(Modifier.height(4.dp))
         val filled = pct / 10
         repeat(10) { i ->
-            val target = if (i < filled) 1f else 0f
-            val alpha by animateFloatAsState(target, label = "bar$i")
-            val col by animateColorAsState(
-                if (i < filled) color else color.copy(alpha = 0.18f),
-                label = "barc$i"
-            )
+            val alpha by animateFloatAsState(if (i < filled) 1f else 0f, label = "bar$i")
+            val col by animateColorAsState(if (i < filled) color else color.copy(alpha = 0.18f), label = "barc$i")
             Canvas(Modifier.fillMaxWidth().height(13.dp)) {
                 val w = size.width
                 val h = size.height
-                // arrow / chevron segment pointing toward the panel
                 val path = if (right) {
                     Path().apply {
                         moveTo(w, h / 2); lineTo(w * 0.55f, 0f); lineTo(0f, 0f)
@@ -644,13 +648,7 @@ private fun LiveBar(label: String, pct: Int, color: Color, right: Boolean, modif
                 drawPath(path, col.copy(alpha = 0.18f + 0.82f * alpha))
             }
         }
-        Spacer(Modifier.height(2.dp))
-        Text("$pct%", style = MaterialTheme.typography.labelMedium, color = color, fontSize = 11.sp)
+        Spacer(Modifier.height(3.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontSize = 15.sp, letterSpacing = 1.sp)
     }
-}
-
-private fun readSystemInt(context: Context, name: String): Int = try {
-    Settings.System.getInt(context.contentResolver, name)
-} catch (_: Throwable) {
-    -1
 }

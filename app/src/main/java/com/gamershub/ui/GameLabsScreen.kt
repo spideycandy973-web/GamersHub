@@ -1,5 +1,7 @@
 package com.gamershub.ui
 
+import com.gamershub.ui.components.AIcon
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +37,6 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideogameAsset
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,7 +96,7 @@ fun GameLabsScreen(
                     .background(GC.SurfaceHi)
                     .padding(horizontal = 11.dp, vertical = 7.dp)
             ) {
-                Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(5.dp))
                 Text("LV.$envLevel", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 13.sp)
                 Spacer(Modifier.width(8.dp))
@@ -124,7 +125,7 @@ fun GameLabsScreen(
                             .clickable { tab = t }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
-                        Icon(
+                        AIcon(
                             when (t) {
                                 LabsTab.ALL -> Icons.Filled.Extension
                                 LabsTab.VISUAL -> Icons.Filled.GraphicEq
@@ -490,7 +491,7 @@ private fun CheckRow(
                     .clickable { onToggle(key, !checked) },
                 contentAlignment = Alignment.Center
             ) {
-                if (checked) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                if (checked) AIcon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
         }
     }

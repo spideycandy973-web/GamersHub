@@ -1,5 +1,7 @@
 package com.gamershub
 
+import com.gamershub.ui.components.AIcon
+
 import android.os.BatteryManager
 import android.os.Bundle
 import android.content.Context
@@ -52,7 +54,6 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -115,18 +116,7 @@ class GameSpaceActivity : ComponentActivity() {
                         }
                     )
                     if (showIntro) {
-                        androidx.compose.runtime.LaunchedEffect(Unit) {
-                            kotlinx.coroutines.delay(1900)
-                            showIntro = false
-                        }
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_creature),
-                            contentDescription = null,
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { showIntro = false }
-                        )
+                        com.gamershub.ui.IntroAnimation(onDone = { showIntro = false })
                     }
                 }
             }
@@ -237,7 +227,7 @@ private fun GameSpaceScreen(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                        AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
                         Spacer(Modifier.width(5.dp))
                         Text("${cpu.pct.coerceIn(0, 100)}%", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp)
                         Spacer(Modifier.width(6.dp))
@@ -259,7 +249,7 @@ private fun GameSpaceScreen(
                     Modifier.size(40.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onClose),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(22.dp))
+                    AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(22.dp))
                 }
             }
 
@@ -286,7 +276,7 @@ private fun GameSpaceScreen(
                                 .clickable { showTexture = true; showControl = false },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.Tune, contentDescription = "Graphics", tint = accent, modifier = Modifier.size(20.dp))
+                            AIcon(Icons.Filled.Tune, contentDescription = "Graphics", tint = accent, modifier = Modifier.size(20.dp))
                         }
                         Row(
                             verticalAlignment = Alignment.Bottom,
@@ -324,7 +314,7 @@ private fun GameSpaceScreen(
                             Spacer(Modifier.width(10.dp))
                             Box(Modifier.width(1.dp).height(16.dp).background(Color(0x44FFFFFF)))
                             Spacer(Modifier.width(10.dp))
-                            Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                            AIcon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("80", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 16.sp)
                         }
@@ -336,7 +326,7 @@ private fun GameSpaceScreen(
                                 .padding(13.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Filled.Apps, contentDescription = "Control Center", tint = GC.Text, modifier = Modifier.size(22.dp))
+                            AIcon(Icons.Filled.Apps, contentDescription = "Control Center", tint = GC.Text, modifier = Modifier.size(22.dp))
                         }
                         Spacer(Modifier.weight(1f))
                         Column(horizontalAlignment = Alignment.End) {
@@ -434,7 +424,7 @@ private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit
             .padding(horizontal = 16.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = if (selected) Color.White else GC.TextSoft, modifier = Modifier.size(20.dp))
+        AIcon(icon, contentDescription = null, tint = if (selected) Color.White else GC.TextSoft, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -491,7 +481,7 @@ private fun ControlCenter(
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
             }
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -537,7 +527,7 @@ private fun ControlCard(
             .padding(13.dp)
     ) {
         Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+            AIcon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
         }
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
@@ -597,7 +587,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Memory, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+                    AIcon(Icons.Filled.Memory, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -610,7 +600,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 }
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
             }
             Spacer(Modifier.height(16.dp))
             Column(
@@ -750,10 +740,55 @@ private fun envLevelOf(context: android.content.Context): Int {
     return level.coerceAtMost(3)
 }
 
-internal fun putSystemSetting(context: Context, name: String, value: Int): Boolean = try {
-    android.provider.Settings.System.putInt(context.contentResolver, name, value)
-} catch (_: Throwable) {
-    false
+/** Shizuku-first system setting write (shell identity beats every restriction). */
+internal fun putSystemSetting(context: Context, name: String, value: Int): Boolean {
+    com.gamershub.core.shizuku.Shell.ensure(context)
+    if (com.gamershub.core.shizuku.Shell.ok("settings put system '$name' '$value'")) return true
+    return try {
+        android.provider.Settings.System.putInt(context.contentResolver, name, value)
+    } catch (_: Throwable) {
+        false
+    }
+}
+
+internal fun putGlobalSetting(context: Context, name: String, value: String): Boolean {
+    com.gamershub.core.shizuku.Shell.ensure(context)
+    return com.gamershub.core.shizuku.Shell.ok("settings put global '$name' '$value'") ||
+        try {
+            android.provider.Settings.Global.putString(context.contentResolver, name, value)
+        } catch (_: Throwable) { false }
+}
+
+internal fun putSecureSetting(context: Context, name: String, value: Int): Boolean {
+    com.gamershub.core.shizuku.Shell.ensure(context)
+    return com.gamershub.core.shizuku.Shell.ok("settings put secure '$name' '$value'") ||
+        try {
+            android.provider.Settings.Secure.putInt(context.contentResolver, name, value)
+        } catch (_: Throwable) { false }
+}
+
+/** Raw shell command (Shizuku when available, app-side fallback). */
+internal fun shellExec(context: Context, command: String): String {
+    com.gamershub.core.shizuku.Shell.ensure(context)
+    return com.gamershub.core.shizuku.Shell.exec(command) ?: com.gamershub.core.shizuku.Shell.appExec(command)
+}
+
+/** Real game booster: kill background apps + drop caches. Returns MB freed. */
+internal fun boostNow(context: Context): Int {
+    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+    val before = com.gamershub.data.DeviceStats.mem(context).let { it.totalMb - it.usedMb }
+    com.gamershub.core.shizuku.Shell.ensure(context)
+    runCatching {
+        am.runningAppProcesses?.forEach { p ->
+            if (p.processName != context.packageName) {
+                com.gamershub.core.shizuku.Shell.ok("am kill ${p.processName}")
+                am.killBackgroundProcesses(p.processName)
+            }
+        }
+    }
+    com.gamershub.core.shizuku.Shell.ok("echo 3 > /proc/sys/vm/drop_caches")
+    val after = com.gamershub.data.DeviceStats.mem(context).let { it.totalMb - it.usedMb }
+    return (after - before).coerceAtLeast(0)
 }
 
 internal fun feedbackOnWrite(context: Context, ok: Boolean) {
@@ -900,7 +935,7 @@ private fun SidePanel(
                 }
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
             }
             Spacer(Modifier.height(16.dp))
             Column(

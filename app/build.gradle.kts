@@ -14,8 +14,8 @@ android {
         applicationId = "com.gamershub"
         minSdk = 26
         targetSdk = 34
-        versionCode = 28
-        versionName = "5.0.1"
+        versionCode = 29
+        versionName = "5.1.0"
         vectorDrawables { useSupportLibrary = true }
     }
 

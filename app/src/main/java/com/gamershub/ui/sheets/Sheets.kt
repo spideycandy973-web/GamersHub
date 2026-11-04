@@ -1,5 +1,7 @@
 package com.gamershub.ui.sheets
 
+import com.gamershub.ui.components.AIcon
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -52,7 +54,6 @@ import java.util.Locale
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -215,10 +216,10 @@ private fun LaunchModeCard(
     ) {
         Box(Modifier.fillMaxWidth().padding(end = 8.dp), contentAlignment = Alignment.TopEnd) {
             if (selected) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                AIcon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
             }
         }
-        Icon(icon, contentDescription = null, tint = if (selected) accent else GC.TextSoft, modifier = Modifier.size(34.dp))
+        AIcon(icon, contentDescription = null, tint = if (selected) accent else GC.TextSoft, modifier = Modifier.size(34.dp))
         Spacer(Modifier.height(8.dp))
         Text(title, style = MaterialTheme.typography.titleMedium, color = if (selected) accent else GC.Text, fontSize = 17.sp)
         Spacer(Modifier.height(7.dp))
@@ -269,7 +270,7 @@ private fun SlideToOpen(onOpen: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.FastForward, contentDescription = "Open", tint = Color.White, modifier = Modifier.size(26.dp))
+            AIcon(Icons.Filled.FastForward, contentDescription = "Open", tint = Color.White, modifier = Modifier.size(26.dp))
         }
     }
 }
@@ -320,7 +321,7 @@ fun AppSelectorSheet(
                 .background(GC.SurfaceHi)
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Icon(Icons.Filled.Search, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(20.dp))
+            AIcon(Icons.Filled.Search, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
                 if (query.isEmpty()) Text("Search Apps", color = GC.TextDim, fontSize = 15.sp)
@@ -477,7 +478,7 @@ fun PermissionSheet(
             config.checks.forEach { line ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
                     Box(Modifier.size(26.dp).clip(CircleShape).background(GC.BrownPill), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                        AIcon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Text(line, style = MaterialTheme.typography.bodyLarge, color = GC.Text, fontSize = 14.sp, lineHeight = 20.sp)
@@ -498,7 +499,7 @@ fun PermissionSheet(
                     .background(GC.SurfaceHi)
                     .padding(14.dp)
             ) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+                AIcon(Icons.Filled.CheckCircle, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("Granted ✓", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 16.sp)
             }
@@ -604,7 +605,7 @@ private fun ThemeColorTile(name: String, color: Color, selected: Boolean, modifi
             Modifier.size(34.dp).clip(CircleShape).background(color),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            if (selected) AIcon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(11.dp))
         Text(name, style = MaterialTheme.typography.labelLarge, color = if (selected) color else GC.TextSoft, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -794,7 +795,7 @@ fun ActivationSheet(
             Box(
                 Modifier.clip(RoundedCornerShape(50)).background(GC.SurfaceHi).clickable(onClick = onDismiss).padding(11.dp)
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp))
+                AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -862,7 +863,7 @@ fun ActivationSheet(
                             .padding(horizontal = 13.dp, vertical = 7.dp)
                     ) {
                         if (shizukuActive) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+                            AIcon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(5.dp))
                         }
                         Text(
@@ -879,7 +880,7 @@ fun ActivationSheet(
                         .clickable { logOpen = !logOpen }
                         .padding(vertical = 6.dp)
                 ) {
-                    Icon(Icons.Filled.FastForward, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                    AIcon(Icons.Filled.FastForward, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Shizuku Execution Log", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     Text(if (logOpen) "⌃" else "⌄", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
@@ -929,7 +930,7 @@ fun ActivationSheet(
                         .background(accent.copy(alpha = 0.16f))
                         .padding(horizontal = 11.dp, vertical = 7.dp)
                 ) {
-                    if (adbTcp) Icon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(12.dp))
+                    if (adbTcp) AIcon(Icons.Filled.Check, contentDescription = null, tint = accent, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(
                         if (adbTcp) "TCP/IP active on port 5555" else "TCP/IP not active",
@@ -1151,7 +1152,7 @@ fun AdLoadingDialog(
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Loading ad...", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
             }
@@ -1240,7 +1241,7 @@ fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
                 .background(GC.SurfaceHi)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Icon(Icons.Filled.Info, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(15.dp))
+            AIcon(Icons.Filled.Info, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(8.dp))
             Text("Results may vary by device.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.5.sp)
         }
@@ -1286,7 +1287,7 @@ fun SlideControl(label: String, icon: ImageVector, onDone: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
+            AIcon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
         }
     }
 }

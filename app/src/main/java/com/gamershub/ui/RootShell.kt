@@ -1,5 +1,7 @@
 package com.gamershub.ui
 
+import com.gamershub.ui.components.AIcon
+
 import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
@@ -46,7 +48,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.Orientation
@@ -160,21 +161,30 @@ fun RootShell(repo: AppRepo) {
         val addedVersion = remember { mutableIntStateOf(0) }
         val library = remember(apps, addedVersion.intValue) { apps.filter { repo.isAdded(it.pkg) } }
 
-        // Live stats
+        // Live stats — resilient IO loops that can never die on error.
         var cpu by remember { mutableStateOf(DeviceStats.cpu()) }
         var mem by remember { mutableStateOf(DeviceStats.mem(context)) }
         var storage by remember { mutableStateOf(DeviceStats.storage()) }
         var ping by remember { mutableStateOf(-1) }
         LaunchedEffect(Unit) {
             while (true) {
-                cpu = DeviceStats.cpu(); mem = DeviceStats.mem(context); storage = DeviceStats.storage()
-                delay(3000)
+                runCatching {
+                    cpu = withContext(Dispatchers.IO) { DeviceStats.cpu() }
+                    mem = withContext(Dispatchers.IO) { DeviceStats.mem(context) }
+                }
+                delay(1500)
             }
         }
         LaunchedEffect(Unit) {
             while (true) {
-                ping = withContext(Dispatchers.IO) { DeviceStats.pingMs() }
-                delay(8000)
+                runCatching { storage = withContext(Dispatchers.IO) { DeviceStats.storage() } }
+                delay(4000)
+            }
+        }
+        LaunchedEffect(Unit) {
+            while (true) {
+                runCatching { ping = withContext(Dispatchers.IO) { DeviceStats.pingMs() } }
+                delay(4000)
             }
         }
 
@@ -372,7 +382,7 @@ fun RootShell(repo: AppRepo) {
                                 .clickable { tab = t }
                                 .padding(horizontal = if (selected) 18.dp else 15.dp, vertical = 12.dp)
                         ) {
-                            Icon(
+                            AIcon(
                                 t.icon, contentDescription = t.label,
                                 tint = if (selected) accent else GC.TextDim,
                                 modifier = Modifier.size(23.dp)
@@ -593,53 +603,39 @@ private fun hasUsage(context: Context): Boolean = try {
     false
 }
 
-/** Boot intro: neon creature reveal → logo reveal (pixel copy of the app opener). */
+/** Boot intro: the gamepad intro VIDEO with the gamepad art as fallback. */
 @Composable
-private fun IntroAnimation(onDone: () -> Unit) {
-    var phase by remember { mutableIntStateOf(0) }
+internal fun IntroAnimation(onDone: () -> Unit) {
+    var done by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        phase = 1
-        kotlinx.coroutines.delay(1500)
-        phase = 2
-        kotlinx.coroutines.delay(1400)
-        onDone()
+        kotlinx.coroutines.delay(6500)
+        if (!done) { done = true; onDone() }
     }
-    val creatureAlpha by androidx.compose.animation.core.animateFloatAsState(
-        when (phase) { 0 -> 0f; 1 -> 1f; else -> 0f }, label = "introA"
-    )
-    val logoAlpha by androidx.compose.animation.core.animateFloatAsState(
-        if (phase >= 2) 1f else 0f, label = "introB"
-    )
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(onClick = onDone),
-        contentAlignment = Alignment.Center
+            .clickable(onClick = { if (!done) { done = true; onDone() } })
     ) {
         androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_creature),
+            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_gamepad),
             contentDescription = null,
-            alpha = creatureAlpha,
             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        if (phase >= 2) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.graphicsLayer { alpha = logoAlpha }
-            ) {
-                com.gamershub.ui.components.HeroMark(Modifier.size(110.dp))
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "GAME CORNER",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = GC.Text,
-                    fontSize = 34.sp,
-                    fontFamily = GC.Display
-                )
-            }
-        }
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                android.widget.VideoView(ctx).apply {
+                    setVideoURI(
+                        android.net.Uri.parse("android.resource://${ctx.packageName}/${com.gamershub.R.raw.intro_gamepad}")
+                    )
+                    setOnPreparedListener { it.isLooping = false; it.start() }
+                    setOnCompletionListener { if (!done) { done = true; onDone() } }
+                    setOnErrorListener { _, _, _ -> if (!done) { done = true; onDone() }; true }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -677,7 +673,7 @@ private fun MonitorStrip(context: android.content.Context) {
                 .background(Color(0xF0221314))
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Drag", tint = Color(0xFFFF3B3B), modifier = Modifier.size(14.dp))
+            AIcon(Icons.Filled.Add, contentDescription = "Drag", tint = Color(0xFFFF3B3B), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             StripChip("CPU", stats.first + "%")
             StripChip("RAM", stats.second + "%")

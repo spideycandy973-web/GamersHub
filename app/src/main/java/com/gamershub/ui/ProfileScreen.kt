@@ -1,5 +1,7 @@
 package com.gamershub.ui
 
+import com.gamershub.ui.components.AIcon
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.clickable
@@ -28,13 +30,13 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,28 +74,35 @@ fun ProfileScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .zIndex(1f)
                 .background(GC.Bg)
                 .statusBarsPadding()
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Profile", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+                Text(
+                    "Profile", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp,
+                    maxLines = 1
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
+                    AIcon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 13.sp)
+                    Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 13.sp, maxLines = 1)
                 }
             }
+            Spacer(Modifier.width(8.dp))
             StatusPill(version, orange = false)
             Spacer(Modifier.width(8.dp))
             CircleIconButton(Icons.Filled.Settings, onClick = onSettings)
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0x14FFFFFF)))
 
         Column(
             Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
+                .padding(top = 10.dp)
                 .padding(bottom = 120.dp)
         ) {
         Text(
@@ -121,7 +130,7 @@ fun ProfileScreen(
                     .background(GC.TagBg)
                     .padding(horizontal = 11.dp, vertical = 5.dp)
             ) {
-                Icon(Icons.Filled.Shield, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
+                AIcon(Icons.Filled.Shield, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(7.dp))
                 Text("FREE", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
             }
@@ -129,7 +138,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(uid, style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 28.sp)
                 Spacer(Modifier.width(10.dp))
-                Icon(Icons.Filled.ContentCopy, contentDescription = "Copy ID", tint = GC.TextDim, modifier = Modifier.size(16.dp))
+                AIcon(Icons.Filled.ContentCopy, contentDescription = "Copy ID", tint = GC.TextDim, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.height(5.dp))
             Text("Local profile · no cloud sync", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
@@ -191,7 +200,7 @@ fun ProfileScreen(
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
+                AIcon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))

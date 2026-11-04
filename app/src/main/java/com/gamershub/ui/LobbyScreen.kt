@@ -1,5 +1,7 @@
 package com.gamershub.ui
 
+import com.gamershub.ui.components.AIcon
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,7 +28,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Rocket
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -117,7 +118,7 @@ fun LobbyScreen(
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Box(Modifier.size(42.dp).clip(CircleShape).background(GC.SurfaceHi), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+                        AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
@@ -130,7 +131,7 @@ fun LobbyScreen(
                                 Modifier.size(22.dp).clip(CircleShape).background(accent).clickable(onClick = onAddEnergy),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = "Add energy", tint = Color.White, modifier = Modifier.size(14.dp))
+                                AIcon(Icons.Filled.Add, contentDescription = "Add energy", tint = Color.White, modifier = Modifier.size(14.dp))
                             }
                         }
                     }
@@ -147,7 +148,7 @@ fun LobbyScreen(
                             Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                         }
                         Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Filled.Rocket, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
+                        AIcon(Icons.Filled.Rocket, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
                     }
                 }
             }
@@ -172,7 +173,7 @@ fun LobbyScreen(
                 Text("Add Games", style = MaterialTheme.typography.labelMedium, color = GC.TextSoft, fontSize = 14.sp)
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.size(25.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                    AIcon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                 }
             }
         }
@@ -207,7 +208,7 @@ fun LobbyScreen(
                         .clickable(onClick = onAddGames)
                         .padding(horizontal = 22.dp, vertical = 11.dp)
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    AIcon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(7.dp))
                     Text("Add Games", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp)
                 }
