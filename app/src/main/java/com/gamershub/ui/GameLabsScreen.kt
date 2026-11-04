@@ -64,6 +64,7 @@ fun GameLabsScreen(
     displayInfo: String
 ) {
     val accent = LocalAccent.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var tab by remember { mutableStateOf(LabsTab.ALL) }
     Column(
         Modifier
@@ -102,8 +103,22 @@ fun GameLabsScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
-                    SmallActionButton("Show Taps", Modifier.weight(1f)) { onToggle("show_taps", !toggleState("show_taps")) }
-                    SmallActionButton("Show Coordinates", Modifier.weight(1f)) { onToggle("show_coords", !toggleState("show_coords")) }
+                    SmallActionButton("Show Taps", Modifier.weight(1f), active = toggleState("show_taps")) {
+                        val v = !toggleState("show_taps")
+                        onToggle("show_taps", v)
+                        com.gamershub.feedbackOnWrite(
+                            context,
+                            com.gamershub.putSystemSetting(context, "show_touches", if (v) 1 else 0)
+                        )
+                    }
+                    SmallActionButton("Show Coordinates", Modifier.weight(1f), active = toggleState("show_coords")) {
+                        val v = !toggleState("show_coords")
+                        onToggle("show_coords", v)
+                        com.gamershub.feedbackOnWrite(
+                            context,
+                            com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
+                        )
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
@@ -204,13 +219,22 @@ private fun SmallActionButton(
     text: String,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
+    active: Boolean = false,
     onClick: () -> Unit
 ) {
     val accent = LocalAccent.current
+    val bg by androidx.compose.animation.animateColorAsState(
+        when {
+            primary -> accent
+            active -> accent.copy(alpha = 0.28f)
+            else -> GC.SurfaceHi
+        },
+        label = "sbtn"
+    )
     Box(
         modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(if (primary) accent else GC.SurfaceHi)
+            .background(bg)
             .clickable(onClick = onClick)
             .padding(vertical = 13.dp),
         contentAlignment = Alignment.Center
@@ -218,7 +242,7 @@ private fun SmallActionButton(
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (primary) Color.White else GC.Text,
+            color = if (primary) Color.White else if (active) accent else GC.Text,
             fontSize = 14.sp
         )
     }

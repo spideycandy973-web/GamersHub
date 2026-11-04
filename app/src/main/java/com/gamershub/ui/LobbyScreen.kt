@@ -1,5 +1,6 @@
 package com.gamershub.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -210,8 +211,8 @@ fun LobbyScreen(
                             .clickable { onGameTap(app) }
                             .padding(12.dp)
                     ) {
-                        Icon(
-                            androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
+                        Image(
+                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                             contentDescription = null,
                             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(15.dp))
                         )

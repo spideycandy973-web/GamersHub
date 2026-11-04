@@ -8,7 +8,14 @@ import android.provider.Settings
 import android.content.IntentFilter
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +36,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bolt
@@ -85,10 +94,9 @@ class GameSpaceActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        )
+        // Keep edge-to-edge but DO NOT zero the insets — the top bar must
+        // never slide under the status bar (that was the overlap bug).
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         val pkg = intent.getStringExtra(EXTRA_PKG) ?: ""
         val repo = AppRepo(applicationContext)
         setContent {
@@ -265,8 +273,8 @@ private fun GameSpaceScreen(
                             modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
                         ) {
                             if (app.third != null) {
-                                Icon(
-                                    androidx.compose.ui.graphics.painter.BitmapPainter(app.third!!),
+                                Image(
+                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.third!!),
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
                                 )
@@ -360,15 +368,27 @@ private fun GameSpaceScreen(
         }
 
         // ---- Texture Filtering panel ----
-        if (showTexture) {
+        AnimatedVisibility(
+            visible = showTexture,
+            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+        ) {
             TexturePanel(pkg = pkg, repo = repo, appName = app.first, onDismiss = { showTexture = false })
         }
 
         // ---- Touch / Display settings panels ----
-        if (showTouch) {
+        AnimatedVisibility(
+            visible = showTouch,
+            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+        ) {
             TouchPanel(repo = repo, onDismiss = { showTouch = false })
         }
-        if (showDisplay) {
+        AnimatedVisibility(
+            visible = showDisplay,
+            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+        ) {
             DisplayPanel(onDismiss = { showDisplay = false })
         }
     }
@@ -572,6 +592,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF1B1213))
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
                 GfxRow("ANGLE renderer", "Runs this game on ANGLE (OpenGL ES over Vulkan).", angle) {
@@ -703,11 +724,19 @@ private fun envLevelOf(context: android.content.Context): Int {
     return level.coerceAtMost(3)
 }
 
-internal fun putSystemSetting(context: Context, name: String, value: Int) {
-    try {
-        android.provider.Settings.System.putInt(context.contentResolver, name, value)
-    } catch (_: Throwable) {
-        // needs WRITE_SETTINGS; the permission sheet covers it
+internal fun putSystemSetting(context: Context, name: String, value: Int): Boolean = try {
+    android.provider.Settings.System.putInt(context.contentResolver, name, value)
+} catch (_: Throwable) {
+    false
+}
+
+internal fun feedbackOnWrite(context: Context, ok: Boolean) {
+    if (!ok) {
+        android.widget.Toast.makeText(
+            context,
+            "Grant 'Modify System Settings' first (Profile ▸ Setup)",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 }
 
@@ -726,12 +755,12 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
         Divider()
         GfxRow("Show Taps", "Draw a visible marker where you touch.", taps) {
             taps = it; repo.setToggle("show_taps", it)
-            putSystemSetting(context, "show_touches", if (it) 1 else 0)
+            feedbackOnWrite(context, putSystemSetting(context, "show_touches", if (it) 1 else 0))
         }
         Divider()
         GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
             coords = it; repo.setToggle("show_coords", it)
-            putSystemSetting(context, "pointer_location", if (it) 1 else 0)
+            feedbackOnWrite(context, putSystemSetting(context, "pointer_location", if (it) 1 else 0))
         }
         Divider()
         GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
@@ -830,6 +859,7 @@ private fun SidePanel(
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF1B1213))
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 content = content
             )

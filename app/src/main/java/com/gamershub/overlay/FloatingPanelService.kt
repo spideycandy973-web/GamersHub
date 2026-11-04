@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
@@ -64,7 +66,17 @@ import kotlin.math.roundToInt
  * panel — brightness, media volume, refresh rate, show taps, rotation
  * lock and DND. Every control writes REAL system state.
  */
-class FloatingPanelService : Service() {
+class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
+    androidx.savedstate.SavedStateRegistryOwner {
+
+    private val lifecycleRegistry = androidx.lifecycle.LifecycleRegistry(this)
+    private val savedStateRegistryController =
+        androidx.savedstate.SavedStateRegistryController.create(this)
+
+    override val lifecycle: androidx.lifecycle.Lifecycle
+        get() = lifecycleRegistry
+    override val savedStateRegistry: androidx.savedstate.SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
 
     private var windowManager: WindowManager? = null
     private var bubbleView: ComposeView? = null
@@ -77,14 +89,25 @@ class FloatingPanelService : Service() {
     override fun onCreate() {
         super.onCreate()
         isRunning = true
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_CREATE)
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_START)
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_RESUME)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        startForeground(NOTIF_ID, buildNotification())
+        // Android 14+ REQUIRES the service type here or the app crashes.
+        val type = if (Build.VERSION.SDK_INT >= 34) {
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        } else 0
+        androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
         addBubble()
     }
 
     override fun onDestroy() {
         isRunning = false
         removeViews()
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_PAUSE)
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_STOP)
+        lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
     }
 
@@ -129,6 +152,9 @@ class FloatingPanelService : Service() {
             }
         }
         bubbleView = view
+        // ComposeView over WindowManager needs these owners or it crashes.
+        view.setViewTreeLifecycleOwner(this)
+        view.setViewTreeSavedStateRegistryOwner(this)
         runCatching { windowManager?.addView(view, params) }
     }
 
@@ -150,6 +176,8 @@ class FloatingPanelService : Service() {
             }
         }
         panelView = view
+        view.setViewTreeLifecycleOwner(this)
+        view.setViewTreeSavedStateRegistryOwner(this)
         runCatching { windowManager?.addView(view, params) }
     }
 
@@ -271,10 +299,11 @@ private fun QuickPanel(onClose: () -> Unit) {
             value = brightness,
             onValueChange = { brightness = it },
             onValueChangeFinished = {
-                try {
+                val ok = try {
                     Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, 0)
                     Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, (brightness * 255).toInt().coerceIn(10, 255))
-                } catch (_: Throwable) {}
+                } catch (_: Throwable) { false }
+                com.gamershub.feedbackOnWrite(context, ok)
             }
         )
 
@@ -295,7 +324,10 @@ private fun QuickPanel(onClose: () -> Unit) {
             Text("Show Taps", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Toggle(on = showTaps) {
                 showTaps = it
-                Settings.System.putInt(context.contentResolver, "show_touches", if (it) 1 else 0)
+                com.gamershub.feedbackOnWrite(
+                    context,
+                    com.gamershub.putSystemSetting(context, "show_touches", if (it) 1 else 0)
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -305,7 +337,10 @@ private fun QuickPanel(onClose: () -> Unit) {
             Text("Rotation Lock", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Toggle(on = rotationLock) {
                 rotationLock = it
-                Settings.System.putInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (it) 0 else 1)
+                com.gamershub.feedbackOnWrite(
+                    context,
+                    com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, if (it) 0 else 1)
+                )
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -322,10 +357,11 @@ private fun QuickPanel(onClose: () -> Unit) {
                             .clickable {
                                 refreshStep = i
                                 val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
-                                try {
-                                    Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz)
-                                    Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
-                                } catch (_: Throwable) {}
+                                val ok = try {
+                                    Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
+                                        Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
+                                } catch (_: Throwable) { false }
+                                com.gamershub.feedbackOnWrite(context, ok)
                             }
                             .padding(horizontal = 11.dp, vertical = 7.dp)
                     ) {

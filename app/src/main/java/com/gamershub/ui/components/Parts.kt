@@ -228,6 +228,8 @@ fun CircleIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifier 
 @Composable
 fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifier, diameter: Int = 150) {
     val accent = LocalAccent.current
+    val bigSp = (diameter / 5).coerceIn(13, 28)
+    val smallSp = (diameter / 11).coerceIn(9, 13)
     Box(modifier.size(diameter.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(diameter.dp)) {
             val stroke = 13.dp.toPx()
@@ -244,8 +246,8 @@ fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifie
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(big, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 27.sp)
-            Text(small, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+            Text(big, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = bigSp.sp)
+            Text(small, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = smallSp.sp)
         }
     }
 }

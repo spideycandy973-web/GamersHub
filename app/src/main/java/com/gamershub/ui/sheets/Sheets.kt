@@ -1,6 +1,7 @@
 package com.gamershub.ui.sheets
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -118,8 +119,8 @@ fun LaunchModeSheet(
     var gameSpace by remember { mutableStateOf(true) }
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
+            Image(
+                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                 contentDescription = null,
                 modifier = Modifier.size(56.dp).clip(RoundedCornerShape(15.dp))
             )
@@ -324,8 +325,8 @@ fun AppSelectorSheet(
                         .background(GC.SurfaceHi)
                         .padding(12.dp)
                 ) {
-                    Icon(
-                        androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
+                    Image(
+                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                         contentDescription = null,
                         modifier = Modifier.size(46.dp).clip(RoundedCornerShape(12.dp))
                     )

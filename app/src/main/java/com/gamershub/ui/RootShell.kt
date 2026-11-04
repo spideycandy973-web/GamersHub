@@ -11,9 +11,17 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -228,7 +236,16 @@ fun RootShell(repo: AppRepo) {
                 .fillMaxSize()
                 .background(GC.Bg)
         ) {
-            when (tab) {
+            AnimatedContent(
+                targetState = tab,
+                transitionSpec = {
+                    (slideInHorizontally(tween(360)) { it / 6 } + fadeIn(tween(360)) + scaleIn(tween(360), initialScale = 0.97f))
+                        .togetherWith(slideOutHorizontally(tween(240)) { -it / 8 } + fadeOut(tween(240)))
+                },
+                label = "tab",
+                modifier = Modifier.fillMaxSize()
+            ) { tabTarget ->
+            when (tabTarget) {
                 Tab.PROFILE -> ProfileScreen(
                     uid = uid,
                     version = "V4.1.0-21",
@@ -267,6 +284,7 @@ fun RootShell(repo: AppRepo) {
                     },
                     displayInfo = displayInfo
                 )
+            }
             }
 
             // Floating octagon bottom nav
