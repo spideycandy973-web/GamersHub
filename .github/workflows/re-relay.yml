@@ -113,15 +113,26 @@ jobs:
 
       - name: Publish outputs
         run: |
-          set -eux
+          set -ux
+          du -sh reout/* | head
           cd reout
-          zip -qr ../reout.zip .
+          zip -qr ../re_small.zip rea ghidra 2>/dev/null || true
+          zip -qr ../re_jadx.zip jadx 2>/dev/null || true
           cd ..
+          ls -la re_small.zip re_jadx.zip
+          # split anything over 80MB
+          rm -rf parts && mkdir parts
+          for f in re_small.zip re_jadx.zip; do
+            [ -f "$f" ] || continue
+            sz=$(stat -c%s "$f")
+            if [ "$sz" -gt 80000000 ]; then split -b 75m "$f" "parts/${f}.part"; else cp "$f" parts/; fi
+          done
+          ls -la parts/
           git config user.name "re-relay"
           git config user.email "relay@users.noreply.github.com"
           git checkout --orphan re-outputs
           git rm -rq --cached . || true
-          mv reout.zip .
-          git add reout.zip
+          git add -f parts/
           git commit -m "RE outputs $(date -u +%H%M%S)"
           git push -f origin re-outputs
+          echo "PUBLISH OK"
