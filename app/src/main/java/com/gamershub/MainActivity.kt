@@ -1,19 +1,38 @@
 package com.gamershub
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import com.gamershub.data.AppRepo
 import com.gamershub.ui.RootShell
 
 class MainActivity : ComponentActivity() {
+
+    /** Sheet requested from outside (floating panel button, shortcut, deep link). */
+    private var openSheet by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        openSheet = intent?.getStringExtra(EXTRA_OPEN)
         val repo = AppRepo(applicationContext)
         setContent {
-            RootShell(repo)
+            RootShell(repo, openSheet)
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openSheet = intent.getStringExtra(EXTRA_OPEN)
+    }
+
+    companion object {
+        const val EXTRA_OPEN = "open"
     }
 }

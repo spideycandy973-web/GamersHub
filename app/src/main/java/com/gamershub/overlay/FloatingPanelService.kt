@@ -478,13 +478,12 @@ private fun AxModePanel(onClose: () -> Unit) {
                             } catch (_: Throwable) { false }
                             com.gamershub.feedbackOnWrite(context, ok)
                         }
-                        GridButton(Icons.Filled.Info, "Information Monitor", if (showInfo) "ON" else "OFF") { showInfo = true }
-                        GridButton(Icons.Filled.Dns, "DNS Tuner", "SECURE") {
-                            com.gamershub.feedbackOnWrite(
-                                context,
-                                com.gamershub.putGlobalSetting(context, "private_dns_mode", "hostname") &&
-                                    com.gamershub.putGlobalSetting(context, "private_dns_specifier", "dns.google")
-                            )
+                        GridButton(Icons.Filled.Info, "Information Monitor", if (MonitorOverlayService.isRunning) "ON" else "OFF") {
+                            MonitorOverlayService.toggle(context)
+                            openSheet(context, "monitor")
+                        }
+                        GridButton(Icons.Filled.Dns, "Ping Optimizer", "LATENCY") {
+                            openSheet(context, "ping")
                         }
                     }
                     Column(Modifier.weight(1f)) {
@@ -497,7 +496,7 @@ private fun AxModePanel(onClose: () -> Unit) {
                             android.widget.Toast.makeText(context, "Boosted — $freed MB freed", android.widget.Toast.LENGTH_SHORT).show()
                         }
                         GridButton(Icons.Filled.ScreenRotation, "Gyro Calibration", "CALIBRATE") {
-                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, Settings.System.ACCELEROMETER_ROTATION, 1))
+                            openSheet(context, "gyro")
                         }
                     }
                 }
@@ -536,17 +535,20 @@ private fun AxModePanel(onClose: () -> Unit) {
                         HeroMark(Modifier.size(20.dp))
                     }
                     Column(Modifier.weight(1f)) {
-                        GridButton(Icons.Filled.TouchApp, "Touch Enhancer", if (showTaps) "ON" else "OFF") {
-                            showTaps = !showTaps
-                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, "show_touches", if (showTaps) 1 else 0))
+                        GridButton(Icons.Filled.TouchApp, "Mapping Keys", if (MappingOverlayService.isRunning) "ON" else "OFF") {
+                            MappingOverlayService.toggle(context)
+                            openSheet(context, "mapping")
                         }
                         GridButton(Icons.Filled.Screenshot, "Screenshot", "CAPTURE") {
-                            com.gamershub.shellExec(context, "screencap -p /sdcard/Pictures/gamershub_capture.png")
-                            android.widget.Toast.makeText(context, "Screenshot saved to Pictures", android.widget.Toast.LENGTH_SHORT).show()
+                            val shot = com.gamershub.core.ScreenshotEngine.capture()
+                            android.widget.Toast.makeText(
+                                context,
+                                if (shot != null) "Saved ${shot.name}" else "Grant Shizuku to capture",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
-                        GridButton(Icons.Filled.Adjust, "Show Taps", "TAP") {
-                            val cur = try { Settings.System.getInt(context.contentResolver, "show_touches") } catch (_: Throwable) { 0 }
-                            com.gamershub.feedbackOnWrite(context, com.gamershub.putSystemSetting(context, "show_touches", if (cur == 1) 0 else 1))
+                        GridButton(Icons.Filled.Adjust, "Mouse Cursor", if (MouseCursorService.isRunning) "ON" else "OFF") {
+                            MouseCursorService.toggle(context)
                         }
                     }
                 }
@@ -643,5 +645,16 @@ private fun LiveBar(label: String, pct: Int, color: Color, right: Boolean, modif
         }
         Spacer(Modifier.height(3.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontSize = 15.sp, letterSpacing = 1.sp)
+    }
+}
+
+/** Opens a tool sheet in the main app from the floating panel. */
+private fun openSheet(context: Context, key: String) {
+    runCatching {
+        context.startActivity(
+            Intent(context, com.gamershub.MainActivity::class.java)
+                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, key)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
     }
 }

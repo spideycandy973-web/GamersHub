@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.Orientation
@@ -99,9 +100,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 enum class Tab(val icon: ImageVector, val label: String) {
-    PROFILE(Icons.Filled.Person, "Profile"),
     LOBBY(Icons.Filled.Gamepad, "Lobby"),
-    LABS(Icons.Filled.Science, "Game-Labs")
+    LABS(Icons.Filled.Science, "Game-Labs"),
+    TOOLS(Icons.Filled.Widgets, "Tools"),
+    PROFILE(Icons.Filled.Person, "Profile")
 }
 
 sealed interface SheetState {
@@ -116,11 +118,18 @@ sealed interface SheetState {
     data object LowEnergy : SheetState
     data object Ad : SheetState
     data object GameReady : SheetState
+    data object Ping : SheetState
+    data object Gyro : SheetState
+    data object Mapping : SheetState
+    data object MonitorCfg : SheetState
+    data object Mouse : SheetState
+    data object Crosshair : SheetState
+    data object Screenshot : SheetState
 }
 
 /** Root shell: tabs, octagon nav, sheets, live state. */
 @Composable
-fun RootShell(repo: AppRepo) {
+fun RootShell(repo: AppRepo, initialSheet: String? = null) {
     val context = LocalContext.current
     var accentIdx by remember { mutableIntStateOf(repo.accentIndex()) }
 
@@ -242,6 +251,27 @@ fun RootShell(repo: AppRepo) {
             if (!repo.firstRunDone()) sheet = SheetState.Permission(0)
         }
 
+        fun sheetFor(key: String?): SheetState = when (key) {
+            "ping" -> SheetState.Ping
+            "gyro" -> SheetState.Gyro
+            "mapping" -> SheetState.Mapping
+            "monitor" -> SheetState.MonitorCfg
+            "mouse" -> SheetState.Mouse
+            "crosshair" -> SheetState.Crosshair
+            "screenshot" -> SheetState.Screenshot
+            "display" -> SheetState.DisplayTuning
+            "presets" -> SheetState.Presets
+            "activation" -> SheetState.Activation
+            "settings" -> SheetState.Settings
+            else -> SheetState.None
+        }
+
+        // Deep link from the floating panel / home-screen shortcuts.
+        LaunchedEffect(initialSheet) {
+            val target = sheetFor(initialSheet)
+            if (target != SheetState.None) sheet = target
+        }
+
         fun openAppDetails() {
             runCatching {
                 context.startActivity(
@@ -319,7 +349,7 @@ fun RootShell(repo: AppRepo) {
             when (tabTarget) {
                 Tab.PROFILE -> ProfileScreen(
                     uid = uid,
-                    version = "V4.1.0-21",
+                    version = "V6.0.0-32",
                     sessionTime = sessionTime,
                     cpu = cpu, mem = mem, storage = storage, ping = ping,
                     envLevel = envLevel, envScore = envScore,
@@ -330,7 +360,7 @@ fun RootShell(repo: AppRepo) {
                     uid = uid,
                     cpuPct = cpu.pct,
                     library = library,
-                    version = "V4.1.0-21",
+                    version = "V6.0.0-32",
                     playMinutes = { pkg -> repo.playMinutes(pkg) },
                     energy = energy,
                     onAddEnergy = { sheet = SheetState.Ad },
@@ -340,6 +370,11 @@ fun RootShell(repo: AppRepo) {
                         if (library.isEmpty()) sheet = SheetState.AppSelector
                         else sheet = SheetState.Launch(library.first())
                     }
+                )
+                Tab.TOOLS -> ToolsScreen(
+                    accentIdx = accentIdx,
+                    onOpenSheet = { key -> sheet = sheetFor(key) },
+                    onOpenGameSpace = { openGameSpace(context, library.firstOrNull()?.pkg ?: "") }
                 )
                 Tab.LABS -> GameLabsScreen(
                     envLevel = envLevel,
@@ -531,6 +566,27 @@ fun RootShell(repo: AppRepo) {
                             Toast.makeText(context, "Device ready — background apps cleared", Toast.LENGTH_SHORT).show()
                             sheet = SheetState.None
                         },
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Ping -> com.gamershub.ui.sheets.PingOptimizerSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Gyro -> com.gamershub.ui.sheets.GyroCalibrationSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Mapping -> com.gamershub.ui.sheets.MappingEditorSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.MonitorCfg -> com.gamershub.ui.sheets.MonitorConfigSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Mouse -> com.gamershub.ui.sheets.MouseCursorSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Crosshair -> com.gamershub.ui.sheets.CrosshairConfigSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Screenshot -> com.gamershub.ui.sheets.ScreenshotSheet(
                         onDismiss = { sheet = SheetState.None }
                     )
                     SheetState.None -> {}

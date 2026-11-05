@@ -157,5 +157,13 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         fun stop(context: Context) {
             context.stopService(Intent(context, CrosshairOverlayService::class.java))
         }
+
+        /** Re-creates the overlay so style/size/colour changes apply immediately. */
+        fun restart(context: Context) {
+            stop(context)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                start(context)
+            }, 300)
+        }
     }
 }

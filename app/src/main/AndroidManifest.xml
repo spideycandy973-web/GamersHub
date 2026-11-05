@@ -71,6 +71,36 @@
                 android:value="game_crosshair_overlay" />
         </service>
 
+        <!-- Floating information monitor (real FPS/CPU/GPU/RAM/PING) -->
+        <service
+            android:name=".overlay.MonitorOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_information_monitor" />
+        </service>
+
+        <!-- Mapping overlay (macro keys injected with shell identity) -->
+        <service
+            android:name=".overlay.MappingOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_key_mapping" />
+        </service>
+
+        <!-- Virtual mouse pointer -->
+        <service
+            android:name=".overlay.MouseCursorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_mouse_cursor" />
+        </service>
+
         <!-- This provider is required by Shizuku. Do not remove. -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
