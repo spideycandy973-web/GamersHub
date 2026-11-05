@@ -1,7 +1,7 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:tint="#FFE9CAB3" android:height="34.000000dip" android:width="68.000000dip" android:viewportWidth="700.000000" android:viewportHeight="340.000000">
   <group android:translateX="-333.000000" android:translateY="-214.000000">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M612.28208 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="1" android:strokeLineJoin="1" android:strokeMiterLimit="10.000000"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M805.73607 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="1" android:strokeLineJoin="1" android:strokeMiterLimit="10.000000"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M418.82809 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="1" android:strokeLineJoin="1" android:strokeMiterLimit="10.000000"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M612.28208 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="round" android:strokeLineJoin="round" android:strokeMiterLimit="10.000000"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M805.73607 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="round" android:strokeLineJoin="round" android:strokeMiterLimit="10.000000"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M418.82809 478.91539v-189.83077l141.43584 94.91538z" android:strokeLineCap="round" android:strokeLineJoin="round" android:strokeMiterLimit="10.000000"/>
   </group>
 </vector>
