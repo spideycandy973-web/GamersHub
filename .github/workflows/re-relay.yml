@@ -136,3 +136,5 @@ jobs:
           git commit -m "RE outputs $(date -u +%H%M%S)"
           git push -f origin re-outputs
           echo "PUBLISH OK"
+
+# touch: re-trigger RE relay with the real APK inputs
