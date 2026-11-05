@@ -94,7 +94,21 @@ fun ToolsScreen(
         }
     }
 
-    fun on(key: String): Boolean = live[key] == true
+    // Direct reads of the observable service state: the switch flips the moment
+    // the service starts or stops (no stale "ON" labels).
+    fun on(key: String): Boolean = when (key) {
+        "panel" -> FloatingPanelService.isRunning
+        "monitor" -> MonitorOverlayService.isRunning
+        "crosshair" -> CrosshairOverlayService.isRunning
+        "mapping" -> MappingOverlayService.isRunning
+        "mouse" -> MouseCursorService.isRunning
+        "recording" -> com.gamershub.core.capture.Recorder.isRecording
+        "live" -> com.gamershub.core.capture.Stream.isStreaming
+        "shizuku" -> com.gamershub.core.shizuku.Shell.connected()
+        "overlay" -> android.provider.Settings.canDrawOverlays(context)
+        "mouseDevice" -> MouseCursorService.hasMouse()
+        else -> live[key] == true
+    }
 
     Column(
         Modifier
@@ -119,7 +133,7 @@ fun ToolsScreen(
                     fontSize = 13.sp
                 )
             }
-            StatusPill(if (on("shizuku")) "● Privileged" else "● Limited")
+            StatusPill("● " + com.gamershub.core.shizuku.Shell.statusLabel())
         }
         Spacer(Modifier.height(14.dp))
 
@@ -151,6 +165,26 @@ fun ToolsScreen(
         }
 
         SectionHead("OVERLAYS")
+        if (on("panel") || on("monitor") || on("crosshair") || on("mapping") || on("mouse")) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x33E23A3A))
+                    .clickable {
+                        FloatingPanelService.stop(context)
+                        MonitorOverlayService.stop(context)
+                        CrosshairOverlayService.stop(context)
+                        MappingOverlayService.stop(context)
+                        MouseCursorService.stop(context)
+                    }
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Text("STOP ALL OVERLAYS", color = Color(0xFFFFB4AE), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
         ToolRow(
             icon = Icons.Filled.Widgets,
             title = "Floating Panel",

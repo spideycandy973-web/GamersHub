@@ -287,9 +287,13 @@ class RecorderService : Service() {
 /** Shared recorder state + the recordings library. */
 object Recorder {
 
-    @Volatile
-    var isRecording = false
-        private set
+    private val recordingState = androidx.compose.runtime.mutableStateOf(false)
+
+    var isRecording: Boolean
+        get() = recordingState.value
+        private set(value) {
+            recordingState.value = value
+        }
 
     @Volatile
     var startedAt = 0L

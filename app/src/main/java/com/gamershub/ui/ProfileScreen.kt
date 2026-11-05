@@ -330,7 +330,7 @@ private fun deviceLine(): String {
 @Composable
 private fun MonitoringGrid(cpu: DeviceStats.Cpu, mem: DeviceStats.Mem, storage: DeviceStats.Storage) {
     androidx.compose.foundation.layout.BoxWithConstraints {
-        if (maxWidth < 400.dp) {
+        if (maxWidth < 520.dp) {
             CpuCard(cpu, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             RamCard(mem, Modifier.fillMaxWidth())
@@ -357,8 +357,11 @@ private fun CpuCard(cpu: DeviceStats.Cpu, modifier: Modifier = Modifier) {
             IconChip(Icons.Filled.Speed, size = 36)
         }
         Spacer(Modifier.height(10.dp))
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = 132)
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val diameter = minOf(maxWidth.value, 132f).toInt().coerceAtLeast(88)
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = diameter)
+            }
         }
         Spacer(Modifier.height(9.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {

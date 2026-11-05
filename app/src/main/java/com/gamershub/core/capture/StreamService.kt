@@ -448,8 +448,13 @@ class StreamService : Service() {
 /** Shared live-stream state. */
 object Stream {
 
-    @Volatile
-    var isStreaming = false
+    private val streamingState = androidx.compose.runtime.mutableStateOf(false)
+
+    var isStreaming: Boolean
+        get() = streamingState.value
+        set(value) {
+            streamingState.value = value
+        }
 
     @Volatile
     var status: String = "Idle"

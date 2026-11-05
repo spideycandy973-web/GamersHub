@@ -21,9 +21,17 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         openSheet = intent?.getStringExtra(EXTRA_OPEN)
         val repo = AppRepo(applicationContext)
+        // Bind the Shizuku user service immediately when the grant already exists.
+        com.gamershub.core.shizuku.Shell.ensure(this)
         setContent {
             RootShell(repo, openSheet)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-bind after returning from the Shizuku prompt / app switch.
+        com.gamershub.core.shizuku.Shell.ensure(this)
     }
 
     override fun onNewIntent(intent: Intent) {

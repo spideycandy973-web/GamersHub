@@ -214,6 +214,9 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
         var resumeTick by remember { mutableIntStateOf(0) }
         LifecycleResumeEffect(Unit) {
             resumeTick++
+            // Bind the shell on every resume and stop asking once it is granted.
+            com.gamershub.core.shizuku.Shell.ensure(context)
+            if (com.gamershub.core.shizuku.Shell.granted()) repo.setFirstRunDone()
             onPauseOrDispose { }
         }
         val envLevel = run {
@@ -308,16 +311,21 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                     PermKind.SHIZUKU -> {
-                        val shizukuAlive = try { Shizuku.pingBinder() } catch (_: Throwable) { false }
-                        if (shizukuAlive) {
-                            // Real consent prompt from the Shizuku service — nothing
-                            // is granted implicitly any more.
-                            try {
-                                Shizuku.requestPermission(SHIZUKU_PERMISSION_REQ)
-                                Toast.makeText(context, "Accept the Shizuku prompt to grant access", Toast.LENGTH_SHORT).show()
-                            } catch (_: Throwable) {
-                                Toast.makeText(context, "Shizuku is running but refused the request", Toast.LENGTH_LONG).show()
-                            }
+                        // Bind first: if the grant already exists nothing is asked again.
+                        com.gamershub.core.shizuku.Shell.ensure(context)
+                        val shizukuAlive = com.gamershub.core.shizuku.Shell.running()
+                        if (com.gamershub.core.shizuku.Shell.granted()) {
+                            com.gamershub.core.shizuku.Shell.ensure(context)
+                            Toast.makeText(context, "Shizuku already granted — connected", Toast.LENGTH_SHORT).show()
+                        } else if (shizukuAlive) {
+                            val prompted = com.gamershub.core.shizuku.Shell
+                                .requestPermission(SHIZUKU_PERMISSION_REQ)
+                            Toast.makeText(
+                                context,
+                                if (prompted) "Accept the Shizuku prompt to grant access"
+                                else "Already requested — grant GamersHub in Shizuku",
+                                Toast.LENGTH_LONG
+                            ).show()
                         } else {
                             val intent = listOf(
                                 "moe.shizuku.privileged.api",
@@ -522,7 +530,15 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                             PermKind.USAGE -> hasUsage(context)
                             PermKind.SHIZUKU -> hasShizuku()
                         },
-                        onAllow = { allowPermission(current.index) },
+                        onAllow = {
+                            allowPermission(current.index)
+                            if (current.index + 1 < PERM_CONFIGS.size) {
+                                sheet = SheetState.Permission(current.index + 1)
+                            } else {
+                                repo.setFirstRunDone()
+                                sheet = SheetState.None
+                            }
+                        },
                         onLater = {
                             if (current.index + 1 < PERM_CONFIGS.size) sheet = SheetState.Permission(current.index + 1)
                             else { repo.setFirstRunDone(); sheet = SheetState.None }
@@ -669,11 +685,7 @@ private fun PresetsSheet(presets: List<String>, onClear: () -> Unit, onDismiss: 
 private const val SHIZUKU_PERMISSION_REQ = 7331
 
 /** True only when the Shizuku service is alive AND the user has granted US access. */
-private fun hasShizuku(): Boolean = try {
-    Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-} catch (_: Throwable) {
-    false
-}
+private fun hasShizuku(): Boolean = com.gamershub.core.shizuku.Shell.granted()
 
 private fun hasUsage(context: Context): Boolean = try {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager

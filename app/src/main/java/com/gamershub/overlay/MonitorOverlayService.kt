@@ -96,6 +96,16 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val type = if (Build.VERSION.SDK_INT >= 34)
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            android.widget.Toast.makeText(
+                this,
+                "Allow display over other apps for GamersHub",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            isRunning = false
+            stopSelf()
+            return
+        }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -109,8 +119,8 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = 24
-            y = 160
+            x = (resources.displayMetrics.widthPixels - 168).coerceAtLeast(12)
+            y = 150
         }
 
         val cv = ComposeView(this).apply {
@@ -171,8 +181,11 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                             .pointerInput(Unit) {
                                 detectDragGestures { change, drag ->
                                     change.consume()
-                                    params.x += drag.x.toInt()
-                                    params.y += drag.y.toInt()
+                                    val metrics = resources.displayMetrics
+                                    params.x = (params.x + drag.x.toInt())
+                                        .coerceIn(0, (metrics.widthPixels - 60).coerceAtLeast(0))
+                                    params.y = (params.y + drag.y.toInt())
+                                        .coerceIn(0, (metrics.heightPixels - 60).coerceAtLeast(0))
                                     runCatching { windowManager?.updateViewLayout(this@apply, params) }
                                 }
                             }
@@ -274,9 +287,13 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
     companion object {
         private const val NOTIF_ID = 53
 
-        @Volatile
-        var isRunning = false
-            private set
+        private val runningState = androidx.compose.runtime.mutableStateOf(false)
+
+        var isRunning: Boolean
+            get() = runningState.value
+            private set(value) {
+                runningState.value = value
+            }
 
         fun start(context: Context) {
             if (isRunning) return

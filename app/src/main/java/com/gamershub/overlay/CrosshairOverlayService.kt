@@ -65,6 +65,16 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val type = if (Build.VERSION.SDK_INT >= 34)
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            android.widget.Toast.makeText(
+                this,
+                "Allow display over other apps for GamersHub",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            isRunning = false
+            stopSelf()
+            return
+        }
 
         val prefs = getSharedPreferences("gamershub", MODE_PRIVATE)
         val params = WindowManager.LayoutParams(
@@ -144,8 +154,13 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
 
     companion object {
         private const val NOTIF_ID = 52
-        @Volatile var isRunning = false
-            private set
+        private val runningState = androidx.compose.runtime.mutableStateOf(false)
+
+        var isRunning: Boolean
+            get() = runningState.value
+            private set(value) {
+                runningState.value = value
+            }
 
         fun start(context: Context) {
             if (isRunning) return
