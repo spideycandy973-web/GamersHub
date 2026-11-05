@@ -682,7 +682,7 @@ private fun openSheet(context: Context, key: String) {
     runCatching {
         context.startActivity(
             Intent(context, com.gamershub.MainActivity::class.java)
-                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, key)
+                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, key + "#" + System.currentTimeMillis())
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         )
     }

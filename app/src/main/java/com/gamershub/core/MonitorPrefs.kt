@@ -43,10 +43,12 @@ object MonitorPrefs {
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    val DEFAULT_FIELDS = listOf("fps", "cpu", "ram", "temp", "ping")
+
     fun fields(context: Context): List<String> {
-        val raw = prefs(context).getString(KEY_FIELDS, null) ?: return ORDER
+        val raw = prefs(context).getString(KEY_FIELDS, null) ?: return DEFAULT_FIELDS
         val list = raw.split(",").map { it.trim() }.filter { ORDER.contains(it) }
-        return if (list.isEmpty()) ORDER else list
+        return if (list.isEmpty()) DEFAULT_FIELDS else list
     }
 
     fun setFields(context: Context, fields: List<String>) {

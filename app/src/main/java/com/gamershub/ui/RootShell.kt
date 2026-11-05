@@ -256,7 +256,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             if (!repo.firstRunDone()) sheet = SheetState.Permission(0)
         }
 
-        fun sheetFor(key: String?): SheetState = when (key) {
+        fun sheetFor(rawKey: String?): SheetState = when (rawKey?.substringBefore('#')) {
             "ping" -> SheetState.Ping
             "gyro" -> SheetState.Gyro
             "mapping" -> SheetState.Mapping
@@ -502,6 +502,8 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                                 }
                                 pendingLaunch = current.app
                                 sheet = SheetState.None
+                                context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+                                    .edit().putString("last_game_pkg", current.app.pkg).apply()
                                 if (gameSpace) openGameSpace(context, current.app.pkg)
                                 else repo.launch(current.app.pkg)
                             } else {
