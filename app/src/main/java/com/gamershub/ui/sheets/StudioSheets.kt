@@ -661,10 +661,12 @@ fun SpoofSheet(onDismiss: () -> Unit) {
             onClick = {
                 val preset = DeviceSpoofer.presets[selected]
                 val applied = DeviceSpoofer.applySafe(context, preset)
+                tick++
                 val identity = if (status.rooted) DeviceSpoofer.applyIdentity(preset) else null
                 log = buildString {
                     if (applied.isEmpty()) append("Needs Shizuku to change display/name.\n")
                     applied.forEach { append("✓ $it\n") }
+                    append("Apps now see ${DeviceSpoofer.observed(context)}\n")
                     identity?.let { (ok, model) ->
                         if (ok) append("✓ Identity props → $model\n")
                         else append("Identity props: $model (root only)\n")

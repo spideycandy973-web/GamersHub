@@ -128,12 +128,15 @@ object DeviceSpoofer {
         val newDensity = (panel.density * factor).roundToInt().coerceIn(120, 640)
 
         val applied = ArrayList<String>()
-        if (Shell.ok("wm size ${newWidth}x${newHeight}")) {
-            applied.add("Resolution → ${newWidth}x${newHeight} (aspect kept)")
+        val sizeOk = Shell.ok("wm size ${newWidth}x${newHeight}")
+        val densityOk = Shell.ok("wm density $newDensity")
+        if (sizeOk && !densityOk) {
+            // Resolution without density would shrink the UI — never leave that state.
+            Shell.ok("wm size reset")
+            return emptyList()
         }
-        if (Shell.ok("wm density $newDensity")) {
-            applied.add("Density → $newDensity dpi (same physical size)")
-        }
+        if (sizeOk) applied.add("Resolution → ${newWidth}x${newHeight} (aspect kept)")
+        if (densityOk) applied.add("Density → $newDensity dpi (same physical size)")
         return applied
     }
 
@@ -187,6 +190,12 @@ object DeviceSpoofer {
         if (resetDisplay()) restored.add("Display and density reset to stock")
         if (GfxEngine.setRefreshRate(60)) restored.add("Refresh reset to 60 Hz")
         return restored
+    }
+
+    /** What other apps currently observe (after any override). */
+    fun observed(context: Context): String {
+        val metrics = context.resources.displayMetrics
+        return "${metrics.widthPixels}x${metrics.heightPixels} · ${metrics.densityDpi}dpi"
     }
 
     private fun even(value: Int): Int = if (value % 2 == 0) value else value - 1
