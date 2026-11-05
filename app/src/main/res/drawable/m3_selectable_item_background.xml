@@ -1,5 +1,5 @@
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@7F05009E">
-  <item android:id="@android:0102002E">
-    <color android:color="@android:0106000B"/>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFFFF">
+  <item android:id="#FFFFFFFF">
+    <color android:color="#FFFFFFFF"/>
   </item>
 </ripple>

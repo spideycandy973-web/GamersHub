@@ -4,5 +4,5 @@
       <solid android:color="#20000000"/>
     </shape>
   </item>
-  <item android:drawable="@7F0700AE" android:left="2.000000dip" android:top="2.000000dip" android:right="2.000000dip" android:bottom="2.000000dip"/>
+  <item android:drawable="#FFFFFFFF" android:left="2.000000dip" android:top="2.000000dip" android:right="2.000000dip" android:bottom="2.000000dip"/>
 </layer-list>
