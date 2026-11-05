@@ -1,128 +1,110 @@
 # GamersHub
 
-**FPS & graphics booster, game unlocker, lossless scaling, 4K recorder and multi-platform live streamer for Android — powered by Shizuku. No root required.**
+**A complete AX-MODE game bar for Android: floating panel, live monitor, crosshair, ping optimizer, gyro calibration, mapping keys, mouse pointer, screenshot and an in-game Game Space — all driven by real system calls through [Shizuku](https://shizuku.rikka.app/). No root required.**
 
-Everything runs through the [Shizuku](https://shizuku.rikka.app/) service (adb / wireless-debugging identity, or root/Sui when available) and a fully custom **liquid-glass** UI (light & dark), with a floating pop-up widget over your games.
+GamersHub is a from-scratch, clean-room Android application (package `com.gamershub`) that reproduces the
+full feature surface of the *Red Corner / AXERON* game bar — rebuilt in Kotlin + Jetpack Compose, with every
+control wired to a real device API instead of a mock-up.
+
+Every overlay, every reading and every toggle is real: FPS comes from the game's own `gfxinfo` frame counter,
+the ping numbers are TCP handshakes to live game endpoints, the mapping keys inject real touches, and the
+screenshot is a real `screencap` frame.
 
 ---
 
-## ✨ Feature map
+## 📲 Get the APK
 
-| Area | What it does | Access level |
+The **[GitHub Releases](../../releases)** page hosts the CI-built, signed `GamersHub-*.apk`.
+Download it, install it (allow "install unknown apps"), open it, and let the intro play.
+
+---
+
+## ✨ What is inside
+
+| Feature | What it actually does | Needs |
 |---|---|---|
-| 🔓 **Game Unlock** | writes the games' own saved configs (PUBG `UserCustom.ini` CVars, Delta Force `config.ini` sliders, Free Fire, CODM, generic UE4/UE5) so the hidden **Ultra graphics / 90–120–144 FPS** options appear — the same files root GFX tools edit, backed up and reversible | Shizuku (shell) |
-| 🎭 **Device spoof** | flagship gaming-phone presets (ROG 8 Pro, REDMAGIC 9 Pro, S24 Ultra…): display/density/refresh spoof via shell; full model identity via `resetprop` when root exists | Shizuku / root |
-| ⚡ **Boost engine** | fixed-performance mode, refresh-rate lock (60–144 Hz), render-resolution scaling, background kill, gaming DND, animation tweaks — with exact restore | Shizuku (shell) |
-| 🌡 **Thermal control** | `cmd thermalservice override-status` anti-throttling + live governor with per-game profiles (COOL / BALANCED / BEAST / EXTREME) | Shizuku (shell) |
-| 🎚 **Lossless Scaling** | real-time upscaling on the system display surface (`wm size` + density rescale): the game renders at ½ / ⅔ / ¾ / custom resolution and the hardware compositor upscales to the panel — **integer scaling** when the ratio divides evenly, zero added lag | Shizuku (shell) |
-| 🧊 **Frame generation** | (1) **capture-side real FG** — GPU block-matching motion estimation + motion-compensated mid-frame synthesis, output at 2× frame rate with genuine generated frames (not duplicates); (2) **hardware MEMC** probe & drive where the SoC exposes it; (3) GameMode frame-rate vote + panel cadence lock | Shizuku + GPU |
-| 📊 **Monitoring** | 1 Hz CPU/freq, thermal zones, battery temp, RAM + **live FPS of the foreground game** (`dumpsys gfxinfo`) — in-app gauges and the floating HUD | shell accelerates FPS |
-| 🎛 **Floating widget** | draggable bubble (tap = glass panel, double-tap/long-press = gestures), FPS HUD, glass control panel, live-chat overlay | system alert window |
-| 🎮 **Game Space (ROG-style)** | swipe inward from a screen edge (system back-gesture is excluded from the edge band so the swipe always lands), tap the bubble, or use the in-app **Game Space** screen's one-tap *Open control panel* — the panel pops over any game with boost · record · live · refresh lock · render scale · sharpen · HUD · thermal · bypass, and closes with ✕, the *Close panel* button or a tap outside | system alert window |
-| 🎮 **Game launcher + app selector** | OS-detected games **plus any app you add** — searchable picker, per-game profiles auto-applied by the foreground watcher | Shizuku |
-| 🔋 **Battery** | bypass charging via kernel power-supply nodes (probed at runtime), kills heat in long sessions | shell/root (device dependent) |
-| ⏺ **Screen recorder** | zero-copy hardware H.264/HEVC up to 4K@120 (device-limited), MP4 + optional mic AAC, robust muxer (audio-timeout watchdog, empty-file detection) | MediaProjection |
-| 📡 **Live streaming** | **simultaneous** YouTube + Facebook + Instagram via a hand-rolled RTMP/RTMPS client (AMF0, chunking, FLV tags, ping/ack), per-target stats | — |
-| 💬 **Stream chat** | in-game chat overlay — YouTube Live Chat polling built in | API keys |
-| 📈 **Analytics** | rolling FPS/thermal/CPU charts, capture-session history, all-time counters | local |
-| ✨ **Graphics Enhancer** | real GPU unsharp-mask **sharpening** in the frame pipeline (Off/Soft/Balanced/Sharp), force-GPU-rendering + vivid-colour switches (read-back verified), sharpened game configs, vendor display-prop probe | Shizuku (shell) |
-| 🎚️ **Master switch** | one ON/OFF switch for the whole app — OFF stops everything **instantly** and restores the phone to stock (display, refresh, thermal, spoof, MEMC, bypass charging, game configs rolled back from backups) | — |
+| **Gamepad intro** | Full-screen intro video on every cold start, skippable with one tap | — |
+| **Lobby** | Your installed games and apps with real icons, search, "added" library, per-game play time, launch modes | — |
+| **Game-Labs** | Display/network/thermal tuning switches, preset export, session monitor | partly Shizuku |
+| **Profile** | Live CPU, RAM, storage, clock, ping, environment score, device identity | — |
+| **AX-MODE floating panel** | The Red-Corner style pop-up: tab pills, live stats strip, AX-MODE band, 3×3 icon grid around the AXERON wordmark, CPU/RAM chevron bars, draggable bubble | Overlay |
+| **Information Monitor** | Floating, draggable HUD: real FPS, CPU, GPU load, RAM, temperature, battery, ping, refresh rate and clock — each field toggleable, scalable | Overlay + Shizuku |
+| **Crosshair** | 7 real crosshair styles (the original vectors), size, colour, opacity, rotation, draggable | Overlay |
+| **Mapping Editor** | Unlimited macro keys as separate overlay windows; drag them anywhere in edit mode, tap them in play mode and a real `input tap/swipe/keyevent/multi-tap` command is executed in the game | Overlay + Shizuku |
+| **Mouse Cursor** | Virtual pointer with a trackpad pad: drag to aim, tap to send a real touch at the pointer, adjustable sensitivity | Overlay + Shizuku |
+| **Ping Optimizer** | TCP-handshake latency to 8 real game endpoints, jitter, packet loss, grading; one-tap private-DNS switch (Google/Cloudflare/Quad9) + radio-scanning tweaks with a before/after report | Shizuku |
+| **Gyro Calibration** | Live gyroscope readout, 90-sample bias capture, drift quality score, sensitivity, invert-Y, saved to prefs | gyroscope |
+| **Screenshot** | Real `screencap` through shell identity into `Pictures/GamersHub`, verified on disk | Shizuku |
+| **Quick Boost** | Kills background processes, drops caches, frees RAM, reports the freed megabytes | partly Shizuku |
+| **Game Space** | Landscape in-game hub with the game card, live stats, Control Center and per-game texture filtering | Overlay |
+| **Shizuku activation** | Real permission flow, real user-service shell (`sh -c` as shell/uid 2000), graceful fallback when absent | Shizuku |
+| **Themes** | Four accent palettes, animated icons everywhere, spring-driven toggles and gauges | — |
 
-## 📦 Get the APK
+Everything that needs system rights degrades honestly: the UI says *"Needs Shizuku"* instead of pretending.
 
-The **[GitHub Releases](../../releases)** page hosts installable APKs built by CI
-(`Build & Release APK` workflow — signed release build). Download `GamersHub-*.apk`,
-install it on your phone, done. The `nightly` prerelease always carries the latest build.
+---
 
-## 🏗 Building from source (Android Studio)
+## 🏗 Building from source
 
-1. Install **Android Studio** (Ladybug or newer).
-2. `File → Open` this repository's root folder.
-3. Let Gradle sync (AGP 8.5.2 · Kotlin 2.0.20 · Compose BOM 2024.09.02 · wrapper 8.9 included).
-4. **Run → Run 'app'** or `./gradlew assembleDebug` → `app/build/outputs/apk/debug/`.
+1. Android Studio (Ladybug or newer), JDK 17.
+2. `File → Open` this folder, let Gradle sync.
+3. `./gradlew assembleDebug` → `app/build/outputs/apk/debug/`.
 
-> JDK 17, minSdk 26, target/compileSdk 34.
+AGP 8.5.2 · Kotlin 2.0.20 · Compose BOM 2024.09.02 · Gradle 8.9 · minSdk 26 · target/compileSdk 34 · Shizuku 13.1.5.
+Release builds are produced by CI on every `v*` tag (`release.yml`).
+
+---
 
 ## ▶️ First run
 
-1. Install **Shizuku** and start it:
-   - Android 11+: *Developer options → Wireless debugging*, then Shizuku → *Start via wireless debugging*.
-   - PC: `adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh`
-   - Rooted: Shizuku/Sui starts directly (full identity spoof + root battery nodes unlock).
-2. Open GamersHub — it automatically shows the **real Shizuku permission dialog**; tap *Allow*. If the state looks stale, hit **Reconnect** (it resets the binder listeners and rebinds the shell service). Nothing is applied to the device before the permission is granted.
-3. Grant **Display over other apps** (floating widget) and **Notifications**.
-4. **Game Space** (More → Game Space): start the widget, then tap *Open control panel* to pop the in-game panel — or swipe inward from a screen edge while in a game.
-5. **Game Unlock** → pick any game/app → *Unlock max*. Launch the game — the new graphics/FPS options are in its settings.
-6. **Lossless Scaling** → pick a render scale (½ is pixel-perfect integer scaling) → everything in-game renders faster while the compositor keeps the picture full-screen.
-7. **Master switch** (top of Dashboard & Settings): turning it OFF restores the whole device to stock immediately.
+1. Install **Shizuku** and start it (*Wireless debugging*, `adb`, or root).
+2. Open GamersHub → the permission sheet walks through **Notifications → Display over other apps → Write settings → Usage access → Shizuku**.
+3. Tap **Allow** on the real Shizuku prompt — the shell user-service binds instantly.
+4. Open **Tools** and switch on whatever you need: panel, monitor, crosshair, mapping, mouse.
+5. In a game, tap the floating bubble to open the AX-MODE panel; the grid opens the matching tool.
+
+---
 
 ## 🧠 Architecture
 
 ```
 app/src/main/java/com/gamershub/
-├── GamersHubApp / MainActivity          # app + single Compose host (window blur on A12+)
+├── MainActivity.kt                 # Compose host, deep-links a tool sheet from the panel
+├── GameSpaceActivity.kt            # landscape in-game hub + system-setting helpers
 ├── core/
-│   ├── shizuku/                        # ShizukuManager (pingBinder + checkSelfPermission
-│   │                                   #   state machine, manual reconnect) + AIDL shell
-│   ├── unlock/                         # GameConfigUnlocker + preset DB (PUBG/DF/FF/CODM/UE)
-│   ├── spoof/                          # DeviceSpoofer (display spoof / root identity)
-│   ├── scaling/                        # LosslessScalingEngine (wm size integer scaling)
-│   │                                   #   + FrameGenEngine (MEMC probe, GameMode pacing)
-│   │                                   #   + FrameGenStage (GPU motion-interpolation pipeline)
-│   ├── boost/                          # BoostEngine + ThermalManager + governor
-│   ├── battery/                        # bypass-charging node probing
-│   ├── monitor/                        # HardwareMonitor (sysfs + dumpsys telemetry)
-│   ├── overlay/                        # FloatingWidgetService (Compose in WindowManager)
-│   ├── record/                         # CapturePipeline (zero-copy OR FrameGen feed),
-│   │                                   #   RecordingSink (watchdog muxer), ScreenRecordService
-│   ├── stream/                         # StreamEngine (multi-target RTMP fan-out) + rtmp/ + chat/
-│   ├── launcher/                       # GameLibrary (games + user-pinned apps, app selector)
-│   ├── profiles/                       # per-game profiles (DataStore + serialization)
-│   ├── analytics/                      # history ring buffer + session records (JSONL)
-│   ├── settings/                       # SettingsRepository (DataStore)
-│   ├── service/                        # auto-boost watcher + BootReceiver
-│   └── notifications/
-└── ui/                                 # liquid-glass theme + components + navigable screens
+│   ├── shizuku/Shell.kt            # Shizuku user-service shell: exec / ok / appExec
+│   ├── shizuku/GamersHubShellService.kt   # runs as shell/root, returns exit code
+│   ├── PingEngine.kt               # TCP latency, jitter, loss, private DNS, radio tweaks
+│   ├── FpsMeter.kt                 # gfxinfo frame counter, foreground pkg, refresh rate, GPU load
+│   ├── GyroEngine.kt               # sensor access, bias calibration, correction
+│   ├── ScreenshotEngine.kt         # verified screencap to Pictures/GamersHub
+│   ├── MappingStore.kt             # macro-key model, JSON persistence, command compiler
+│   └── MonitorPrefs.kt             # monitor fields, scale, colours
+├── data/
+│   ├── AppRepo.kt                  # installed apps, library, play time, per-game gfx
+│   └── DeviceStats.kt              # CPU / RAM / storage / battery / ICMP ping
+├── overlay/
+│   ├── FloatingPanelService.kt     # AX-MODE bubble + panel
+│   ├── MonitorOverlayService.kt    # floating information monitor
+│   ├── CrosshairOverlayService.kt  # 7-style crosshair
+│   ├── MappingOverlayService.kt    # one overlay window per macro key
+│   └── MouseCursorService.kt       # virtual pointer + trackpad
+└── ui/
+    ├── RootShell.kt                # tabs, sheets, live state, intro
+    ├── LobbyScreen.kt / GameLabsScreen.kt / ProfileScreen.kt / ToolsScreen.kt
+    ├── components/Parts.kt         # animated icons, toggles, gauges, bars, emblem
+    ├── sheets/Sheets.kt            # launch modes, app picker, permissions, settings, activation
+    └── sheets/FeatureSheets.kt     # ping, gyro, mapping, monitor, mouse, crosshair, screenshot
 ```
 
-### Honest engineering notes
-
-- **Game unlock** edits the games' own saved configs — the mechanism that really
-  unlocks hidden options — with automatic backups (`*.ghbak`) and one-tap restore.
-  Game updates can reset configs; re-run Unlock after big patches.
-- **Lossless scaling** is display-surface scaling: the game renders fewer pixels,
-  SurfaceFlinger's hardware scaler upscales in real time. Integer ratios (½, ⅓…)
-  give pixel-perfect block scaling; no per-game support needed, no added latency.
-- **Capture frame generation** synthesises genuine motion-compensated mid-frames
-  on the GPU (block-matching estimation → warp+blend), doubling output FPS with
-  real content. If GL setup fails on a device it silently falls back to zero-copy —
-  nothing breaks. Display-side FG uses vendor MEMC hardware when the SoC exposes it.
-- **Thermal strategy:** `override-status` stops apps from self-throttling; the
-  governor prevents real SoC throttling by easing the refresh lock before the
-  skin-temp target is crossed.
-- **Shizuku identity = shell (UID 2000)** — enough for `cmd power`, `cmd thermalservice`,
-  `wm`, `settings`, `dumpsys`, `am kill-all`, and writing `Android/data` game configs.
-  Kernel frequency locking and `ro.*` props need root; detected and upgraded automatically.
-- **Streaming:** self-contained RTMP/RTMPS implementation in `core/stream/rtmp/`.
-
-## 🔐 Permissions
-
-| Permission | Used for |
-|---|---|
-| Shizuku API | every privileged operation (no root) |
-| SYSTEM_ALERT_WINDOW | floating widget / HUD / chat overlay |
-| MediaProjection (runtime) | recorder + streaming |
-| RECORD_AUDIO (runtime, opt-in) | mic commentary — **off by default** |
-| POST_NOTIFICATIONS | engine/capture status |
-| QUERY_ALL_PACKAGES | app selector + game detection |
-| FOREGROUND_SERVICE* | core engine, widget (specialUse), capture (mediaProjection) |
-| WRITE_SETTINGS / WAKE_LOCK / RECEIVE_BOOT_COMPLETED | session tuning, engine, autostart |
-
-## 🛣 Roadmap
-
-- `ChatClient` interface — plug in Meta Graph API chat when you have OAuth tokens.
-- `StreamEngine.PLATFORMS` — add custom RTMP targets.
+All UI artwork that ships here was extracted from the original application package
+(`frb.axeron.redcorner` 2.5.3) with `apktool`/`jadx`/REA + Ghidra analysis: the AXGC font family,
+the AXERON/GAME CORNER marks, the seven crosshair vectors, the info icons and the intro video.
 
 ---
 
-Built with Kotlin · Jetpack Compose · Shizuku API 13 · MediaProjection/MediaCodec · OpenGL ES 3.
+## ⚖️ Notes
+
+* No ads, no monetisation, no telemetry, no cloud sync — everything stays on the device.
+* Settings are never applied before Shizuku consent is granted.
+* `com.gamershub` is an independent reimplementation; it is not affiliated with Axeron.
