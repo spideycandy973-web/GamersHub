@@ -30,9 +30,8 @@ jobs:
           # standalone jadx
           curl -fsSL -o /tmp/jadx.zip https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip
           unzip -q /tmp/jadx.zip -d /tmp/jadx
-          # Ghidra 12.1.x
-          curl -fsSL -o /tmp/ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.2_build/ghidra_12.1.2_PUBLIC_20250827.zip || \
-            curl -fsSL -o /tmp/ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.1_build/ghidra_12.1.1_PUBLIC_20250718.zip
+          # Ghidra 12.1.x (REA provider target)
+          curl -fsSL -o /tmp/ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.2_build/ghidra_12.1.2_PUBLIC_20260605.zip
           unzip -q /tmp/ghidra.zip -d /opt
           ls /opt | grep -i ghidra
           # REA
