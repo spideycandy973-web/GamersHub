@@ -354,7 +354,6 @@ private fun AxModePanel(onClose: () -> Unit) {
     }
     var showInfo by remember { mutableStateOf(true) }
     var showTaps by remember { mutableStateOf(false) }
-    var crosshair by remember { mutableStateOf(false) }
     var refreshLabel by remember { mutableStateOf("AUTO") }
 
     Box(
@@ -489,7 +488,10 @@ private fun AxModePanel(onClose: () -> Unit) {
                         }
                     }
                     Column(Modifier.weight(1f)) {
-                        GridButton(Icons.Filled.GpsFixed, "Crosshair", if (crosshair) "ON" else "OFF") { crosshair = !crosshair }
+                        GridButton(Icons.Filled.GpsFixed, "Crosshair", if (CrosshairOverlayService.isRunning) "ON" else "OFF") {
+                            if (CrosshairOverlayService.isRunning) CrosshairOverlayService.stop(context)
+                            else CrosshairOverlayService.start(context)
+                        }
                         GridButton(Icons.Filled.Speed, "Quick Boost", "FREE") {
                             val freed = com.gamershub.boostNow(context)
                             android.widget.Toast.makeText(context, "Boosted — $freed MB freed", android.widget.Toast.LENGTH_SHORT).show()
@@ -566,14 +568,6 @@ private fun AxModePanel(onClose: () -> Unit) {
             LiveBar("RAM", stats.ram, Color(0xFFE0359B), right = false, modifier = Modifier.width(64.dp))
         }
 
-        if (crosshair) {
-            Canvas(Modifier.fillMaxWidth().height(140.dp)) {
-                val c = Color(0xFFFF2D2D)
-                drawLine(c, androidx.compose.ui.geometry.Offset(size.width / 2, 0f), androidx.compose.ui.geometry.Offset(size.width / 2, size.height), 2.5f)
-                drawLine(c, androidx.compose.ui.geometry.Offset(0f, size.height / 2), androidx.compose.ui.geometry.Offset(size.width, size.height / 2), 2.5f)
-                drawCircle(c, radius = 12f, style = Stroke(2.5f))
-            }
-        }
     }
 }
 

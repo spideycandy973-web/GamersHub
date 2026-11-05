@@ -61,6 +61,16 @@
                 android:value="game_overlay_quick_panel" />
         </service>
 
+        <!-- Crosshair overlay (real, mirrors the original CrosshairFeature) -->
+        <service
+            android:name=".overlay.CrosshairOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="game_crosshair_overlay" />
+        </service>
+
         <!-- This provider is required by Shizuku. Do not remove. -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
