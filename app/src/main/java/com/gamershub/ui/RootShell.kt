@@ -618,7 +618,7 @@ internal fun IntroAnimation(onDone: () -> Unit) {
             .clickable(onClick = { if (!done) { done = true; onDone() } })
     ) {
         androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_gamepad),
+            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.axeron),
             contentDescription = null,
             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -627,7 +627,7 @@ internal fun IntroAnimation(onDone: () -> Unit) {
             factory = { ctx ->
                 android.widget.VideoView(ctx).apply {
                     setVideoURI(
-                        android.net.Uri.parse("android.resource://${ctx.packageName}/${com.gamershub.R.raw.intro_gamepad}")
+                        android.net.Uri.parse("android.resource://${ctx.packageName}/${com.gamershub.R.raw.intro_1080_portrait_comp}")
                     )
                     setOnPreparedListener { it.isLooping = false; it.start() }
                     setOnCompletionListener { if (!done) { done = true; onDone() } }

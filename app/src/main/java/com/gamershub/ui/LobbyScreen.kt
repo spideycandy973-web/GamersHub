@@ -98,8 +98,10 @@ fun LobbyScreen(
                 .clip(RoundedCornerShape(22.dp))
                 .background(GC.HeroBrush)
         ) {
-            HeroMark(
-                Modifier
+            Image(
+                painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.axgc_new),
+                contentDescription = null,
+                modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 6.dp)
                     .size(170.dp, 120.dp)
