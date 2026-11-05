@@ -19,6 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.GpsFixed
@@ -82,7 +86,9 @@ fun ToolsScreen(
                 "mouse" to MouseCursorService.isRunning,
                 "shizuku" to com.gamershub.core.shizuku.Shell.available(),
                 "overlay" to android.provider.Settings.canDrawOverlays(context),
-                "mouseDevice" to MouseCursorService.hasMouse()
+                "mouseDevice" to MouseCursorService.hasMouse(),
+                "recording" to com.gamershub.core.capture.Recorder.isRecording,
+                "live" to com.gamershub.core.capture.Stream.isStreaming
             )
             delay(900)
         }
@@ -189,6 +195,46 @@ fun ToolsScreen(
             accent = accent,
             onToggle = { MouseCursorService.toggle(context) },
             onConfig = { onOpenSheet("mouse") }
+        )
+
+        SectionHead("STUDIO")
+        ToolRow(
+            icon = Icons.Filled.Videocam,
+            title = if (on("recording")) "Recording…" else "Screen Recorder",
+            subtitle = "MP4 · H.264 · up to 4K · mic optional",
+            active = on("recording"),
+            accent = accent,
+            onToggle = null,
+            onConfig = { onOpenSheet("record") },
+            configLabel = "OPEN"
+        )
+        ToolRow(
+            icon = Icons.Filled.Podcasts,
+            title = if (on("live")) "Live now" else "Go Live",
+            subtitle = "Real RTMP publish to YouTube / Twitch / any endpoint",
+            active = on("live"),
+            accent = accent,
+            onToggle = null,
+            onConfig = { onOpenSheet("live") },
+            configLabel = "OPEN"
+        )
+        ToolRow(
+            icon = Icons.Filled.AutoAwesome,
+            title = "Graphics Enhancer",
+            subtitle = "Render scale · Vulkan renderer · texture & shadow CVars",
+            active = false,
+            accent = accent,
+            onToggle = null,
+            onConfig = { onOpenSheet("graphics") }
+        )
+        ToolRow(
+            icon = Icons.Filled.Smartphone,
+            title = "Device Spoofing",
+            subtitle = "Flagship presets · display, name, identity props",
+            active = false,
+            accent = accent,
+            onToggle = null,
+            onConfig = { onOpenSheet("spoof") }
         )
 
         SectionHead("NETWORK")

@@ -125,6 +125,11 @@ sealed interface SheetState {
     data object Mouse : SheetState
     data object Crosshair : SheetState
     data object Screenshot : SheetState
+    data object Record : SheetState
+    data object Live : SheetState
+    data object Graphics : SheetState
+    data object Spoof : SheetState
+    data object PanelHub : SheetState
 }
 
 /** Root shell: tabs, octagon nav, sheets, live state. */
@@ -263,6 +268,11 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             "presets" -> SheetState.Presets
             "activation" -> SheetState.Activation
             "settings" -> SheetState.Settings
+            "record" -> SheetState.Record
+            "live" -> SheetState.Live
+            "graphics" -> SheetState.Graphics
+            "spoof" -> SheetState.Spoof
+            "panel" -> SheetState.PanelHub
             else -> SheetState.None
         }
 
@@ -589,6 +599,21 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     SheetState.Screenshot -> com.gamershub.ui.sheets.ScreenshotSheet(
                         onDismiss = { sheet = SheetState.None }
                     )
+                    SheetState.Record -> com.gamershub.ui.sheets.RecordSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Live -> com.gamershub.ui.sheets.LiveSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Graphics -> com.gamershub.ui.sheets.GraphicsSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.Spoof -> com.gamershub.ui.sheets.SpoofSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
+                    SheetState.PanelHub -> com.gamershub.ui.sheets.OverlayHubSheet(
+                        onDismiss = { sheet = SheetState.None }
+                    )
                     SheetState.None -> {}
                 }
             }
@@ -598,6 +623,8 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
 
 private fun openGameSpace(context: Context, pkg: String) {
     runCatching {
+        context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+            .edit().putString("last_game_pkg", pkg).apply()
         context.startActivity(
             Intent(context, GameSpaceActivity::class.java)
                 .putExtra(GameSpaceActivity.EXTRA_PKG, pkg)
@@ -714,8 +741,8 @@ private fun MonitorStrip(context: android.content.Context) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 54.dp)
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 96.dp)
                 .offset { androidx.compose.ui.unit.IntOffset(offX.roundToInt(), offY.roundToInt()) }
                 .draggable(
                     orientation = Orientation.Horizontal,

@@ -332,7 +332,8 @@ private fun rememberLiveStats(): LiveStats {
 @Composable
 private fun AxModePanel(onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val accent = LocalAccent.current
+    // The original AX-MODE panel is always red, independent of the app theme.
+    val accent = Color(0xFFE23A3A)
     val stats by produceState(initialValue = LiveStats()) {
         while (true) {
             runCatching {
@@ -555,14 +556,42 @@ private fun AxModePanel(onClose: () -> Unit) {
 
                 Spacer(Modifier.height(6.dp))
 
-                // ---- bottom row: home | logo | gear ----
+                // ---- bottom row: REC | wordmark | LIVE ----
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        AIcon(Icons.Filled.Home, contentDescription = "Home", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(if (com.gamershub.core.capture.Recorder.isRecording) Color(0xFFD31F26) else Color(0x33FFFFFF))
+                                .clickable { openSheet(context, "record") }
+                                .padding(horizontal = 13.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                if (com.gamershub.core.capture.Recorder.isRecording) "● REC" else "REC",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                     HeroMark(Modifier.size(24.dp))
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        AIcon(Icons.Filled.Settings, contentDescription = "Settings", tint = Color(0x88FFFFFF), modifier = Modifier.size(18.dp))
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(if (com.gamershub.core.capture.Stream.isStreaming) Color(0xFFD31F26) else Color(0x33FFFFFF))
+                                .clickable { openSheet(context, "live") }
+                                .padding(horizontal = 13.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                if (com.gamershub.core.capture.Stream.isStreaming) "● LIVE" else "LIVE",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(6.dp))

@@ -113,6 +113,52 @@ fun ProfileScreen(
             fontSize = 12.sp
         )
 
+        Spacer(Modifier.height(10.dp))
+
+        // ---- Environment level / score (never overlaps the header) ----
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.Surface)
+                    .padding(14.dp)
+            ) {
+                Text("Environment Level", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("$envLevel", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 26.sp)
+                    Text(" / 3", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(3) { index ->
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(if (index < envLevel) accent else Color(0xFF2E2119))
+                        )
+                    }
+                }
+            }
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(GC.Surface)
+                    .padding(14.dp)
+            ) {
+                Text("Environment Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("$envScore", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 26.sp)
+                    Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                SolidBar(envScore)
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
 
         // ---- Account card ----
