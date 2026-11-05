@@ -6,12 +6,15 @@ import android.os.Environment
 import android.os.StatFs
 import java.io.File
 
-/** Real device metrics — no fake numbers. */
+/** Real device metrics — no fake numbers, with fallbacks for locked-down kernels. */
 object DeviceStats {
 
     data class Mem(val usedMb: Long, val totalMb: Long, val pct: Int)
     data class Storage(val usedGb: Long, val totalGb: Long, val pct: Int)
     data class Cpu(val curGhz: Double, val maxGhz: Double, val pct: Int)
+
+    private var lastTotal = 0L
+    private var lastIdle = 0L
 
     fun mem(context: Context): Mem {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -32,20 +35,68 @@ object DeviceStats {
         return Storage(used / (1024 * 1024 * 1024), total / (1024 * 1024 * 1024), pct)
     }
 
+    /** CPU load in percent, measured from /proc/stat deltas — works on every kernel. */
+    fun cpuLoad(): Int = synchronized(this) {
+        val line = readFirstLine("/proc/stat")
+        if (line == null || !line.startsWith("cpu")) return -1
+        val parts = line.trim().split(Regex("\\s+"))
+        if (parts.size < 5) return -1
+        var total = 0L
+        for (index in 1 until parts.size) total += parts[index].toLongOrNull() ?: 0L
+        val idle = (parts[4].toLongOrNull() ?: 0L) + (parts.getOrNull(5)?.toLongOrNull() ?: 0L)
+        val deltaTotal = total - lastTotal
+        val deltaIdle = idle - lastIdle
+        lastTotal = total
+        lastIdle = idle
+        if (deltaTotal <= 0L) return -1
+        (((deltaTotal - deltaIdle) * 100) / deltaTotal).toInt().coerceIn(0, 100)
+    }
+
+    fun cores(): Int = Runtime.getRuntime().availableProcessors().coerceIn(1, 32)
+
     fun cpu(): Cpu {
         var curKhz = -1L
         var maxKhz = -1L
-        for (i in 0 until 16) {
-            val cur = readKhz("/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq")
-            val max = readKhz("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq")
+        for (index in 0 until cores()) {
+            val cur = readKhz("/sys/devices/system/cpu/cpu$index/cpufreq/scaling_cur_freq")
+            val max = readKhz("/sys/devices/system/cpu/cpu$index/cpufreq/cpuinfo_max_freq")
             if (cur > curKhz) curKhz = cur
             if (max > maxKhz) maxKhz = max
         }
+        if (curKhz <= 0) curKhz = readKhz("/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq")
         if (maxKhz <= 0) maxKhz = readKhz("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq")
-        val curG = if (curKhz > 0) curKhz / 1_000_000.0 else 0.0
-        val maxG = if (maxKhz > 0) maxKhz / 1_000_000.0 else 0.0
-        val pct = if (maxKhz > 0 && curKhz > 0) (curKhz * 100 / maxKhz).toInt() else 0
-        return Cpu(curG, maxG, pct)
+
+        // Many ROMs block the app UID from cpufreq; shell identity can still read it.
+        if (curKhz <= 0) curKhz = shellKhz("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+        if (maxKhz <= 0) maxKhz = shellKhz("/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq")
+        if (maxKhz <= 0) maxKhz = shellKhz("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+
+        val load = cpuLoad()
+        val curGhz = when {
+            curKhz > 0 -> curKhz / 1_000_000.0
+            maxKhz > 0 -> maxKhz / 1_000_000.0
+            else -> 0.0
+        }
+        val maxGhz = if (maxKhz > 0) maxKhz / 1_000_000.0 else 0.0
+        val pct = when {
+            load >= 0 -> load
+            maxKhz > 0 && curKhz > 0 -> (curKhz * 100 / maxKhz).toInt().coerceIn(0, 100)
+            else -> 0
+        }
+        return Cpu(curGhz, maxGhz, pct)
+    }
+
+    private fun shellKhz(path: String): Long = try {
+        val out = com.gamershub.core.shizuku.Shell.exec("cat $path") ?: return -1L
+        out.lines().firstOrNull { it.trim().isNotEmpty() }?.trim()?.toLongOrNull() ?: -1L
+    } catch (_: Throwable) {
+        -1L
+    }
+
+    private fun readFirstLine(path: String): String? = try {
+        File(path).bufferedReader().use { it.readLine() }
+    } catch (_: Throwable) {
+        null
     }
 
     private fun readKhz(path: String): Long = try {

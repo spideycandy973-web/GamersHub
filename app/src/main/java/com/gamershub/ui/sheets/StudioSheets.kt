@@ -620,7 +620,8 @@ fun SpoofSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "${status.resolution} · ${status.density}dpi · ${status.refresh} · ${status.deviceName}",
+            "${status.resolution} · ${status.density}dpi · ${status.refresh} · ${status.deviceName}" +
+                (if (status.overrideSize.isNotBlank()) " · override active" else ""),
             color = GC.TextDim,
             fontSize = 11.sp
         )
@@ -688,8 +689,10 @@ fun SpoofSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "Display + name spoofing works with Shizuku alone. Model/build props need root (resetprop) — " +
-                "that is a platform rule, not an app limit.",
+            "The display spoof scales resolution and density by the same factor, so the picture keeps its " +
+                "exact aspect ratio and physical size — nothing is cropped or shrunk. Model / build identity " +
+                "is a read-only system property: it changes through root (resetprop) only, and the app reads " +
+                "it back to confirm.",
             color = GC.TextDim,
             fontSize = 11.sp
         )

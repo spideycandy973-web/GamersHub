@@ -255,7 +255,14 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         view = cv
         cv.setViewTreeLifecycleOwner(this)
         cv.setViewTreeSavedStateRegistryOwner(this)
-        runCatching { windowManager?.addView(cv, params) }
+        val attached = runCatching { windowManager?.addView(cv, params) }.isSuccess
+        if (!attached) {
+            // No window = no monitor. Never leave the service "running" invisibly.
+            android.widget.Toast.makeText(this, "Monitor could not attach — check display-over-apps",
+                android.widget.Toast.LENGTH_LONG).show()
+            isRunning = false
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {

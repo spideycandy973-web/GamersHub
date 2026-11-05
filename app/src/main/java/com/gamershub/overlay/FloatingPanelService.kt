@@ -193,7 +193,16 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         bubbleView = view
         view.setViewTreeLifecycleOwner(this)
         view.setViewTreeSavedStateRegistryOwner(this)
-        runCatching { windowManager?.addView(view, params) }
+        val attached = runCatching { windowManager?.addView(view, params) }.isSuccess
+        if (!attached) {
+            android.widget.Toast.makeText(
+                this,
+                "Panel could not attach — check display-over-apps",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            isRunning = false
+            stopSelf()
+        }
     }
 
     private fun togglePanel() {

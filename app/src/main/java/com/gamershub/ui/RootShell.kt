@@ -700,39 +700,128 @@ private fun hasUsage(context: Context): Boolean = try {
     false
 }
 
-/** Boot intro: the gamepad intro VIDEO with the gamepad art as fallback. */
+/**
+ * Boot intro — the original intro video, decoded into a TextureView.
+ *
+ * A TextureView (instead of a SurfaceView) renders inside the normal view
+ * hierarchy, so the picture can never end up behind the Compose layer (which is
+ * what used to leave a black screen while the audio kept playing). If the clip
+ * cannot be decoded the animated gamepad art takes over, silently.
+ */
 @Composable
 internal fun IntroAnimation(onDone: () -> Unit) {
     var done by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+
+    fun finish() {
+        if (!done) {
+            done = true
+            onDone()
+        }
+    }
+
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(6500)
-        if (!done) { done = true; onDone() }
+        finish()
     }
+
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(onClick = { if (!done) { done = true; onDone() } })
+            .clickable { finish() }
     ) {
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.axeron),
-            contentDescription = null,
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        androidx.compose.ui.viewinterop.AndroidView(
-            factory = { ctx ->
-                android.widget.VideoView(ctx).apply {
-                    setVideoURI(
-                        android.net.Uri.parse("android.resource://${ctx.packageName}/${com.gamershub.R.raw.intro_1080_portrait_comp}")
-                    )
-                    setOnPreparedListener { it.isLooping = false; it.start() }
-                    setOnCompletionListener { if (!done) { done = true; onDone() } }
-                    setOnErrorListener { _, _, _ -> if (!done) { done = true; onDone() }; true }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (!failed) {
+            androidx.compose.ui.viewinterop.AndroidView(
+                factory = { ctx ->
+                    android.view.TextureView(ctx).apply {
+                        surfaceTextureListener = object : android.view.TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(
+                                texture: android.graphics.SurfaceTexture,
+                                width: Int,
+                                height: Int
+                            ) {
+                                try {
+                                    val afd = ctx.resources.openRawResourceFd(
+                                        com.gamershub.R.raw.intro_1080_portrait_comp
+                                    )
+                                    val player = android.media.MediaPlayer()
+                                    player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                                    afd.close()
+                                    player.setSurface(android.view.Surface(texture))
+                                    player.isLooping = false
+                                    player.setVolume(1f, 1f)
+                                    player.setOnPreparedListener { it.start() }
+                                    player.setOnCompletionListener { finish() }
+                                    player.setOnErrorListener { _, _, _ ->
+                                        failed = true
+                                        finish()
+                                        true
+                                    }
+                                    player.prepareAsync()
+                                    tag = player
+                                    // Centre-crop the 9:16 clip so it fills the screen like the original.
+                                    if (width > 0 && height > 0) {
+                                        val videoW = 1080f
+                                        val videoH = 1920f
+                                        val cover = maxOf(width / videoW, height / videoH)
+                                        val sx = (cover * videoW) / width
+                                        val sy = (cover * videoH) / height
+                                        val matrix = android.graphics.Matrix()
+                                        matrix.setScale(sx, sy, width / 2f, height / 2f)
+                                        runCatching { setTransform(matrix) }
+                                    }
+                                } catch (_: Throwable) {
+                                    failed = true
+                                    finish()
+                                }
+                            }
+
+                            override fun onSurfaceTextureSizeChanged(
+                                texture: android.graphics.SurfaceTexture,
+                                width: Int,
+                                height: Int
+                            ) = Unit
+
+                            override fun onSurfaceTextureDestroyed(
+                                texture: android.graphics.SurfaceTexture
+                            ): Boolean {
+                                (tag as? android.media.MediaPlayer)?.let { runCatching { it.release() } }
+                                tag = null
+                                return true
+                            }
+
+                            override fun onSurfaceTextureUpdated(texture: android.graphics.SurfaceTexture) = Unit
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.intro_gamepad),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 42.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color(0x66000000))
+                .padding(horizontal = 14.dp, vertical = 7.dp)
+        ) {
+            Text(
+                "TAP TO SKIP",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xAAFFFFFF),
+                fontSize = 10.sp,
+                letterSpacing = 2.sp
+            )
+        }
     }
 }
 
