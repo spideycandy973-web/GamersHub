@@ -65,8 +65,8 @@ object Shell {
     fun status(): Status = when {
         !running() -> Status.NOT_RUNNING
         !granted() -> Status.NO_PERMISSION
-        binder != null -> Status.CONNECTED
-        else -> Status.BINDING
+        // The direct process path needs nothing else, so a grant is "connected".
+        else -> Status.CONNECTED
     }
 
     fun statusLabel(): String = when (status()) {
@@ -129,8 +129,16 @@ object Shell {
         if (granted() && binder == null && !binding) ensure(context)
     }
 
-    /** Execute as shell; returns combined output (null when unavailable). */
+    /**
+     * Execute as shell; returns combined output (null when unavailable).
+     *
+     * The direct [Shizuku.newProcess] path is tried first: it only needs the
+     * Shizuku grant that the user already approved, so a missing/never-bound
+     * user service can no longer make privileged actions look "ungranted".
+     * The bound user service remains as a fallback for older Shizuku builds.
+     */
     fun exec(command: String): String? {
+        directExec(command)?.let { return it }
         if (binder == null) autoBind()
         return try {
             binder?.exec(command)
@@ -138,6 +146,53 @@ object Shell {
             lastError = t.message ?: "exec failed"
             null
         }
+    }
+
+    /**
+     * Runs the command in a real shell process owned by the Shizuku server.
+     *
+     * `Shizuku.newProcess` is the API that needs nothing but the granted
+     * permission; the SDK marks it as restricted, so it is reached through
+     * reflection instead of a direct call.
+     */
+    private fun directExec(command: String): String? {
+        if (!granted()) return null
+        val method = newProcess ?: return null
+        return try {
+            val process = method.invoke(
+                null,
+                arrayOf("sh", "-c", "$command; echo __GH_EXIT__=$?"),
+                null,
+                null
+            ) as? Process ?: return null
+            val out = StringBuilder()
+            val reader = Thread {
+                runCatching { process.inputStream.bufferedReader().forEachLine { out.appendLine(it) } }
+            }
+            val err = Thread {
+                runCatching { process.errorStream.bufferedReader().forEachLine { out.appendLine(it) } }
+            }
+            reader.start()
+            err.start()
+            reader.join(4000)
+            err.join(4000)
+            process.waitFor()
+            out.toString()
+        } catch (t: Throwable) {
+            lastError = t.message ?: "exec failed"
+            null
+        }
+    }
+
+    private val newProcess: java.lang.reflect.Method? by lazy {
+        runCatching {
+            Class.forName("rikka.shizuku.Shizuku").getMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+        }.getOrNull()
     }
 
     /** Execute and report success (exit code 0 parsed from output). */
@@ -148,7 +203,14 @@ object Shell {
     }
 
     /** True when privileged commands can actually run right now. */
-    fun available(): Boolean = binder != null || granted()
+    fun available(): Boolean = granted() || binder != null
+
+    /** Human-readable reason for the last failure (drives the UI messages). */
+    fun reason(): String = when {
+        !running() -> "Shizuku service is not running"
+        !granted() -> "GamersHub is not authorised in Shizuku"
+        else -> lastError.ifBlank { "shell rejected the command" }
+    }
 
     /** Last resort: plain app-side exec (no privileges). */
     fun appExec(command: String): String = try {

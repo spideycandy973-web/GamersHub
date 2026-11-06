@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.gamershub.GameSpaceActivity
@@ -157,10 +158,6 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                 energy = repo.energy()
             }
         }
-        if (showIntro) {
-            IntroAnimation(onDone = { showIntro = false })
-        }
-
         // Stateful toggles — the source of truth for animated Toggle composables.
         val toggles = remember { mutableStateMapOf<String, Boolean>() }
         fun toggleGet(key: String): Boolean = toggles[key] ?: repo.toggle(key).also { toggles[key] = it }
@@ -625,6 +622,14 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     )
                     SheetState.None -> {}
                 }
+            }
+        }
+
+        // The intro must be the LAST thing in the tree: it is opaque, and anything
+        // declared after it would cover it completely (that was why it never showed).
+        if (showIntro) {
+            Box(Modifier.fillMaxSize().zIndex(80f)) {
+                IntroAnimation(onDone = { showIntro = false })
             }
         }
     }

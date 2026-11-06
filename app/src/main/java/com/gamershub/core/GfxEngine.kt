@@ -136,6 +136,106 @@ object GfxEngine {
         }
     }
 
+    /* ------------------------------------------------------------------ */
+    /* System-wide graphics pipeline — real props for EVERY app            */
+    /* ------------------------------------------------------------------ */
+
+    data class SysGfx(
+        val vulkan: Boolean = false,
+        val frameBoost: Boolean = false,
+        val noVsync: Boolean = false,
+        val gameDriver: Boolean = false,
+        val gpuComposition: Boolean = true
+    )
+
+    /** Reads back what the device is actually running right now. */
+    fun systemGfxState(): SysGfx {
+        val renderer = Shell.exec("getprop debug.hwui.renderer")?.trim().orEmpty()
+        val backend = Shell.exec("getprop debug.renderengine.backend")?.trim().orEmpty()
+        val vsync = Shell.exec("getprop debug.hwui.disable_vsync")?.trim().orEmpty()
+        val driver = Shell.exec("settings get global game_driver_all_apps")?.trim().orEmpty()
+        val sf = Shell.exec("getprop debug.sf.hw")?.trim().orEmpty()
+        return SysGfx(
+            vulkan = renderer.contains("skiavk", true) || backend.contains("skiavk", true),
+            frameBoost = frameBoostActive(),
+            noVsync = vsync == "true",
+            gameDriver = driver == "1",
+            gpuComposition = sf != "0"
+        )
+    }
+
+    /** Applies (or reverts) the system graphics switches. Returns the log lines. */
+    fun applySystemGfx(opts: SysGfx): List<String> {
+        val log = ArrayList<String>()
+        if (!Shell.available()) {
+            log.add("No shell — grant Shizuku first")
+            return log
+        }
+        if (opts.vulkan) {
+            val ok = Shell.ok("setprop debug.hwui.renderer skiavk") &&
+                Shell.ok("setprop debug.renderengine.backend skiavkthreaded")
+            log.add(if (ok) "Skia Vulkan backend ON (restart apps to pick it up)" else "Vulkan backend rejected")
+        } else {
+            Shell.ok("setprop debug.hwui.renderer skiagl")
+            Shell.ok("setprop debug.renderengine.backend skiaglthreaded")
+            log.add("Renderer back to OpenGL")
+        }
+        if (Shell.ok("setprop debug.hwui.disable_vsync ${opts.noVsync}")) {
+            log.add(if (opts.noVsync) "HWUI vsync disabled (uncapped compositor)" else "HWUI vsync restored")
+        }
+        if (Shell.ok("settings put global game_driver_all_apps ${if (opts.gameDriver) 1 else 0}")) {
+            log.add(if (opts.gameDriver) "Game Driver enabled for all apps" else "Game Driver back to default")
+        }
+        if (Shell.ok("setprop debug.sf.hw ${if (opts.gpuComposition) 1 else 0}")) {
+            log.add(if (opts.gpuComposition) "GPU composition forced" else "GPU composition default")
+        }
+        val boost = Shell.ok(
+            if (opts.frameBoost) "cmd power set-fixed-performance-mode-enabled true && cmd game set --mode performance"
+            else "cmd power set-fixed-performance-mode-enabled false && cmd game set --mode standard"
+        )
+        log.add(if (boost) "Frame pacing ${if (opts.frameBoost) "sustained" else "standard"}" else "Frame pacing unchanged")
+        return log
+    }
+
+    /**
+     * Applies texture / shadow / effects / AA / resolution / fps to the game that
+     * is in front of the panel, using that game's own CVars.
+     */
+    fun applyToForeground(
+        context: Context,
+        texture: String,
+        shadow: String,
+        effects: String,
+        antiAliasing: String,
+        resolution: Int,
+        frameLimit: Int
+    ): Pair<String, ApplyResult> {
+        val pkg = FpsMeter.foregroundPackage(context)
+            ?: currentGamePackage(context)
+            ?: ""
+        if (pkg.isBlank()) return "" to ApplyResult(emptyList(), emptyList(), !Shell.available())
+        val result = applyGameGfx(
+            pkg,
+            GfxOptions(
+                texture = texture,
+                shadow = shadow,
+                effects = effects,
+                antiAliasing = antiAliasing,
+                resolution = resolution,
+                frameLimit = frameLimit
+            )
+        )
+        return pkg to result
+    }
+
+    /** Last launched game, stored by the app when a game is started. */
+    fun currentGamePackage(context: Context): String? = try {
+        context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+            .getString("last_game_pkg", null)
+    } catch (_: Throwable) {
+        null
+    }
+
     private fun even(value: Int): Int = if (value % 2 == 0) value else value - 1
 
     /* ------------------------------------------------------------------ */
@@ -201,30 +301,28 @@ object GfxEngine {
         val files = configFiles(pkg)
         if (files.isEmpty()) return ApplyResult(emptyList(), emptyList(), false)
         val block = cvarBlock(options)
+        // Base64 keeps the payload away from shell quoting entirely.
+        val encoded = android.util.Base64.encodeToString(block.toByteArray(), android.util.Base64.NO_WRAP)
+        val temp = "/data/local/tmp/gh_gfx_${System.currentTimeMillis()}.txt"
+        Shell.exec("echo '$encoded' | base64 -d > $temp")
         val written = ArrayList<String>()
         val failed = ArrayList<String>()
         for (path in files) {
-            if (!path.endsWith("GameUserSettings.ini") && !path.endsWith("UserCustom.ini") && !path.endsWith("Engine.ini")) continue
-            val backup = "$path.ghbak"
-            Shell.exec("cp -n $path $backup")
-            val current = Shell.exec("cat $path") ?: ""
-            val cleaned = current.replace(Regex("; >>> GamersHub graphics.*?; <<< GamersHub graphics <<<\n?", RegexOption.DOT_MATCHES_ALL), "")
-            val temp = "/data/local/tmp/gh_gfx.ini"
-            val escaped = block.replace("'", "'\\''")
-            val write = Shell.exec("printf '%s' '$escaped' > $temp") ?: ""
-            if (write.contains("Permission denied")) {
-                failed.add(path)
-                continue
-            }
-            val merge = Shell.exec("cat $temp >> $path && cat $path | tail -5")
-            if (merge != null && merge.contains("GamersHub graphics", ignoreCase = false)) {
-                written.add(path)
-            } else if (merge != null && merge.isNotBlank()) {
-                written.add(path)
-            } else {
-                failed.add(path)
-            }
+            if (!path.endsWith("GameUserSettings.ini") &&
+                !path.endsWith("UserCustom.ini") &&
+                !path.endsWith("Engine.ini")
+            ) continue
+            // One-time backup of the untouched file.
+            Shell.exec("cp -n '$path' '$path.ghbak'")
+            // Drop the previous managed block, then append the new one.
+            Shell.exec(
+                "sed -i '/>>> GamersHub graphics (managed block) >>>/,/<<< GamersHub graphics <<</d' '$path'"
+            )
+            val appended = Shell.ok("cat $temp >> '$path'")
+            val check = Shell.exec("grep -c 'sg.TextureQuality' '$path'")?.trim()
+            if (appended && (check?.toIntOrNull() ?: 0) > 0) written.add(path) else failed.add(path)
         }
+        Shell.exec("rm -f $temp")
         return ApplyResult(written, failed, false)
     }
 
