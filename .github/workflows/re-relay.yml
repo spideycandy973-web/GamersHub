@@ -1,0 +1,140 @@
+# RE relay: runs REA + Ghidra + jadx on the Red Corner APK and
+# publishes decompiled output to the `re-outputs` branch.
+name: RE Relay
+
+on:
+  push:
+    paths:
+      - '.github/workflows/re-relay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  re:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install JDK + tools
+        run: |
+          set -eux
+          sudo apt-get update -qq && sudo apt-get install -y -qq openjdk-17-jdk unzip
+          java -version
+          # apktool
+          curl -fsSL -o /tmp/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar
+          # jadx-headless-mcp (required by REA android provider)
+          curl -fsSL -o /tmp/jadx-mcp.jar https://github.com/1013503897/jadx-headless-mcp/releases/download/v0.7.1/jadx-headless-mcp-0.7.1-all.jar
+          echo "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75  /tmp/jadx-mcp.jar" | sha256sum -c -
+          # standalone jadx
+          curl -fsSL -o /tmp/jadx.zip https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip
+          unzip -q /tmp/jadx.zip -d /tmp/jadx
+          # Ghidra 12.1.x (REA provider target)
+          curl -fsSL -o /tmp/ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.2_build/ghidra_12.1.2_PUBLIC_20260605.zip
+          unzip -q /tmp/ghidra.zip -d /opt
+          ls /opt | grep -i ghidra
+          # REA
+          npm install -g rea-agents 2>&1 | tail -1
+
+      - name: Extract APK + natives
+        run: |
+          set -eux
+          mkdir -p reout/natives
+          cd re-work
+          unzip -q -o split_config.arm64_v8a.apk -d split
+          cp split/lib/arm64-v8a/*.so ../reout/natives/
+          cd ..
+
+      - name: REA — android resources + package + class inventory
+        env:
+          REA_JADX_MCP_JAR: /tmp/jadx-mcp.jar
+          GHIDRA_INSTALL_DIR: /opt/ghidra_12.1.2_PUBLIC
+        run: |
+          set -ux
+          export GHIDRA_INSTALL_DIR=$(ls -d /opt/ghidra_*_PUBLIC | head -1)
+          cd re-work
+          mkdir -p ../reout/rea
+          rea decode-android-resources base.apk --format json > ../reout/rea/resources.json 2> ../reout/rea/resources.err || true
+          rea inspect-android-package base.apk --format json > ../reout/rea/package.json 2> ../reout/rea/package.err || true
+          rea search-android-classes base.apk --format json --query "" > ../reout/rea/classes.json 2> ../reout/rea/classes.err || true
+          rea project-android-application-graph base.apk --format json > ../reout/rea/graph.json 2> ../reout/rea/graph.err || true
+          cd ..
+
+      - name: jadx — full Java decompile
+        run: |
+          set -eux
+          /tmp/jadx/bin/jadx -d reout/jadx --no-res --threads-count 4 --deobf re-work/base.apk || true
+          cd reout && du -sh jadx && cd ..
+
+      - name: Ghidra — decompile native engines
+        run: |
+          set -ux
+          export GHIDRA_INSTALL_DIR=$(ls -d /opt/ghidra_*_PUBLIC | head -1)
+          mkdir -p reout/ghidra /tmp/ghscripts
+          cat > /tmp/ghscripts/Decompile.java <<'JAVA'
+          import ghidra.app.decompiler.DecompInterface;
+          import ghidra.app.decompiler.DecompileResults;
+          import ghidra.app.util.headless.HeadlessScript;
+          import ghidra.program.model.listing.*;
+          import java.io.*;
+          public class Decompile extends HeadlessScript {
+              @Override
+              public void run() throws Exception {
+                  DecompInterface decomp = new DecompInterface();
+                  decomp.openProgram(currentProgram);
+                  String outPath = getScriptArgs().length > 0 ? getScriptArgs()[0] : "/tmp/gh_out.c";
+                  PrintWriter pw = new PrintWriter(new FileWriter(outPath));
+                  for (Function f : currentProgram.getFunctionManager().getFunctions(true)) {
+                      DecompileResults res = decomp.decompileFunction(f, 30, monitor);
+                      if (res.decompileCompleted()) {
+                          pw.println("// ==== " + f.getName() + " ====");
+                          pw.println(res.getDecompiledFunction().getC());
+                      }
+                  }
+                  pw.close();
+              }
+          }
+          JAVA
+          for so in axeron axeron_adb axinput axangleprobe monkey update; do
+            $GHIDRA_INSTALL_DIR/support/analyzeHeadless /tmp/ghidra_proj "$so" \
+              -import "reout/natives/lib$so.so" -processor AARCH64:LE:64:v8A \
+              -scriptPath /tmp/ghscripts \
+              -postScript Decompile.java "/tmp/gh_out_$so.c" -deleteProject \
+              > "reout/ghidra/${so}_log.txt" 2>&1 || true
+            cp "/tmp/gh_out_$so.c" "reout/ghidra/${so}.c" 2>/dev/null || true
+          done
+          ls reout/ghidra | head
+
+      - name: Strings on natives
+        run: |
+          set -ux
+          for so in reout/natives/*.so; do strings -n 5 "$so" > "reout/ghidra/$(basename $so).strings.txt" || true; done
+
+      - name: Publish outputs
+        run: |
+          set -ux
+          du -sh reout/* | head
+          cd reout
+          zip -qr ../re_small.zip rea ghidra 2>/dev/null || true
+          zip -qr ../re_jadx.zip jadx 2>/dev/null || true
+          cd ..
+          ls -la re_small.zip re_jadx.zip
+          # split anything over 80MB
+          rm -rf parts && mkdir parts
+          for f in re_small.zip re_jadx.zip; do
+            [ -f "$f" ] || continue
+            sz=$(stat -c%s "$f")
+            if [ "$sz" -gt 80000000 ]; then split -b 75m "$f" "parts/${f}.part"; else cp "$f" parts/; fi
+          done
+          ls -la parts/
+          git config user.name "re-relay"
+          git config user.email "relay@users.noreply.github.com"
+          git checkout --orphan re-outputs
+          git rm -rq --cached . || true
+          git add -f parts/
+          git commit -m "RE outputs $(date -u +%H%M%S)"
+          git push -f origin re-outputs
+          echo "PUBLISH OK"
+
+# touch: re-trigger RE relay with the real APK inputs
