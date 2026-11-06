@@ -251,7 +251,16 @@ private fun GameSpaceScreen(
                 )
             }
 
-            Column(Modifier.offset(x = w * 0.228f, y = h * 0.086f)) {
+            // divider between the lockup and the level block, like the reference
+            Box(
+                Modifier
+                    .offset(x = w * 0.216f, y = h * 0.072f)
+                    .width(1.dp)
+                    .height(h * 0.098f)
+                    .background(Color(0x1FFFFFFF))
+            )
+
+            Column(Modifier.offset(x = w * 0.232f, y = h * 0.080f)) {
                 Text(
                     "LVL ${level.coerceAtLeast(2).coerceAtMost(3)}/3",
                     style = MaterialTheme.typography.labelLarge,
