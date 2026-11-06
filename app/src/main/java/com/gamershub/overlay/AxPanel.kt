@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -154,6 +158,10 @@ fun AxPanel(onClose: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val stats = rememberPanelStats()
+    // The panel lives at the bottom of the screen: on a landscape phone the window is
+    // short, so cap the surface at 70 % of the display and let it scroll instead of
+    // clipping its own top rows.
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.70f).dp
     var showStrip by remember { mutableStateOf(true) }
     var status by remember { mutableStateOf("AX-MODE ready") }
     var busy by remember { mutableStateOf(false) }
@@ -168,9 +176,12 @@ fun AxPanel(onClose: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
+            .heightIn(max = maxHeight)
             .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
             .background(AX_PANEL)
             .border(1.dp, Color(0x33E0231F), RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
             .padding(bottom = 6.dp)
     ) {
         // grabber (tap to close)
