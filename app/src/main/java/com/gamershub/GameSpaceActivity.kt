@@ -470,11 +470,11 @@ private fun GsHeader(
         Spacer(Modifier.width(9.dp))
         Column {
             Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.InkSoft, fontSize = 10.sp, letterSpacing = 3.sp)
-            Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.InkText, fontSize = 25.sp, letterSpacing = 0.5.sp)
+            Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.InkText, fontSize = 23.sp, letterSpacing = 0.5.sp)
         }
-        Spacer(Modifier.width(14.dp))
-        Box(Modifier.width(1.dp).height(32.dp).background(Color(0x26FFFFFF)))
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(11.dp))
+        Box(Modifier.width(1.dp).height(30.dp).background(Color(0x26FFFFFF)))
+        Spacer(Modifier.width(11.dp))
         Column {
             Text(
                 "LVL $level/3",
@@ -488,7 +488,7 @@ private fun GsHeader(
                 repeat(3) { i ->
                     Box(
                         Modifier
-                            .width(22.dp)
+                            .width(19.dp)
                             .height(5.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(if (i < level) GC.Signal else Color(0x33FFFFFF))
@@ -526,9 +526,9 @@ private fun GsHeader(
                 fontSize = 13.sp
             )
         }
-        Spacer(Modifier.width(16.dp))
-        Box(Modifier.width(1.dp).height(30.dp).background(Color(0x26FFFFFF)))
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.width(1.dp).height(28.dp).background(Color(0x26FFFFFF)))
+        Spacer(Modifier.width(12.dp))
 
         Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -544,12 +544,12 @@ private fun GsHeader(
             Spacer(Modifier.height(3.dp))
             Text(clock, style = MaterialTheme.typography.labelLarge, color = GC.InkSoft, fontSize = 14.sp)
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(12.dp))
         Box(
-            Modifier.size(38.dp).clip(CircleShape).clickable(onClick = onClose),
+            Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onClose),
             contentAlignment = Alignment.Center
         ) {
-            AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close Game Space", tint = GC.InkText, modifier = Modifier.size(26.dp))
+            AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close Game Space", tint = GC.InkText, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -558,8 +558,8 @@ private fun GsHeader(
 private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
-            .width(70.dp)
-            .height(46.dp)
+            .width(60.dp)
+            .height(44.dp)
             .clip(ChevShape)
             .background(if (selected) GC.Signal else Color(0xFF141827))
             .clickable(onClick = onClick),
@@ -741,7 +741,7 @@ private fun LaunchBar(freeMb: Long, enabled: Boolean, onLaunch: () -> Unit, onBo
             modifier = Modifier
                 .fillMaxHeight()
                 .clickable(enabled = enabled, onClick = onLaunch)
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 20.dp)
         ) {
             Text(
                 "LAUNCH",
@@ -757,7 +757,7 @@ private fun LaunchBar(freeMb: Long, enabled: Boolean, onLaunch: () -> Unit, onBo
             modifier = Modifier
                 .fillMaxHeight()
                 .clickable(onClick = onBoost)
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 12.dp)
         ) {
             AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(17.dp))
             Spacer(Modifier.width(5.dp))
@@ -830,7 +830,7 @@ private fun TickRow(filled: Int, segments: Int) {
         repeat(segments) { i ->
             Box(
                 Modifier
-                    .width(13.dp)
+                    .width(11.dp)
                     .height(5.dp)
                     .clip(RoundedCornerShape(1.5.dp))
                     .background(if (i < filled) GC.Signal else Color(0x33FFFFFF))
@@ -862,9 +862,10 @@ private fun StatBox(
             title,
             style = MaterialTheme.typography.labelMedium,
             color = GC.InkDim,
-            fontSize = 9.sp,
-            letterSpacing = 1.9.sp,
-            maxLines = 1
+            fontSize = 8.sp,
+            letterSpacing = 1.2.sp,
+            maxLines = 1,
+            softWrap = false
         )
         Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
