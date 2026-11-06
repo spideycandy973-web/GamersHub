@@ -78,6 +78,7 @@ import com.gamershub.core.capture.ProjectionActivity
 import com.gamershub.core.capture.Recorder
 import com.gamershub.core.capture.RecorderService
 import com.gamershub.core.capture.Stream
+import com.gamershub.core.capture.StreamService
 import com.gamershub.core.shizuku.Shell
 import com.gamershub.data.DeviceStats
 import com.gamershub.ui.components.AIcon
@@ -1080,7 +1081,7 @@ private fun RecPage(api: AxApi) {
             if (Stream.isStreaming) "STOP" else "LIVE"
         ) {
             if (Stream.isStreaming) {
-                Stream.stop(context)
+                StreamService.stop(context)
                 api.say("Stream stopped")
             } else if (url.isBlank()) {
                 api.say("Set the RTMP URL in the app's Live sheet first")

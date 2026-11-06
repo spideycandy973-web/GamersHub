@@ -34,7 +34,7 @@ class ProjectionActivity : Activity() {
         if (requestCode == REQ && resultCode == RESULT_OK && data != null) {
             val mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_RECORD
             if (mode == MODE_LIVE) {
-                Stream.start(
+                StreamService.start(
                     this,
                     resultCode,
                     data,

@@ -148,15 +148,23 @@ object Shell {
         }
     }
 
-    /** Runs the command in a real shell process owned by the Shizuku server. */
+    /**
+     * Runs the command in a real shell process owned by the Shizuku server.
+     *
+     * `Shizuku.newProcess` is the API that needs nothing but the granted
+     * permission; the SDK marks it as restricted, so it is reached through
+     * reflection instead of a direct call.
+     */
     private fun directExec(command: String): String? {
         if (!granted()) return null
+        val method = newProcess ?: return null
         return try {
-            val process = Shizuku.newProcess(
+            val process = method.invoke(
+                null,
                 arrayOf("sh", "-c", "$command; echo __GH_EXIT__=$?"),
                 null,
                 null
-            )
+            ) as? Process ?: return null
             val out = StringBuilder()
             val reader = Thread {
                 runCatching { process.inputStream.bufferedReader().forEachLine { out.appendLine(it) } }
@@ -174,6 +182,17 @@ object Shell {
             lastError = t.message ?: "exec failed"
             null
         }
+    }
+
+    private val newProcess: java.lang.reflect.Method? by lazy {
+        runCatching {
+            Class.forName("rikka.shizuku.Shizuku").getMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+        }.getOrNull()
     }
 
     /** Execute and report success (exit code 0 parsed from output). */
