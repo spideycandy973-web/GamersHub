@@ -331,11 +331,14 @@ private fun deviceLine(): String {
 private fun MonitoringGrid(cpu: DeviceStats.Cpu, mem: DeviceStats.Mem, storage: DeviceStats.Storage) {
     androidx.compose.foundation.layout.BoxWithConstraints {
         if (maxWidth < 520.dp) {
-            CpuCard(cpu, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
-            RamCard(mem, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
-            StorageCard(storage, Modifier.fillMaxWidth())
+            // A Box stacks its children on top of each other — the stacked layout
+            // must be a Column, otherwise the cards overlap (CPU gauge under the
+            // Storage card).
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CpuCard(cpu, Modifier.fillMaxWidth())
+                RamCard(mem, Modifier.fillMaxWidth())
+                StorageCard(storage, Modifier.fillMaxWidth())
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CpuCard(cpu, Modifier.weight(1f))
