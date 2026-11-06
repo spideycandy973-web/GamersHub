@@ -375,27 +375,14 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         TopTile(Icons.Filled.Dns, "DNS\nTuner", "--") { api.nav(AxPage.NET) }
     }
 
-    // Angled red beams that frame the band, like the reference console.
-    Box(Modifier.fillMaxWidth().height(12.dp)) {
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-46).dp)
-                .width(210.dp)
-                .height(3.dp)
-                .graphicsLayer { rotationZ = -7f }
-                .background(AX_RED)
-        )
-        Box(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 46.dp)
-                .width(210.dp)
-                .height(3.dp)
-                .graphicsLayer { rotationZ = 7f }
-                .background(AX_RED)
-        )
-    }
+        // clean accent divider (the old angled beams read as noise, not design)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .height(1.dp)
+            .background(Color(0x24FFFFFF))
+    )
 
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -405,9 +392,9 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         Box(
             Modifier
                 .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(50))
                 .background(AX_RED)
-                .padding(horizontal = 26.dp, vertical = 4.dp)
+                .padding(horizontal = 24.dp, vertical = 5.dp)
         ) {
             Text(
                 "AX-MODE",
