@@ -24,6 +24,9 @@ import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.TouchApp
@@ -38,6 +41,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gamershub.core.MemoryCleaner
 import com.gamershub.core.PingEngine
 import com.gamershub.core.ScreenshotEngine
 import com.gamershub.overlay.CrosshairOverlayService
@@ -59,6 +65,7 @@ import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.StatusPill
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * TOOLS — the complete feature surface of the clone in one place.
@@ -75,6 +82,8 @@ fun ToolsScreen(
 ) {
     val context = LocalContext.current
     val accent = LocalAccent.current
+    val scope = rememberCoroutineScope()
+    var lastClean by remember { androidx.compose.runtime.mutableStateOf("") }
 
     val live by produceState(initialValue = mapOf<String, Boolean>()) {
         while (true) {
@@ -283,18 +292,59 @@ fun ToolsScreen(
         )
 
         SectionHead("PERFORMANCE")
+        SectionHead("MEMORY${if (lastClean.isEmpty()) "" else " · $lastClean"}")
+
         ToolRow(
-            icon = Icons.Filled.Bolt,
-            title = "Quick Boost",
-            subtitle = "Kill background · drop caches · free RAM",
+            icon = Icons.Filled.CleaningServices,
+            title = "Clean Memory",
+            subtitle = "Reclaim cached processes · trim app caches",
             active = false,
             accent = accent,
             onToggle = null,
             onConfig = {
-                val freed = com.gamershub.boostNow(context)
-                Toast.makeText(context, "Boosted — $freed MB freed", Toast.LENGTH_SHORT).show()
+                scope.launch {
+                    val report = MemoryCleaner.clean(context)
+                    lastClean = "${report.freedMb} MB free"
+                    Toast.makeText(context, "Clean — ${report.freedMb} MB freed", Toast.LENGTH_SHORT).show()
+                }
+            },
+            configLabel = "CLEAN"
+        )
+        ToolRow(
+            icon = Icons.Filled.Bolt,
+            title = "Boost Memory",
+            subtitle = "Clean + drop page cache · instant free RAM",
+            active = false,
+            accent = accent,
+            onToggle = null,
+            onConfig = {
+                scope.launch {
+                    val report = MemoryCleaner.boost(context)
+                    lastClean = "${report.freedMb} MB free"
+                    Toast.makeText(context, "Boost — ${report.freedMb} MB freed", Toast.LENGTH_SHORT).show()
+                }
             },
             configLabel = "BOOST"
+        )
+        ToolRow(
+            icon = Icons.Filled.DeleteSweep,
+            title = "Deep Clean",
+            subtitle = "Force-stop background apps · trim caches · drop cache",
+            active = false,
+            accent = accent,
+            onToggle = null,
+            onConfig = {
+                scope.launch {
+                    val report = MemoryCleaner.deepClean(context)
+                    lastClean = "${report.freedMb} MB · ${report.appsStopped} apps"
+                    Toast.makeText(
+                        context,
+                        "Deep clean — ${report.freedMb} MB freed, ${report.appsStopped} apps stopped",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            configLabel = "DEEP"
         )
         ToolRow(
             icon = Icons.Filled.ScreenRotation,

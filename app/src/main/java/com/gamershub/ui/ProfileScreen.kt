@@ -36,10 +36,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
@@ -68,6 +71,7 @@ fun ProfileScreen(
     onSettings: () -> Unit
 ) {
     val accent = LocalAccent.current
+    val context = LocalContext.current
     Column(Modifier.fillMaxSize().background(GC.Bg)) {
         // ---- Fixed opaque header: scrolling content can never overlap it ----
         Row(
@@ -106,7 +110,7 @@ fun ProfileScreen(
                 .padding(bottom = 120.dp)
         ) {
         Text(
-            "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · v1.3.1",
+            "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · $version",
             Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.labelMedium,
             color = GC.TextDim,
@@ -251,7 +255,7 @@ fun ProfileScreen(
                 Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · v1.3.1",
+                    "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · $version",
                     style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp
                 )
             }
@@ -306,15 +310,30 @@ fun ProfileScreen(
                     )
                 }
                 Spacer(Modifier.width(10.dp))
-                CircleIconButton(Icons.Filled.Chat, onClick = { })
+                CircleIconButton(
+                    Icons.Filled.Chat,
+                    onClick = { openLink(context, "https://github.com/spideycandy973-web/GamersHub/issues") }
+                )
                 Spacer(Modifier.width(8.dp))
-                CircleIconButton(Icons.Filled.MusicNote, onClick = { })
+                CircleIconButton(
+                    Icons.Filled.MusicNote,
+                    onClick = { openLink(context, "https://github.com/spideycandy973-web/GamersHub/releases") }
+                )
             }
         }
 
         Spacer(Modifier.height(14.dp))
         Text(deviceLine(), Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
         }
+    }
+}
+
+/** Real intent — every button in the app opens something. */
+private fun openLink(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }
 
@@ -331,11 +350,14 @@ private fun deviceLine(): String {
 private fun MonitoringGrid(cpu: DeviceStats.Cpu, mem: DeviceStats.Mem, storage: DeviceStats.Storage) {
     androidx.compose.foundation.layout.BoxWithConstraints {
         if (maxWidth < 520.dp) {
-            CpuCard(cpu, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
-            RamCard(mem, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
-            StorageCard(storage, Modifier.fillMaxWidth())
+            // A Box stacks its children on top of each other — the stacked layout
+            // must be a Column, otherwise the cards overlap (CPU gauge under the
+            // Storage card).
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CpuCard(cpu, Modifier.fillMaxWidth())
+                RamCard(mem, Modifier.fillMaxWidth())
+                StorageCard(storage, Modifier.fillMaxWidth())
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CpuCard(cpu, Modifier.weight(1f))

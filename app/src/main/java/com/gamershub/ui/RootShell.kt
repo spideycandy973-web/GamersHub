@@ -502,22 +502,13 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         version = "App",
                         playMinutes = repo.playMinutes(current.app.pkg),
                         onLaunch = { gameSpace ->
-                            val cost = if (gameSpace) 80 else 40
-                            if (repo.premium() || energy >= cost) {
-                                if (!repo.premium()) {
-                                    repo.setEnergy(energy - cost)
-                                    energy = repo.energy()
-                                }
-                                pendingLaunch = current.app
-                                sheet = SheetState.None
-                                context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
-                                    .edit().putString("last_game_pkg", current.app.pkg).apply()
-                                if (gameSpace) openGameSpace(context, current.app.pkg)
-                                else repo.launch(current.app.pkg)
-                            } else {
-                                pendingLaunch = current.app
-                                sheet = SheetState.LowEnergy
-                            }
+                            // Launches are free — no energy gate, no ads, no waiting.
+                            pendingLaunch = current.app
+                            sheet = SheetState.None
+                            context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+                                .edit().putString("last_game_pkg", current.app.pkg).apply()
+                            if (gameSpace) openGameSpace(context, current.app.pkg)
+                            else repo.launch(current.app.pkg)
                         },
                         onDismiss = { sheet = SheetState.None }
                     )
