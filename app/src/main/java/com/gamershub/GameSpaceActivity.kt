@@ -427,8 +427,8 @@ private fun GameSpaceScreen(
                             onSelect = { currentPkg = entry.pkg },
                             onFilter = null,
                             artSize = minOf(h * 0.075f, cardH * 0.46f),
-                            nameSize = minOf(h * 0.024f, cardH.value * 0.17f).sp,
-                            metaSize = minOf(h * 0.016f, cardH.value * 0.115f).sp,
+                            nameSize = minOf(h.value * 0.024f, cardH.value * 0.17f).sp,
+                            metaSize = minOf(h.value * 0.016f, cardH.value * 0.115f).sp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(cardH)
