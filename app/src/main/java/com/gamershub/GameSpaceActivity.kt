@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -41,6 +42,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -76,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.data.AppRepo
+import com.gamershub.data.InstalledApp
 import com.gamershub.data.DeviceStats
 import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.theme.GC
@@ -137,26 +140,33 @@ private fun GameSpaceScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
-    val app = remember(pkg) {
+    // Every selected app, each with its real launcher icon. The app we were
+    // started with is added to the selection if it is not there yet, so its icon
+    // and name always resolve.
+    var library by remember { mutableStateOf(repo.addedApps()) }
+    var currentPkg by remember { mutableStateOf(pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }) }
+    LaunchedEffect(pkg) {
+        if (pkg.isNotBlank() && !repo.isAdded(pkg)) repo.setAdded(pkg, true)
+        library = repo.addedApps()
+        if (currentPkg.isBlank()) currentPkg = pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }
+    }
+    val current = library.firstOrNull { it.pkg == currentPkg }
+    val currentIcon = remember(currentPkg, library) {
+        current?.icon ?: repo.iconFor(currentPkg)
+    }
+    val appName = current?.name ?: currentPkg.ifBlank { "No app selected" }
+    val appVersion = remember(currentPkg) {
         try {
-            val pm = context.packageManager
-            val info = pm.getApplicationInfo(pkg, 0)
-            val icon: androidx.compose.ui.graphics.ImageBitmap = run {
-                val d = pm.getApplicationIcon(pkg)
-                val bmp = android.graphics.Bitmap.createBitmap(128, 128, android.graphics.Bitmap.Config.ARGB_8888)
-                val c = android.graphics.Canvas(bmp)
-                d.setBounds(0, 0, 128, 128); d.draw(c)
-                bmp.asImageBitmap()
-            }
-            Triple(pm.getApplicationLabel(info).toString(), pm.getPackageInfo(pkg, 0).versionName ?: "?", icon)
+            context.packageManager.getPackageInfo(currentPkg, 0).versionName ?: "?"
         } catch (_: Throwable) {
-            Triple(pkg, "?", null)
+            "?"
         }
     }
     var showControl by remember { mutableStateOf(false) }
     var showTexture by remember { mutableStateOf(false) }
     var showTouch by remember { mutableStateOf(false) }
     var showDisplay by remember { mutableStateOf(false) }
+    var showApps by remember { mutableStateOf(false) }
     var panelRunning by remember { mutableStateOf(FloatingPanelService.isRunning) }
 
     // Live stats
@@ -208,18 +218,17 @@ private fun GameSpaceScreen(
 
                 // Chevron tabs
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    ChevronTab(Icons.Filled.Bolt, selected = !showControl && !showTexture) {
-                        showControl = false; showTexture = false
+                    ChevronTab(Icons.Filled.Bolt, selected = !showControl && !showTexture && !showApps) {
+                        showControl = false; showTexture = false; showApps = false
                     }
                     ChevronTab(Icons.Filled.GraphicEq, selected = showControl) {
-                        showControl = true; showTexture = false
+                        showControl = true; showTexture = false; showApps = false
                     }
                     ChevronTab(Icons.Filled.Memory, selected = showTexture) {
-                        showTexture = true; showControl = false
+                        showTexture = true; showControl = false; showApps = false
                     }
-                    ChevronTab(Icons.Filled.Apps, selected = false) {
-                        panelRunning = !panelRunning
-                        if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
+                    ChevronTab(Icons.Filled.Apps, selected = showApps) {
+                        showApps = true; showControl = false; showTexture = false
                     }
                 }
 
@@ -253,6 +262,45 @@ private fun GameSpaceScreen(
                 }
             }
 
+            // ---- app strip: every app you selected, real icons ----
+            if (library.isNotEmpty()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    library.forEach { entry ->
+                        AppChip(
+                            entry = entry,
+                            selected = entry.pkg == currentPkg,
+                            onClick = { currentPkg = entry.pkg }
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x22FFFFFF))
+                        .clickable { showApps = true }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "No apps selected yet — tap to pick apps",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = GC.Text,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
             Spacer(Modifier.height(12.dp))
 
             // ---- Main row ----
@@ -282,23 +330,23 @@ private fun GameSpaceScreen(
                             verticalAlignment = Alignment.Bottom,
                             modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
                         ) {
-                            if (app.third != null) {
+                            if (currentIcon != null) {
                                 Image(
-                            painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.third!!),
-                                    contentDescription = null,
+                                    painter = androidx.compose.ui.graphics.painter.BitmapPainter(currentIcon),
+                                    contentDescription = appName,
                                     modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
                                 )
                             }
                             Spacer(Modifier.width(12.dp))
                             Column {
-                                Text(app.first, style = MaterialTheme.typography.titleMedium, color = Color.White, fontSize = 20.sp)
-                                Text("0m · v${app.second}", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 12.sp)
+                                Text(appName, style = MaterialTheme.typography.titleMedium, color = Color.White, fontSize = 20.sp)
+                                Text("${repo.playMinutes(currentPkg)}m · v$appVersion", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 12.sp)
                             }
                         }
                     }
                     Spacer(Modifier.height(10.dp))
-                    Text(app.first, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 26.sp)
-                    Text(pkg, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                    Text(appName, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 26.sp)
+                    Text(currentPkg, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // LAUNCH (angular)
@@ -307,16 +355,13 @@ private fun GameSpaceScreen(
                             modifier = Modifier
                                 .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
                                 .background(accent)
-                                .clickable { onLaunch(pkg) }
+                                .clickable { if (currentPkg.isNotBlank()) onLaunch(currentPkg) }
                                 .padding(horizontal = 22.dp, vertical = 13.dp)
                         ) {
                             Text("LAUNCH", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 17.sp, letterSpacing = 2.sp)
                             Spacer(Modifier.width(10.dp))
                             Box(Modifier.width(1.dp).height(16.dp).background(Color(0x44FFFFFF)))
                             Spacer(Modifier.width(10.dp))
-                            AIcon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("80", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 16.sp)
                         }
                         Box(
                             Modifier
@@ -383,13 +428,38 @@ private fun GameSpaceScreen(
             )
         }
 
+        // ---- Apps panel: pick and launch any selected app ----
+        AnimatedVisibility(
+            visible = showApps,
+            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+        ) {
+            AppsPanel(
+                library = library,
+                currentPkg = currentPkg,
+                onSelect = { currentPkg = it },
+                onLaunch = { p -> onLaunch(p) },
+                onPickApps = {
+                    showApps = false
+                    runCatching {
+                        context.startActivity(
+                            Intent(context, com.gamershub.MainActivity::class.java)
+                                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, "apps#" + System.currentTimeMillis())
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                },
+                onDismiss = { showApps = false }
+            )
+        }
+
         // ---- Texture Filtering panel ----
         AnimatedVisibility(
             visible = showTexture,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
             exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
         ) {
-            TexturePanel(pkg = pkg, repo = repo, appName = app.first, onDismiss = { showTexture = false })
+            TexturePanel(pkg = currentPkg, repo = repo, appName = appName, onDismiss = { showTexture = false })
         }
 
         // ---- Touch / Display settings panels ----
@@ -947,6 +1017,181 @@ private fun SidePanel(
                     .padding(16.dp),
                 content = content
             )
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* app strip + app picker                                              */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun AppChip(entry: InstalledApp, selected: Boolean, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(58.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) accent.copy(alpha = 0.20f) else Color(0x14FFFFFF))
+            .then(
+                if (selected) Modifier.border(1.dp, accent, RoundedCornerShape(12.dp)) else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 5.dp)
+    ) {
+        Image(
+            painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
+            contentDescription = entry.name,
+            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp))
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            entry.name.take(9),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) accent else GC.TextSoft,
+            fontSize = 8.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun AppsPanel(
+    library: List<InstalledApp>,
+    currentPkg: String,
+    onSelect: (String) -> Unit,
+    onLaunch: (String) -> Unit,
+    onPickApps: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = LocalAccent.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xCC000000))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 460.dp)
+                .clip(CutCornerShape(topStart = 6.dp, topEnd = 24.dp, bottomEnd = 6.dp, bottomStart = 24.dp))
+                .background(Color(0xF0120709))
+                .border(1.dp, Color(0x44FFFFFF), CutCornerShape(topStart = 6.dp, topEnd = 24.dp, bottomEnd = 6.dp, bottomStart = 24.dp))
+                .clickable { }
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AIcon(Icons.Filled.Apps, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("MY APPS", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                    Text(
+                        "${library.size} selected · tap to choose, LAUNCH to open",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GC.TextDim,
+                        fontSize = 11.sp
+                    )
+                }
+                Box(
+                    Modifier.size(30.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(16.dp))
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            if (library.isEmpty()) {
+                Text(
+                    "No apps selected yet. Tap ADD APPS to choose the apps you want in this Game Space.",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GC.TextSoft,
+                    fontSize = 13.sp
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(accent)
+                        .clickable(onClick = onPickApps)
+                        .padding(horizontal = 18.dp, vertical = 11.dp)
+                ) {
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.sp)
+                }
+            } else {
+                Column(
+                    Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    library.chunked(4).forEach { rowApps ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            rowApps.forEach { entry ->
+                                val selected = entry.pkg == currentPkg
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(13.dp))
+                                        .background(if (selected) accent.copy(alpha = 0.18f) else Color(0x14FFFFFF))
+                                        .then(
+                                            if (selected) Modifier.border(1.dp, accent, RoundedCornerShape(13.dp))
+                                            else Modifier
+                                        )
+                                        .clickable { onSelect(entry.pkg) }
+                                        .padding(vertical = 9.dp)
+                                ) {
+                                    Image(
+                                        painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
+                                        contentDescription = entry.name,
+                                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(11.dp))
+                                    )
+                                    Spacer(Modifier.height(5.dp))
+                                    Text(
+                                        entry.name,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selected) accent else GC.Text,
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            repeat(4 - rowApps.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
+                    .background(accent)
+                    .clickable { if (currentPkg.isNotBlank()) onLaunch(currentPkg) }
+                    .padding(vertical = 13.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "LAUNCH ${library.firstOrNull { it.pkg == currentPkg }?.name ?: ""}".trim(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    letterSpacing = 2.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

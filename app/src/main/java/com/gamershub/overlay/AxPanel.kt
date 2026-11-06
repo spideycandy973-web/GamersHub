@@ -132,6 +132,7 @@ private class AxState {
     var shadow by mutableStateOf("HIGH")
     var effects by mutableStateOf("HIGH")
     var antiAliasing by mutableStateOf("HIGH")
+    var sharpness by mutableStateOf(60)
     var resolution by mutableStateOf(100)
     var fpsLimit by mutableStateOf(0)
 
@@ -257,6 +258,7 @@ fun AxPanel(onClose: () -> Unit) {
         st.shadow = prefs.getString("ax_shadow", "HIGH") ?: "HIGH"
         st.effects = prefs.getString("ax_effects", "HIGH") ?: "HIGH"
         st.antiAliasing = prefs.getString("ax_aa", "HIGH") ?: "HIGH"
+        st.sharpness = prefs.getInt("ax_sharp", 60)
         st.resolution = prefs.getInt("ax_res", 100)
         st.fpsLimit = prefs.getInt("ax_fps", 0)
         st.vulkan = prefs.getBoolean("ax_vulkan", false)
@@ -513,7 +515,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
             Tile(Icons.Filled.Bolt, "Quick\nBoost", "FREE") {
                 api.work {
                     val report = MemoryCleaner.boost(context)
-                    api.say("Boost · ${report.freedMb} MB freed")
+                    api.say(memoryText("Boost", report, context))
                 }
             }
             Tile(Icons.Filled.NotificationsOff, "Do Not\nDisturb", "SILENT") {
@@ -600,19 +602,70 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         MemoryKey("CLEAN", Icons.Filled.CleaningServices) {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say("Clean · ${report.freedMb} MB freed")
+                api.say(memoryText("Clean", report, context))
             }
         }
         MemoryKey("BOOST", Icons.Filled.Bolt) {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say("Boost · ${report.freedMb} MB freed")
+                api.say(memoryText("Boost", report, context))
             }
         }
         MemoryKey("DEEP CLEAN", Icons.Filled.Memory) {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say("Deep clean · ${report.freedMb} MB · ${report.appsStopped} apps")
+                api.say(memoryText("Deep clean", report, context))
+            }
+        }
+    }
+
+    // ---- graphics quick row: texture · shadows · sharpness (tap to cycle) ----
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        QuickGfx("TEXTURE", st.texture) {
+            st.texture = cycle(levels, st.texture, 1)
+            api.say("Texture ${st.texture} — APPLY in Graphics to write it")
+        }
+        QuickGfx("SHADOW", st.shadow) {
+            st.shadow = cycle(levels, st.shadow, 1)
+            api.say("Shadows ${st.shadow}")
+        }
+        QuickGfx("SHARP", "${st.sharpness}%") {
+            st.sharpness = when {
+                st.sharpness < 40 -> 40
+                st.sharpness < 70 -> 70
+                st.sharpness < 100 -> 100
+                else -> 0
+            }
+            api.say("Sharpness ${st.sharpness}%")
+        }
+        QuickGfx("APPLY", "GFX") {
+            api.work {
+                val result = withContext(Dispatchers.IO) {
+                    GfxEngine.applyToForeground(
+                        context,
+                        st.texture,
+                        st.shadow,
+                        st.effects,
+                        st.antiAliasing,
+                        st.resolution,
+                        st.sharpness,
+                        st.fpsLimit
+                    )
+                }
+                val (pkg, applied) = result
+                api.say(
+                    when {
+                        applied.needsShell -> "Grant Shizuku: ${Shell.reason()}"
+                        pkg.isBlank() -> "Open a game first"
+                        applied.written.isNotEmpty() ->
+                            "${pkg.substringAfterLast('.')} · ${applied.written.size} file(s) written"
+                        else -> "No writable config — system switches only"
+                    }
+                )
             }
         }
     }
@@ -754,6 +807,7 @@ private fun GfxPage(api: AxApi) {
             .putString("ax_effects", st.effects)
             .putString("ax_aa", st.antiAliasing)
             .putInt("ax_res", st.resolution)
+            .putInt("ax_sharp", st.sharpness)
             .putInt("ax_fps", st.fpsLimit)
             .apply()
     }
@@ -809,6 +863,12 @@ private fun GfxPage(api: AxApi) {
             onMinus = { st.resolution = (st.resolution - 10).coerceAtLeast(50); save() }
         )
         StepRow(
+            label = "SHARPNESS",
+            value = "${st.sharpness}%",
+            onPlus = { st.sharpness = (st.sharpness + 10).coerceAtMost(100); save() },
+            onMinus = { st.sharpness = (st.sharpness - 10).coerceAtLeast(0); save() }
+        )
+        StepRow(
             label = "FPS LIMIT",
             value = if (st.fpsLimit == 0) "UNLIMITED" else "${st.fpsLimit}",
             onPlus = { st.fpsLimit = nextFps(st.fpsLimit, 1); save() },
@@ -825,6 +885,7 @@ private fun GfxPage(api: AxApi) {
                         st.effects,
                         st.antiAliasing,
                         st.resolution,
+                        st.sharpness,
                         st.fpsLimit
                     )
                 }
@@ -946,19 +1007,19 @@ private fun PerfPage(api: AxApi, stats: PanelStats) {
         ActionRow("CLEAN MEMORY", "am kill-all + pm trim-caches", "CLEAN") {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say("Clean · ${report.freedMb} MB freed")
+                api.say(memoryText("Clean", report, context))
             }
         }
         ActionRow("BOOST MEMORY", "Clean + page-cache drop", "BOOST") {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say("Boost · ${report.freedMb} MB freed")
+                api.say(memoryText("Boost", report, context))
             }
         }
         ActionRow("DEEP CLEAN", "Also force-stops background apps", "DEEP") {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say("Deep clean · ${report.freedMb} MB · ${report.appsStopped} apps")
+                api.say(memoryText("Deep clean", report, context))
             }
         }
     }
@@ -1242,6 +1303,16 @@ private fun InfoPage(api: AxApi, stats: PanelStats) {
 /* building blocks                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Plain-language result of a memory action. */
+private fun memoryText(label: String, report: MemoryCleaner.Report, context: Context): String {
+    val freeNow = MemoryCleaner.availableMb(context)
+    return if (report.freedMb > 0 || report.appsStopped > 0) {
+        "$label · ${report.freedMb} MB freed · ${report.appsStopped} apps · $freeNow MB free now"
+    } else {
+        "$label · nothing to reclaim · $freeNow MB already free"
+    }
+}
+
 private fun cycle(list: List<String>, current: String, step: Int): String {
     val index = list.indexOf(current)
     if (index < 0) return list.first()
@@ -1501,6 +1572,21 @@ private fun ChevronGauge(label: String, pct: Int, flip: Boolean) {
         }
         Spacer(Modifier.height(2.dp))
         Text("$pct%", color = Color(0xAAFFFFFF), fontSize = 8.sp)
+    }
+}
+
+@Composable
+private fun QuickGfx(label: String, value: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x1FFFFFFF))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(label, color = AX_DIM, fontSize = 7.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(value, color = AX_RED, fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
