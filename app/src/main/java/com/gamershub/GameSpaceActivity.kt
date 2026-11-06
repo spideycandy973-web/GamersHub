@@ -1476,47 +1476,75 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     .verticalScroll(rememberScrollState())
                     .padding(14.dp)
             ) {
-                Stepper("LOSSLESS SCALING", if (lossless >= 100) "OFF" else "$lossless%") {
+                Stepper(
+                    "LOSSLESS SCALING", if (lossless >= 100) "OFF" else "$lossless%",
+                    onMinus = {
                     lossless = (lossless - 10).coerceAtLeast(50); apply()
-                } {
+                    },
+                    onPlus = {
                     lossless = (lossless + 10).coerceAtMost(100); apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("RENDER SCALE (THIS APP)", "$renderScale%") {
+                Stepper(
+                    "RENDER SCALE (THIS APP)", "$renderScale%",
+                    onMinus = {
                     renderScale = (renderScale - 10).coerceAtLeast(50); apply()
-                } {
+                    },
+                    onPlus = {
                     renderScale = (renderScale + 10).coerceAtMost(100); apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("FPS LIMIT", if (fps == 0) "UNLIMITED" else "$fps") {
+                Stepper(
+                    "FPS LIMIT", if (fps == 0) "UNLIMITED" else "$fps",
+                    onMinus = {
                     fps = fpsOf(fps, -1); apply()
-                } {
+                    },
+                    onPlus = {
                     fps = fpsOf(fps, 1); apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("GPU MODE", mode.uppercase()) {
+                Stepper(
+                    "GPU MODE", mode.uppercase(),
+                    onMinus = {
                     mode = when (mode) { "standard" -> "battery"; "battery" -> "performance"; else -> "standard" }; apply()
-                } {
+                    },
+                    onPlus = {
                     mode = when (mode) { "standard" -> "performance"; "performance" -> "battery"; else -> "standard" }; apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("TEXTURE QUALITY", texture) {
+                Stepper(
+                    "TEXTURE QUALITY", texture,
+                    onMinus = {
                     texture = cycleLevel(texture, -1); apply()
-                } {
+                    },
+                    onPlus = {
                     texture = cycleLevel(texture, 1); apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("SHADOW QUALITY", shadow) {
+                Stepper(
+                    "SHADOW QUALITY", shadow,
+                    onMinus = {
                     shadow = cycleLevel(shadow, -1); apply()
-                } {
+                    },
+                    onPlus = {
                     shadow = cycleLevel(shadow, 1); apply()
-                }
+                    }
+                )
                 Divider()
-                Stepper("SHARPNESS", "$sharp%") {
+                Stepper(
+                    "SHARPNESS", "$sharp%",
+                    onMinus = {
                     sharp = (sharp - 10).coerceAtLeast(0); apply()
-                } {
+                    },
+                    onPlus = {
                     sharp = (sharp + 10).coerceAtMost(100); apply()
-                }
+                    }
+                )
                 Divider()
                 GfxRow("ANGLE GL DRIVER", "Swap the GL driver for this app.", angle) {
                     angle = it; apply()
