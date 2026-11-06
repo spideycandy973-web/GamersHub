@@ -97,6 +97,15 @@ object MemoryCleaner {
         return stopped
     }
 
+    /** One-line, human readable result for the panel/Game Space tiles. */
+    fun describe(report: Report): String {
+        val head = if (report.freedMb > 0) "${report.freedMb} MB freed" else "nothing to reclaim"
+        val apps = if (report.appsStopped > 0) " · ${report.appsStopped} apps" else ""
+        val free = "${report.afterMb} MB free now"
+        val tail = if (report.usedShell) "" else " · app-level only"
+        return "$head$apps · $free$tail"
+    }
+
     suspend fun clean(context: Context): Report = withContext(Dispatchers.IO) {
         val before = availableMb(context)
         val killed = killBackground(context)

@@ -28,6 +28,19 @@ object GC {
     val TextDim = Color(0xFF8E8E90)
     val TextSoft = Color(0xFFB9B4B0)
 
+    /* ---- Game Space (in-game hub) palette: deep navy + signal pink ---- */
+    val Void = Color(0xFF07080F)
+    val VoidMid = Color(0xFF0C0E18)
+    val InkPanel = Color(0xFF101320)
+    val InkPanelHi = Color(0xFF161A2A)
+    val InkStroke = Color(0xFF232841)
+    val InkText = Color(0xFFEDEFF7)
+    val InkDim = Color(0xFF7C82A0)
+    val InkSoft = Color(0xFFAEB4CC)
+    val Signal = Color(0xFFFF2C5E)
+    val SignalDeep = Color(0xFFB4123D)
+    val SignalGlow = Color(0xFFFF5C82)
+
     val Orange = Color(0xFFF2681E)
     val OceanBlue = Color(0xFF2FA3E0)
     val NeonTosca = Color(0xFF1FE0C0)
@@ -60,28 +73,29 @@ object GC {
     )
 
     /**
-     * Display face — Orbitron variable font (geometric, squared, arcade/tech look).
-     * Deliberately NOT a Roboto look-alike: the app needs its own voice.
+     * Display face — Space Grotesk (variable). A grotesk with squared shoulders
+     * and quirky open counters: reads as "this app is its own thing", never as a
+     * stock Roboto/Inter clone.
      */
     val Display = FontFamily(
-        Font(R.font.orbitron, weight = FontWeight.Normal,
+        Font(R.font.space_grotesk, weight = FontWeight.Normal,
+            variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+        Font(R.font.space_grotesk, weight = FontWeight.Medium,
             variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-        Font(R.font.orbitron, weight = FontWeight.Medium,
+        Font(R.font.space_grotesk, weight = FontWeight.SemiBold,
             variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-        Font(R.font.orbitron, weight = FontWeight.SemiBold,
+        Font(R.font.space_grotesk, weight = FontWeight.Bold,
             variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-        Font(R.font.orbitron, weight = FontWeight.Bold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(800))),
-        Font(R.font.orbitron, weight = FontWeight.Black,
-            variationSettings = FontVariation.Settings(FontVariation.weight(900)))
+        Font(R.font.space_grotesk, weight = FontWeight.Black,
+            variationSettings = FontVariation.Settings(FontVariation.weight(800)))
     )
 
-    /** Body face — Chakra Petch, a semi-condensed techno sans that reads cleanly at 11–15sp. */
+    /** Body face — Barlow, a low-contrast grotesk that holds up at 9–13sp with wide tracking. */
     val Body = FontFamily(
-        Font(R.font.chakra_regular, weight = FontWeight.Normal),
-        Font(R.font.chakra_medium, weight = FontWeight.Medium),
-        Font(R.font.chakra_semibold, weight = FontWeight.SemiBold),
-        Font(R.font.chakra_bold, weight = FontWeight.Bold)
+        Font(R.font.barlow_regular, weight = FontWeight.Normal),
+        Font(R.font.barlow_medium, weight = FontWeight.Medium),
+        Font(R.font.barlow_semibold, weight = FontWeight.SemiBold),
+        Font(R.font.barlow_bold, weight = FontWeight.Bold)
     )
 }
 
