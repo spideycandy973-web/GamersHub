@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import com.gamershub.core.DeviceSpoofer
 import com.gamershub.core.FpsMeter
 import com.gamershub.core.GfxEngine
+import com.gamershub.core.RenderEngine
 import com.gamershub.core.GyroConfig
 import com.gamershub.core.GyroEngine
 import com.gamershub.core.MemoryCleaner
@@ -96,12 +97,12 @@ import java.util.Locale
 /* palette                                                             */
 /* ------------------------------------------------------------------ */
 
-private val AX_RED = Color(0xFFFF2C5E)
-private val AX_DEEP = Color(0xF70A0C15)
-private val AX_ARM = Color(0xFF1A1F32)
-private val AX_EDGE = Color(0x66FF2C5E)
-private val AX_TXT = Color(0xFFEDEFF7)
-private val AX_DIM = Color(0x99AEB4CC)
+private val AX_RED = Color(0xFFE25E20)
+private val AX_DEEP = Color(0xF7161412)
+private val AX_ARM = Color(0xFF2A2421)
+private val AX_EDGE = Color(0x66E25E20)
+private val AX_TXT = Color(0xFFF0EFED)
+private val AX_DIM = Color(0x99B5ACA6)
 
 private const val PREFS = "gamershub"
 
@@ -143,6 +144,10 @@ private class AxState {
 
     var refresh by mutableStateOf("AUTO")
     var renderScale by mutableStateOf(100)
+    var lossless by mutableStateOf(100)
+    var gpuMode by mutableStateOf("standard")
+    var angle by mutableStateOf(false)
+    var lastReport by mutableStateOf("")
 
     var showTaps by mutableStateOf(false)
     var spoofIndex by mutableStateOf(0)
@@ -259,6 +264,9 @@ fun AxPanel(onClose: () -> Unit) {
         st.effects = prefs.getString("ax_effects", "HIGH") ?: "HIGH"
         st.antiAliasing = prefs.getString("ax_aa", "HIGH") ?: "HIGH"
         st.sharpness = prefs.getInt("ax_sharp", 60)
+        st.lossless = prefs.getInt("ax_lossless", 100)
+        st.gpuMode = prefs.getString("ax_gpu_mode", "standard") ?: "standard"
+        st.angle = prefs.getBoolean("ax_angle", false)
         st.resolution = prefs.getInt("ax_res", 100)
         st.fpsLimit = prefs.getInt("ax_fps", 0)
         st.vulkan = prefs.getBoolean("ax_vulkan", false)
@@ -393,7 +401,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55FF2C5E)))
+        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55E25E20)))
         Box(
             Modifier
                 .padding(horizontal = 8.dp)
@@ -409,7 +417,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 letterSpacing = 5.sp
             )
         }
-        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55FF2C5E)))
+        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55E25E20)))
     }
 
     Row(
@@ -424,7 +432,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                     Modifier
                         .width(6.dp)
                         .height(9.dp)
-                        .background(if (index < stats.batt / 10) Color(0xFFE4E7F4) else Color(0x33FFFFFF))
+                        .background(if (index < stats.batt / 10) Color(0xFFEDE7E2) else Color(0x33FFFFFF))
                 )
             }
         }
@@ -440,7 +448,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         Spacer(Modifier.weight(1f))
         Text(
             st.status,
-            color = if (st.busy) Color(0xFFFFB3C6) else Color(0xFFFF8FAF),
+            color = if (st.busy) Color(0xFFF3B592) else Color(0xFFF09A72),
             fontSize = 9.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -744,7 +752,7 @@ private fun PageHeader(api: AxApi, title: String) {
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
-        Text(api.state.status, color = Color(0xFFFF8FAF), fontSize = 8.sp, maxLines = 1)
+        Text(api.state.status, color = Color(0xFFF09A72), fontSize = 8.sp, maxLines = 1)
     }
 }
 
@@ -799,6 +807,8 @@ private fun GfxPage(api: AxApi) {
     val st = api.state
     val context = api.context
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    val targetPkg = remember { FpsMeter.foregroundPackage(context) ?: GfxEngine.currentGamePackage(context) ?: "" }
+    val pkgLabel = targetPkg.substringAfterLast('.').ifBlank { "no game in front" }
 
     fun save() {
         prefs.edit()
@@ -809,7 +819,33 @@ private fun GfxPage(api: AxApi) {
             .putInt("ax_res", st.resolution)
             .putInt("ax_sharp", st.sharpness)
             .putInt("ax_fps", st.fpsLimit)
+            .putInt("ax_lossless", st.lossless)
+            .putString("ax_gpu_mode", st.gpuMode)
+            .putBoolean("ax_angle", st.angle)
             .apply()
+    }
+
+    // Every change runs the real command set and stores the proof.
+    fun applyNow() {
+        save()
+        api.work {
+            val report = withContext(Dispatchers.IO) {
+                RenderEngine.apply(
+                    context = context,
+                    pkg = targetPkg,
+                    texture = st.texture,
+                    shadow = st.shadow,
+                    sharpness = st.sharpness,
+                    scalePct = st.resolution,
+                    fps = st.fpsLimit,
+                    mode = st.gpuMode,
+                    angle = st.angle,
+                    losslessPct = st.lossless
+                )
+            }
+            st.lastReport = report.details()
+            api.say(report.summary())
+        }
     }
 
     fun pushSystem(vulkan: Boolean = st.vulkan, vsync: Boolean = st.noVsync, driver: Boolean = st.gameDriver) {
@@ -830,75 +866,98 @@ private fun GfxPage(api: AxApi) {
     }
 
     val renderer = rememberLive("--") { GfxEngine.rendererStatus() }
+    val deviceNow = rememberLive("--") { RenderEngine.verify() }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
+        ReadRow("TARGET APP", pkgLabel)
+        ReadRow("ENGINE", RenderEngine.statusLine())
+        ReadRow("DEVICE NOW", deviceNow)
+        Spacer(Modifier.height(6.dp))
+
         StepRow(
-            label = "TEXTURE QUALITY",
-            value = st.texture,
-            onPlus = { st.texture = cycle(levels, st.texture, 1); save(); api.say("Texture ${st.texture}") },
-            onMinus = { st.texture = cycle(levels, st.texture, -1); save(); api.say("Texture ${st.texture}") }
+            label = "LOSSLESS SCALING",
+            value = if (st.lossless >= 100) "OFF" else "${st.lossless}%",
+            onPlus = { st.lossless = (st.lossless + 10).coerceAtMost(100); applyNow() },
+            onMinus = { st.lossless = (st.lossless - 10).coerceAtLeast(50); applyNow() }
         )
         StepRow(
-            label = "SHADOW QUALITY",
-            value = st.shadow,
-            onPlus = { st.shadow = cycle(levels, st.shadow, 1); save(); api.say("Shadows ${st.shadow}") },
-            onMinus = { st.shadow = cycle(levels, st.shadow, -1); save(); api.say("Shadows ${st.shadow}") }
-        )
-        StepRow(
-            label = "EFFECTS",
-            value = st.effects,
-            onPlus = { st.effects = cycle(levels, st.effects, 1); save() },
-            onMinus = { st.effects = cycle(levels, st.effects, -1); save() }
-        )
-        StepRow(
-            label = "ANTI-ALIASING",
-            value = st.antiAliasing,
-            onPlus = { st.antiAliasing = cycle(levels, st.antiAliasing, 1); save() },
-            onMinus = { st.antiAliasing = cycle(levels, st.antiAliasing, -1); save() }
-        )
-        StepRow(
-            label = "RESOLUTION",
+            label = "RENDER SCALE",
             value = "${st.resolution}%",
-            onPlus = { st.resolution = (st.resolution + 10).coerceAtMost(100); save() },
-            onMinus = { st.resolution = (st.resolution - 10).coerceAtLeast(50); save() }
-        )
-        StepRow(
-            label = "SHARPNESS",
-            value = "${st.sharpness}%",
-            onPlus = { st.sharpness = (st.sharpness + 10).coerceAtMost(100); save() },
-            onMinus = { st.sharpness = (st.sharpness - 10).coerceAtLeast(0); save() }
+            onPlus = { st.resolution = (st.resolution + 10).coerceAtMost(100); applyNow() },
+            onMinus = { st.resolution = (st.resolution - 10).coerceAtLeast(50); applyNow() }
         )
         StepRow(
             label = "FPS LIMIT",
             value = if (st.fpsLimit == 0) "UNLIMITED" else "${st.fpsLimit}",
-            onPlus = { st.fpsLimit = nextFps(st.fpsLimit, 1); save() },
-            onMinus = { st.fpsLimit = nextFps(st.fpsLimit, -1); save() }
+            onPlus = { st.fpsLimit = nextFps(st.fpsLimit, 1); applyNow() },
+            onMinus = { st.fpsLimit = nextFps(st.fpsLimit, -1); applyNow() }
         )
-
-        ActionRow("APPLY TO RUNNING GAME", "Writes the game's own quality CVars", "APPLY") {
-            api.work {
-                val (pkg, result) = withContext(Dispatchers.IO) {
-                    GfxEngine.applyToForeground(
-                        context,
-                        st.texture,
-                        st.shadow,
-                        st.effects,
-                        st.antiAliasing,
-                        st.resolution,
-                        st.sharpness,
-                        st.fpsLimit
-                    )
+        StepRow(
+            label = "GPU MODE",
+            value = st.gpuMode.uppercase(),
+            onPlus = {
+                st.gpuMode = when (st.gpuMode) {
+                    "standard" -> "performance"
+                    "performance" -> "battery"
+                    else -> "standard"
                 }
-                api.say(
-                    when {
-                        result.needsShell -> "Grant Shizuku: ${Shell.reason()}"
-                        pkg.isBlank() -> "No game detected — open a game first"
-                        result.written.isNotEmpty() ->
-                            "Applied to ${pkg.substringAfterLast('.')} · ${result.written.size} file(s)"
-                        else -> "No writable config in ${pkg.substringAfterLast('.')} — use the system switches"
-                    }
-                )
+                applyNow()
+            },
+            onMinus = {
+                st.gpuMode = when (st.gpuMode) {
+                    "standard" -> "battery"
+                    "battery" -> "performance"
+                    else -> "standard"
+                }
+                applyNow()
             }
+        )
+        StepRow(
+            label = "TEXTURE QUALITY",
+            value = st.texture,
+            onPlus = { st.texture = cycle(levels, st.texture, 1); applyNow() },
+            onMinus = { st.texture = cycle(levels, st.texture, -1); applyNow() }
+        )
+        StepRow(
+            label = "SHADOW QUALITY",
+            value = st.shadow,
+            onPlus = { st.shadow = cycle(levels, st.shadow, 1); applyNow() },
+            onMinus = { st.shadow = cycle(levels, st.shadow, -1); applyNow() }
+        )
+        StepRow(
+            label = "SHARPNESS",
+            value = "${st.sharpness}%",
+            onPlus = { st.sharpness = (st.sharpness + 10).coerceAtMost(100); applyNow() },
+            onMinus = { st.sharpness = (st.sharpness - 10).coerceAtLeast(0); applyNow() }
+        )
+        SwitchRow("ANGLE GL DRIVER", "Per-app driver swap for $pkgLabel", st.angle) {
+            st.angle = !st.angle
+            applyNow()
+        }
+
+        ActionRow("APPLY EVERYTHING NOW", "Runs the real commands and reads them back", "APPLY") { applyNow() }
+        ActionRow("RESTORE DEVICE", "wm size/density reset, GameMode reset, engine backup", "RESTORE") {
+            api.work {
+                val report = withContext(Dispatchers.IO) { RenderEngine.restore(context, targetPkg) }
+                st.lastReport = report.details()
+                st.lossless = 100
+                save()
+                api.say(report.summary())
+            }
+        }
+
+        if (st.lastReport.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            SectionLabel("LAST APPLY · LIVE RESULT")
+            Text(
+                st.lastReport,
+                color = AX_DIM,
+                fontSize = 9.sp,
+                lineHeight = 13.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
         }
 
         SectionLabel("SYSTEM-WIDE · EVERY APP")
@@ -1596,14 +1655,14 @@ private fun MemoryKey(label: String, icon: ImageVector, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(9.dp))
-            .background(Color(0x33FF2C5E))
-            .border(1.dp, Color(0x55FF2C5E), RoundedCornerShape(9.dp))
+            .background(Color(0x33E25E20))
+            .border(1.dp, Color(0x55E25E20), RoundedCornerShape(9.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
-        AIcon(icon, contentDescription = label, tint = Color(0xFFFFB3C6), modifier = Modifier.size(11.dp))
+        AIcon(icon, contentDescription = label, tint = Color(0xFFF3B592), modifier = Modifier.size(11.dp))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = Color(0xFFFFD6E1), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color(0xFFFFDCC9), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
     }
 }
 
