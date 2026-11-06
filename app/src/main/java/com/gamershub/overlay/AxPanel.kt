@@ -515,7 +515,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
             Tile(Icons.Filled.Bolt, "Quick\nBoost", "FREE") {
                 api.work {
                     val report = MemoryCleaner.boost(context)
-                    api.say("Boost · ${report.freedMb} MB freed")
+                    api.say(memoryText("Boost", report, context))
                 }
             }
             Tile(Icons.Filled.NotificationsOff, "Do Not\nDisturb", "SILENT") {
@@ -602,19 +602,19 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         MemoryKey("CLEAN", Icons.Filled.CleaningServices) {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say("Clean · ${report.freedMb} MB freed")
+                api.say(memoryText("Clean", report, context))
             }
         }
         MemoryKey("BOOST", Icons.Filled.Bolt) {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say("Boost · ${report.freedMb} MB freed")
+                api.say(memoryText("Boost", report, context))
             }
         }
         MemoryKey("DEEP CLEAN", Icons.Filled.Memory) {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say("Deep clean · ${report.freedMb} MB · ${report.appsStopped} apps")
+                api.say(memoryText("Deep clean", report, context))
             }
         }
     }
@@ -1007,19 +1007,19 @@ private fun PerfPage(api: AxApi, stats: PanelStats) {
         ActionRow("CLEAN MEMORY", "am kill-all + pm trim-caches", "CLEAN") {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say("Clean · ${report.freedMb} MB freed")
+                api.say(memoryText("Clean", report, context))
             }
         }
         ActionRow("BOOST MEMORY", "Clean + page-cache drop", "BOOST") {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say("Boost · ${report.freedMb} MB freed")
+                api.say(memoryText("Boost", report, context))
             }
         }
         ActionRow("DEEP CLEAN", "Also force-stops background apps", "DEEP") {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say("Deep clean · ${report.freedMb} MB · ${report.appsStopped} apps")
+                api.say(memoryText("Deep clean", report, context))
             }
         }
     }
@@ -1302,6 +1302,16 @@ private fun InfoPage(api: AxApi, stats: PanelStats) {
 /* ------------------------------------------------------------------ */
 /* building blocks                                                     */
 /* ------------------------------------------------------------------ */
+
+/** Plain-language result of a memory action. */
+private fun memoryText(label: String, report: MemoryCleaner.Report, context: Context): String {
+    val freeNow = MemoryCleaner.availableMb(context)
+    return if (report.freedMb > 0 || report.appsStopped > 0) {
+        "$label · ${report.freedMb} MB freed · ${report.appsStopped} apps · $freeNow MB free now"
+    } else {
+        "$label · nothing to reclaim · $freeNow MB already free"
+    }
+}
 
 private fun cycle(list: List<String>, current: String, step: Int): String {
     val index = list.indexOf(current)

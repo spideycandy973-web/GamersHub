@@ -107,6 +107,13 @@ class AppRepo(private val context: Context) {
         false
     }
 
+    /** Launcher icon for one package, or null when it cannot be loaded. */
+    fun iconFor(pkg: String): ImageBitmap? = try {
+        iconBitmap(pkg)
+    } catch (_: Throwable) {
+        null
+    }
+
     private fun iconBitmap(pkg: String): ImageBitmap {
         val drawable: Drawable = try {
             context.packageManager.getApplicationIcon(pkg)

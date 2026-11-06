@@ -260,6 +260,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             "graphics" -> SheetState.Graphics
             "spoof" -> SheetState.Spoof
             "panel" -> SheetState.PanelHub
+            "apps" -> SheetState.AppSelector
             else -> SheetState.None
         }
 

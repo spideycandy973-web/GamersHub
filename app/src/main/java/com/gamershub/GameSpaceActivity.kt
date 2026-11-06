@@ -140,10 +140,20 @@ private fun GameSpaceScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
-    // Every selected app, each with its real launcher icon.
-    val library = remember { repo.addedApps() }
+    // Every selected app, each with its real launcher icon. The app we were
+    // started with is added to the selection if it is not there yet, so its icon
+    // and name always resolve.
+    var library by remember { mutableStateOf(repo.addedApps()) }
     var currentPkg by remember { mutableStateOf(pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }) }
+    LaunchedEffect(pkg) {
+        if (pkg.isNotBlank() && !repo.isAdded(pkg)) repo.setAdded(pkg, true)
+        library = repo.addedApps()
+        if (currentPkg.isBlank()) currentPkg = pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }
+    }
     val current = library.firstOrNull { it.pkg == currentPkg }
+    val currentIcon = remember(currentPkg, library) {
+        current?.icon ?: repo.iconFor(currentPkg)
+    }
     val appName = current?.name ?: currentPkg.ifBlank { "No app selected" }
     val appVersion = remember(currentPkg) {
         try {
@@ -320,9 +330,9 @@ private fun GameSpaceScreen(
                             verticalAlignment = Alignment.Bottom,
                             modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
                         ) {
-                            if (current != null) {
+                            if (currentIcon != null) {
                                 Image(
-                                    painter = androidx.compose.ui.graphics.painter.BitmapPainter(current.icon),
+                                    painter = androidx.compose.ui.graphics.painter.BitmapPainter(currentIcon),
                                     contentDescription = appName,
                                     modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
                                 )
@@ -429,6 +439,16 @@ private fun GameSpaceScreen(
                 currentPkg = currentPkg,
                 onSelect = { currentPkg = it },
                 onLaunch = { p -> onLaunch(p) },
+                onPickApps = {
+                    showApps = false
+                    runCatching {
+                        context.startActivity(
+                            Intent(context, com.gamershub.MainActivity::class.java)
+                                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, "apps#" + System.currentTimeMillis())
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                },
                 onDismiss = { showApps = false }
             )
         }
@@ -1043,6 +1063,7 @@ private fun AppsPanel(
     currentPkg: String,
     onSelect: (String) -> Unit,
     onLaunch: (String) -> Unit,
+    onPickApps: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val accent = LocalAccent.current
@@ -1085,11 +1106,24 @@ private fun AppsPanel(
             Spacer(Modifier.height(12.dp))
             if (library.isEmpty()) {
                 Text(
-                    "No apps selected yet. Open GamersHub ▸ Lobby ▸ SELECT and add the apps you want here.",
+                    "No apps selected yet. Tap ADD APPS to choose the apps you want in this Game Space.",
                     style = MaterialTheme.typography.labelLarge,
                     color = GC.TextSoft,
                     fontSize = 13.sp
                 )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(accent)
+                        .clickable(onClick = onPickApps)
+                        .padding(horizontal = 18.dp, vertical = 11.dp)
+                ) {
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.sp)
+                }
             } else {
                 Column(
                     Modifier
