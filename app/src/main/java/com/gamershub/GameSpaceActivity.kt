@@ -219,7 +219,7 @@ private fun GameSpaceScreen(
             GsBackdrop(currentIcon, Modifier.fillMaxSize())
 
             // ---------- top bar ----------
-            HeroMark(Modifier.offset(x = w * 0.048f, y = h * 0.070f).size(h * 0.115f))
+            GsMark(Modifier.offset(x = w * 0.048f, y = h * 0.068f).size(h * 0.120f))
             Column(Modifier.offset(x = w * 0.048f + h * 0.130f, y = h * 0.072f)) {
                 Text(
                     "GAME",
@@ -376,6 +376,17 @@ private fun GameSpaceScreen(
                     .size(width = w * 0.356f, height = h * 0.461f)
             )
 
+            // ---- every other selected app, scrollable, so nothing is hidden ----
+            if (others.isNotEmpty() && others.size > 2) {
+                Text(
+                    "${others.size} MORE APPS · SCROLL",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GC.InkDim,
+                    fontSize = (h.value * 0.015f).sp,
+                    letterSpacing = (h.value * 0.0025f).sp,
+                    modifier = Modifier.offset(x = w * 0.417f, y = h * 0.256f)
+                )
+            }
             if (others.isEmpty()) {
                 EmptyCard(
                     text = "ADD GAMES",
@@ -385,45 +396,44 @@ private fun GameSpaceScreen(
                         .size(width = w * 0.282f, height = h * 0.353f)
                 )
             } else {
-                val twoUp = others.size > 1
-                AppCard(
-                    entry = others.getOrNull(0),
-                    name = others[0].name,
-                    version = versionOf(context, others[0].pkg),
-                    minutes = repo.playMinutes(others[0].pkg),
-                    selected = false,
-                    primary = false,
-                    emptyLabel = "",
-                    onSelect = { currentPkg = others[0].pkg },
-                    onFilter = null,
-                    artSize = h * 0.075f,
-                    nameSize = (h.value * 0.024f).sp,
-                    metaSize = (h.value * 0.016f).sp,
-                    modifier = Modifier
+                // Fit every app in the column when there are few, scroll beyond that.
+                val gap = h * 0.011f
+                val columnH = h * 0.353f
+                val fits = others.size <= 5
+                val cardH = when {
+                    others.size == 1 -> columnH
+                    fits -> {
+                        val avail = columnH - gap * (others.size - 1)
+                        minOf(h * 0.170f, avail / others.size)
+                    }
+                    else -> h * 0.170f
+                }
+                Column(
+                    Modifier
                         .offset(x = w * 0.417f, y = h * 0.281f)
-                        .size(
-                            width = w * 0.282f,
-                            height = if (twoUp) h * 0.170f else h * 0.353f
+                        .size(width = w * 0.282f, height = columnH)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(gap)
+                ) {
+                    others.forEach { entry ->
+                        AppCard(
+                            entry = entry,
+                            name = entry.name,
+                            version = versionOf(context, entry.pkg),
+                            minutes = repo.playMinutes(entry.pkg),
+                            selected = false,
+                            primary = false,
+                            emptyLabel = "",
+                            onSelect = { currentPkg = entry.pkg },
+                            onFilter = null,
+                            artSize = minOf(h * 0.075f, cardH * 0.46f),
+                            nameSize = minOf(h.value * 0.024f, cardH.value * 0.17f).sp,
+                            metaSize = minOf(h.value * 0.016f, cardH.value * 0.115f).sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(cardH)
                         )
-                )
-                if (twoUp) {
-                    AppCard(
-                        entry = others.getOrNull(1),
-                        name = others[1].name,
-                        version = versionOf(context, others[1].pkg),
-                        minutes = repo.playMinutes(others[1].pkg),
-                        selected = false,
-                        primary = false,
-                        emptyLabel = "",
-                        onSelect = { currentPkg = others[1].pkg },
-                        onFilter = null,
-                        artSize = h * 0.075f,
-                        nameSize = (h.value * 0.024f).sp,
-                        metaSize = (h.value * 0.016f).sp,
-                        modifier = Modifier
-                            .offset(x = w * 0.417f, y = h * 0.464f)
-                            .size(width = w * 0.282f, height = h * 0.170f)
-                    )
+                    }
                 }
             }
 
@@ -472,7 +482,7 @@ private fun GameSpaceScreen(
                 score = perform,
                 valueSize = (h.value * 0.040f).sp,
                 labelSize = (h.value * 0.019f).sp,
-                tickW = w * 0.0105f,
+                tickW = w * 0.0094f,
                 modifier = Modifier
                     .offset(x = w * 0.286f, y = h * 0.858f)
                     .width(w * 0.124f)
@@ -655,6 +665,39 @@ private val ChevShape = GenericShape { size, _ ->
     close()
 }
 
+/** Solid angular emblem, matching the chunky reference logo. */
+@Composable
+private fun GsMark(modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width
+        val h = size.height
+        val outline = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.50f, h * 0.02f)
+            lineTo(w * 0.97f, h * 0.29f)
+            lineTo(w * 0.86f, h * 0.94f)
+            lineTo(w * 0.14f, h * 0.94f)
+            lineTo(w * 0.03f, h * 0.29f)
+            close()
+        }
+        drawPath(outline, Color(0xFF241516))
+        drawPath(
+            outline,
+            Brush.linearGradient(listOf(GC.Signal, GC.SignalDeep)),
+            style = Stroke(width = h * 0.075f, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        )
+        val bolt = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.58f, h * 0.18f)
+            lineTo(w * 0.33f, h * 0.55f)
+            lineTo(w * 0.49f, h * 0.55f)
+            lineTo(w * 0.40f, h * 0.83f)
+            lineTo(w * 0.70f, h * 0.45f)
+            lineTo(w * 0.53f, h * 0.45f)
+            close()
+        }
+        drawPath(bolt, Color(0xFFFFFFFF))
+    }
+}
+
 @Composable
 private fun BatteryGlyph(pct: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
     Canvas(Modifier.width(w).height(h)) {
@@ -721,7 +764,7 @@ private fun AppCard(
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(scaleX = 3.4f, scaleY = 3.4f, alpha = 0.95f)
+                    .graphicsLayer(scaleX = 3.4f, scaleY = 3.4f, alpha = 0.82f)
                     .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(26.dp) else Modifier)
             )
             // the crisp, real game art sits over the wash, like a still
@@ -741,7 +784,7 @@ private fun AppCard(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0x00000000), Color(0x44FFFFFF).copy(alpha = 0f), Color(0xCC0A0708))
+                            listOf(Color(0x59000000), Color(0x33000000), Color(0xE60A0708))
                         )
                     )
             )
