@@ -393,7 +393,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55E0231F)))
+        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55FF2C5E)))
         Box(
             Modifier
                 .padding(horizontal = 8.dp)
@@ -409,7 +409,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 letterSpacing = 5.sp
             )
         }
-        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55E0231F)))
+        Box(Modifier.weight(1f).height(2.dp).background(Color(0x55FF2C5E)))
     }
 
     Row(
@@ -424,7 +424,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                     Modifier
                         .width(6.dp)
                         .height(9.dp)
-                        .background(if (index < stats.batt / 10) Color(0xFFE8E3DD) else Color(0x33FFFFFF))
+                        .background(if (index < stats.batt / 10) Color(0xFFE4E7F4) else Color(0x33FFFFFF))
                 )
             }
         }
@@ -440,7 +440,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         Spacer(Modifier.weight(1f))
         Text(
             st.status,
-            color = if (st.busy) Color(0xFFFFB4AE) else Color(0xFFFF8A80),
+            color = if (st.busy) Color(0xFFFFB3C6) else Color(0xFFFF8FAF),
             fontSize = 9.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -744,7 +744,7 @@ private fun PageHeader(api: AxApi, title: String) {
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
-        Text(api.state.status, color = Color(0xFFFF8A80), fontSize = 8.sp, maxLines = 1)
+        Text(api.state.status, color = Color(0xFFFF8FAF), fontSize = 8.sp, maxLines = 1)
     }
 }
 
@@ -1596,14 +1596,14 @@ private fun MemoryKey(label: String, icon: ImageVector, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(9.dp))
-            .background(Color(0x26E0231F))
-            .border(1.dp, Color(0x55E0231F), RoundedCornerShape(9.dp))
+            .background(Color(0x33FF2C5E))
+            .border(1.dp, Color(0x55FF2C5E), RoundedCornerShape(9.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
-        AIcon(icon, contentDescription = label, tint = Color(0xFFFFB4AE), modifier = Modifier.size(11.dp))
+        AIcon(icon, contentDescription = label, tint = Color(0xFFFFB3C6), modifier = Modifier.size(11.dp))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = Color(0xFFFFD9D6), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color(0xFFFFD6E1), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
     }
 }
 
