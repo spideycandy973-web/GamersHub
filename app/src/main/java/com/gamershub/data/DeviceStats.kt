@@ -116,6 +116,16 @@ object DeviceStats {
         -1
     }
 
+    /** Ping with one decimal, which is what the Game Space tile shows. -1.0 = unavailable. */
+    fun pingExact(host: String = "8.8.8.8"): Double = try {
+        val p = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "2", host))
+        val out = p.inputStream.bufferedReader().readText()
+        p.waitFor()
+        Regex("time=([0-9.]+)").find(out)?.groupValues?.get(1)?.toDouble() ?: -1.0
+    } catch (_: Throwable) {
+        -1.0
+    }
+
     /** Battery percent + temperature C from the sticky battery intent (real). */
     fun battery(context: Context): Pair<Int, Double> = try {
         val intent = context.registerReceiver(

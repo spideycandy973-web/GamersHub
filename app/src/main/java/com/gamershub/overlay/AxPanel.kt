@@ -96,12 +96,12 @@ import java.util.Locale
 /* palette                                                             */
 /* ------------------------------------------------------------------ */
 
-private val AX_RED = Color(0xFFE0231F)
-private val AX_DEEP = Color(0xF7120C0D)
-private val AX_ARM = Color(0xFF2A1416)
-private val AX_EDGE = Color(0x66E0231F)
-private val AX_TXT = Color(0xFFEDE7E3)
-private val AX_DIM = Color(0x99FFFFFF)
+private val AX_RED = Color(0xFFFF2C5E)
+private val AX_DEEP = Color(0xF70A0C15)
+private val AX_ARM = Color(0xFF1A1F32)
+private val AX_EDGE = Color(0x66FF2C5E)
+private val AX_TXT = Color(0xFFEDEFF7)
+private val AX_DIM = Color(0x99AEB4CC)
 
 private const val PREFS = "gamershub"
 
@@ -290,9 +290,9 @@ fun AxPanel(onClose: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight)
-            .clip(CutCornerShape(topStart = 26.dp, topEnd = 26.dp))
+            .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
             .background(AX_DEEP)
-            .border(1.dp, AX_EDGE, CutCornerShape(topStart = 26.dp, topEnd = 26.dp))
+            .border(1.dp, AX_EDGE, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
             .padding(bottom = 8.dp)

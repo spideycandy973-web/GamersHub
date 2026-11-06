@@ -77,6 +77,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import com.gamershub.core.capture.ProjectionActivity
+import com.gamershub.core.capture.Recorder
+import com.gamershub.core.capture.RecorderService
+import com.gamershub.core.capture.Stream
+import com.gamershub.core.capture.StreamService
+import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 import com.gamershub.data.AppRepo
 import com.gamershub.data.InstalledApp
 import com.gamershub.data.DeviceStats
@@ -139,7 +159,6 @@ private fun GameSpaceScreen(
     onLaunch: (String) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val accent = LocalAccent.current
     // Every selected app, each with its real launcher icon. The app we were
     // started with is added to the selection if it is not there yet, so its icon
     // and name always resolve.
@@ -151,9 +170,7 @@ private fun GameSpaceScreen(
         if (currentPkg.isBlank()) currentPkg = pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }
     }
     val current = library.firstOrNull { it.pkg == currentPkg }
-    val currentIcon = remember(currentPkg, library) {
-        current?.icon ?: repo.iconFor(currentPkg)
-    }
+    val currentIcon = remember(currentPkg, library) { current?.icon ?: repo.iconFor(currentPkg) }
     val appName = current?.name ?: currentPkg.ifBlank { "No app selected" }
     val appVersion = remember(currentPkg) {
         try {
@@ -169,257 +186,203 @@ private fun GameSpaceScreen(
     var showApps by remember { mutableStateOf(false) }
     var panelRunning by remember { mutableStateOf(FloatingPanelService.isRunning) }
 
-    // Live stats
+    // ---- live device numbers (all real) ----
+    val mem by produceState(initialValue = DeviceStats.mem(context)) {
+        while (true) { value = DeviceStats.mem(context); delay(2000) }
+    }
     val cpu by produceState(initialValue = DeviceStats.cpu()) {
-        while (true) { value = DeviceStats.cpu(); delay(2500) }
+        while (true) { value = DeviceStats.cpu(); delay(2000) }
     }
     val battery by produceState(initialValue = DeviceStats.battery(context)) {
         while (true) { value = DeviceStats.battery(context); delay(5000) }
     }
-    val ping by produceState(initialValue = -1) {
-        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.pingMs() }; delay(6000) }
+    val ping by produceState(initialValue = -1.0) {
+        while (true) {
+            value = withContext(Dispatchers.IO) { DeviceStats.pingExact() }
+            delay(5000)
+        }
     }
     var clock by remember { mutableStateOf(currentTime()) }
     LaunchedEffect(Unit) {
         while (true) { clock = currentTime(); delay(1000) }
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF1A0B0B), Color(0xFF120708), Color(0xFF0B0506))))
-    ) {
+    val freeMb = (mem.totalMb - mem.usedMb).coerceAtLeast(0)
+    val level = envLevelOf(context)
+    val perform = performScore(cpu.pct, mem.pct, battery.second)
+
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(GC.Void, GC.VoidMid, GC.Void)))) {
         HexBackdrop(Modifier.fillMaxSize())
 
         Column(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .padding(horizontal = 18.dp, vertical = 10.dp)
         ) {
-            // ---- Top bar ----
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HeroMark(Modifier.size(46.dp))
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 2.sp)
-                    Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.Text, fontSize = 22.sp)
-                }
-                Spacer(Modifier.width(14.dp))
-                Box(Modifier.width(1.dp).height(34.dp).background(Color(0x33FFFFFF)))
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("LVL ${envLevelOf(context)}/3", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 13.sp)
-                    Spacer(Modifier.height(3.dp))
-                    SegmentedBar(pct = envLevelOf(context) * 100 / 3, segments = 3, height = 5, modifier = Modifier.width(70.dp))
-                }
+            GsHeader(
+                freeTens = (freeMb / 10).toInt(),
+                totalTens = (mem.totalMb / 10).toInt(),
+                battery = battery.first,
+                clock = clock,
+                level = level,
+                tab = when {
+                    showControl -> 1
+                    showTexture -> 2
+                    showApps -> 3
+                    else -> 0
+                },
+                onTab = { index ->
+                    when (index) {
+                        1 -> { showControl = true; showTexture = false; showApps = false }
+                        2 -> { showTexture = true; showControl = false; showApps = false }
+                        3 -> { showApps = true; showControl = false; showTexture = false }
+                        else -> { showControl = false; showTexture = false; showApps = false }
+                    }
+                },
+                onClose = onClose
+            )
 
-                Spacer(Modifier.weight(1f))
-
-                // Chevron tabs
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    ChevronTab(Icons.Filled.Bolt, selected = !showControl && !showTexture && !showApps) {
-                        showControl = false; showTexture = false; showApps = false
-                    }
-                    ChevronTab(Icons.Filled.GraphicEq, selected = showControl) {
-                        showControl = true; showTexture = false; showApps = false
-                    }
-                    ChevronTab(Icons.Filled.Memory, selected = showTexture) {
-                        showTexture = true; showControl = false; showApps = false
-                    }
-                    ChevronTab(Icons.Filled.Apps, selected = showApps) {
-                        showApps = true; showControl = false; showTexture = false
-                    }
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text("${cpu.pct.coerceIn(0, 100)}%", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Box(Modifier.width(1.dp).height(16.dp).background(Color(0x33FFFFFF)))
-                        Spacer(Modifier.width(6.dp))
-                        Text("${clock}", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp)
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${battery.first.coerceAtLeast(0)}%", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Box(Modifier.width(34.dp).height(8.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x33FFFFFF))) {
-                            Box(Modifier.fillMaxWidth((battery.first.coerceIn(0, 100)) / 100f).height(8.dp).background(accent))
-                        }
-                    }
-                }
-                Spacer(Modifier.width(10.dp))
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onClose),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(22.dp))
-                }
-            }
-
-            // ---- app strip: every app you selected, real icons ----
-            if (library.isNotEmpty()) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    library.forEach { entry ->
-                        AppChip(
-                            entry = entry,
-                            selected = entry.pkg == currentPkg,
-                            onClick = { currentPkg = entry.pkg }
+            Row(Modifier.weight(1f).padding(top = 12.dp)) {
+                // ---- left: app cards + launch ----
+                Column(Modifier.weight(1.62f)) {
+                    val others = library.filter { it.pkg != currentPkg }
+                    Row(Modifier.weight(1f)) {
+                        AppCard(
+                            entry = current,
+                            name = appName,
+                            version = appVersion,
+                            minutes = repo.playMinutes(currentPkg),
+                            primary = true,
+                            selected = true,
+                            emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
+                            onSelect = { if (library.isEmpty()) showApps = true },
+                            onFilter = { showTexture = true; showControl = false; showApps = false },
+                            modifier = Modifier.weight(1.42f)
                         )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            AppCard(
+                                entry = others.getOrNull(0),
+                                name = others.getOrNull(0)?.name ?: "EMPTY SLOT",
+                                version = versionOf(context, others.getOrNull(0)?.pkg),
+                                minutes = repo.playMinutes(others.getOrNull(0)?.pkg ?: ""),
+                                primary = false,
+                                selected = false,
+                                emptyLabel = "TAP + TO PICK",
+                                onSelect = {
+                                    val p = others.getOrNull(0)?.pkg
+                                    if (p != null) currentPkg = p else showApps = true
+                                },
+                                onFilter = null,
+                                modifier = Modifier.weight(1f)
+                            )
+                            AppCard(
+                                entry = others.getOrNull(1),
+                                name = others.getOrNull(1)?.name ?: "EMPTY SLOT",
+                                version = versionOf(context, others.getOrNull(1)?.pkg),
+                                minutes = repo.playMinutes(others.getOrNull(1)?.pkg ?: ""),
+                                primary = false,
+                                selected = false,
+                                emptyLabel = "TAP + TO PICK",
+                                onSelect = {
+                                    val p = others.getOrNull(1)?.pkg
+                                    if (p != null) currentPkg = p else showApps = true
+                                },
+                                onFilter = null,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                }
-            } else {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 6.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0x22FFFFFF))
-                        .clickable { showApps = true }
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+
+                    Spacer(Modifier.height(12.dp))
                     Text(
-                        "No apps selected yet — tap to pick apps",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = GC.Text,
-                        fontSize = 13.sp
+                        appName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = GC.InkText,
+                        fontSize = 27.sp,
+                        letterSpacing = 0.2.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // ---- Main row ----
-            Row(Modifier.weight(1f)) {
-                // Left: game card + launch
-                Column(Modifier.weight(1f)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .clip(CutCornerShape(topStart = 4.dp, topEnd = 22.dp, bottomEnd = 4.dp, bottomStart = 22.dp))
-                            .background(Brush.horizontalGradient(listOf(Color(0xFF5A1418), Color(0xFF2A0D10))))
-                    ) {
-                        Box(
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(10.dp)
-                                .size(40.dp)
-                                .clip(CutCornerShape(topStart = 4.dp, topEnd = 12.dp, bottomEnd = 4.dp, bottomStart = 12.dp))
-                                .background(Color(0xCC150A0C))
-                                .clickable { showTexture = true; showControl = false },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AIcon(Icons.Filled.Tune, contentDescription = "Graphics", tint = accent, modifier = Modifier.size(20.dp))
-                        }
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)
-                        ) {
-                            if (currentIcon != null) {
-                                Image(
-                                    painter = androidx.compose.ui.graphics.painter.BitmapPainter(currentIcon),
-                                    contentDescription = appName,
-                                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(16.dp))
-                                )
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text(appName, style = MaterialTheme.typography.titleMedium, color = Color.White, fontSize = 20.sp)
-                                Text("${repo.playMinutes(currentPkg)}m · v$appVersion", style = MaterialTheme.typography.labelMedium, color = Color(0xCCFFFFFF), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Text(appName, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = 26.sp)
-                    Text(currentPkg, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                    Text(
+                        currentPkg.ifBlank { "no package" },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GC.InkDim,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.6.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(Modifier.height(10.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // LAUNCH (angular)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
-                                .background(accent)
-                                .clickable { if (currentPkg.isNotBlank()) onLaunch(currentPkg) }
-                                .padding(horizontal = 22.dp, vertical = 13.dp)
-                        ) {
-                            Text("LAUNCH", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 17.sp, letterSpacing = 2.sp)
-                            Spacer(Modifier.width(10.dp))
-                            Box(Modifier.width(1.dp).height(16.dp).background(Color(0x44FFFFFF)))
-                            Spacer(Modifier.width(10.dp))
-                        }
-                        Box(
-                            Modifier
-                                .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
-                                .background(Color(0x22FFFFFF))
-                                .clickable { showControl = true; showTexture = false }
-                                .padding(13.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AIcon(Icons.Filled.Apps, contentDescription = "Control Center", tint = GC.Text, modifier = Modifier.size(22.dp))
-                        }
+                        LaunchBar(
+                            freeMb = freeMb,
+                            enabled = currentPkg.isNotBlank(),
+                            onLaunch = { if (currentPkg.isNotBlank()) onLaunch(currentPkg) },
+                            onBoost = { showControl = true }
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        GridButton { showApps = true }
                         Spacer(Modifier.weight(1f))
-                        Column(horizontalAlignment = Alignment.End) {
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text("${cpu.pct.coerceIn(0, 100)}", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 24.sp)
-                                Text("%  PERFORM", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-                            }
-                            Spacer(Modifier.height(5.dp))
-                            SegmentedBar(pct = cpu.pct.coerceIn(0, 100), segments = 10, height = 6, modifier = Modifier.width(150.dp))
-                        }
+                        PerformBlock(score = perform)
                     }
                 }
 
                 Spacer(Modifier.width(16.dp))
 
-                // Right: watermark + stat cards
+                // ---- right: watermark + stat wall ----
                 Column(
+                    horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.Bottom,
                     modifier = Modifier.fillMaxHeight()
                 ) {
                     Text(
                         "${repo.userId()} · ${android.os.Process.myPid()}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color(0x55FFFFFF),
-                        fontSize = 11.sp
+                        color = Color(0x3DFFFFFF),
+                        fontSize = 10.sp,
+                        letterSpacing = 1.sp
                     )
                     Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("PING INTERVAL", if (ping >= 0) "$ping ms" else "-- ms", Modifier.width(150.dp)) {
-                            SegmentedBar(pct = if (ping in 0..120) 80 else 30, segments = 3, height = 5)
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        StatBox(
+                            title = "PING INTERVAL",
+                            value = if (ping >= 0) String.format("%.1f ms", ping) else "-- ms",
+                            good = ping in 0.0..80.0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            TickRow(filled = if (ping >= 0) (10 - (ping / 12).toInt()).coerceIn(0, 10) else 0, segments = 10)
                         }
-                        StatCard("TEMPERATURE", String.format("%.1f°C", battery.second.coerceAtLeast(0.0)), Modifier.width(150.dp)) {
-                            SegmentedBar(pct = ((battery.second.coerceIn(0.0, 60.0)) / 60.0 * 100).toInt(), segments = 6, height = 5)
+                        StatBox(
+                            title = "TEMPERATURE",
+                            value = String.format("%.1f°C", battery.second.coerceAtLeast(0.0)),
+                            good = battery.second in 0.0..45.0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            TempBar(celsius = battery.second)
                         }
-                        StatCard("CPU SPEED", String.format("%.2f GHz", cpu.curGhz), Modifier.width(160.dp)) {
-                            GaugeRing(pct = cpu.pct, big = String.format("%.2f", cpu.curGhz), small = "GHz", diameter = 74)
-                        }
+                        CpuCard(
+                            ghz = cpu.curGhz,
+                            loadPct = cpu.pct,
+                            modifier = Modifier.weight(1.06f).height(148.dp)
+                        )
                     }
                 }
             }
         }
 
-        // ---- Control Center overlay ----
+        // ---- panels ----
         if (showControl) {
             ControlCenter(
                 onDismiss = { showControl = false },
                 onTouchSettings = { showControl = false; showTouch = true },
                 onDisplaySettings = { showControl = false; showDisplay = true },
+                onTextureSettings = { showControl = false; showTexture = true },
+                onPickApps = { showControl = false; showApps = true },
                 onOpenPanel = {
                     panelRunning = !panelRunning
                     if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
@@ -428,7 +391,6 @@ private fun GameSpaceScreen(
             )
         }
 
-        // ---- Apps panel: pick and launch any selected app ----
         AnimatedVisibility(
             visible = showApps,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
@@ -453,7 +415,6 @@ private fun GameSpaceScreen(
             )
         }
 
-        // ---- Texture Filtering panel ----
         AnimatedVisibility(
             visible = showTexture,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
@@ -462,7 +423,6 @@ private fun GameSpaceScreen(
             TexturePanel(pkg = currentPkg, repo = repo, appName = appName, onDismiss = { showTexture = false })
         }
 
-        // ---- Touch / Display settings panels ----
         AnimatedVisibility(
             visible = showTouch,
             enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
@@ -481,38 +441,561 @@ private fun GameSpaceScreen(
 }
 
 /* ------------------------------------------------------------------ */
+/* header                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Slanted hex-ish tile used by the four navigation chevrons. */
+private val ChevShape = GenericShape { size, _ ->
+    val cut = size.height * 0.34f
+    moveTo(cut, 0f)
+    lineTo(size.width, 0f)
+    lineTo(size.width - cut, size.height)
+    lineTo(0f, size.height)
+    close()
+}
 
 @Composable
-private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    val accent = LocalAccent.current
-    Box(
-        Modifier
-            .padding(horizontal = 2.dp)
-            .clip(CutCornerShape(topStart = 2.dp, topEnd = 10.dp, bottomEnd = 2.dp, bottomStart = 10.dp))
-            .background(if (selected) accent else Color(0x22FFFFFF))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        AIcon(icon, contentDescription = null, tint = if (selected) Color.White else GC.TextSoft, modifier = Modifier.size(20.dp))
+private fun GsHeader(
+    freeTens: Int,
+    totalTens: Int,
+    battery: Int,
+    clock: String,
+    level: Int,
+    tab: Int,
+    onTab: (Int) -> Unit,
+    onClose: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        HeroMark(Modifier.size(44.dp))
+        Spacer(Modifier.width(9.dp))
+        Column {
+            Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.InkSoft, fontSize = 10.sp, letterSpacing = 3.sp)
+            Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.InkText, fontSize = 25.sp, letterSpacing = 0.5.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Box(Modifier.width(1.dp).height(32.dp).background(Color(0x26FFFFFF)))
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(
+                "LVL $level/3",
+                style = MaterialTheme.typography.labelLarge,
+                color = GC.InkText,
+                fontSize = 12.sp,
+                letterSpacing = 1.6.sp
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { i ->
+                    Box(
+                        Modifier
+                            .width(22.dp)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(if (i < level) GC.Signal else Color(0x33FFFFFF))
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            ChevronTab(Icons.Filled.Bolt, tab == 0) { onTab(0) }
+            ChevronTab(Icons.Filled.Speed, tab == 1) { onTab(1) }
+            ChevronTab(Icons.Filled.Tune, tab == 2) { onTab(2) }
+            ChevronTab(Icons.Filled.Apps, tab == 3) { onTab(3) }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        // energy / memory chip
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = GC.Signal, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(
+                "$freeTens",
+                style = MaterialTheme.typography.titleMedium,
+                color = GC.InkText,
+                fontSize = 16.sp
+            )
+            Spacer(Modifier.width(3.dp))
+            Text(
+                "/ $totalTens",
+                style = MaterialTheme.typography.labelMedium,
+                color = GC.InkDim,
+                fontSize = 13.sp
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Box(Modifier.width(1.dp).height(30.dp).background(Color(0x26FFFFFF)))
+        Spacer(Modifier.width(16.dp))
+
+        Column(horizontalAlignment = Alignment.End) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BatteryGlyph(pct = battery)
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    "${battery.coerceAtLeast(0)}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = GC.InkText,
+                    fontSize = 15.sp
+                )
+            }
+            Spacer(Modifier.height(3.dp))
+            Text(clock, style = MaterialTheme.typography.labelLarge, color = GC.InkSoft, fontSize = 14.sp)
+        }
+        Spacer(Modifier.width(16.dp))
+        Box(
+            Modifier.size(38.dp).clip(CircleShape).clickable(onClick = onClose),
+            contentAlignment = Alignment.Center
+        ) {
+            AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close Game Space", tint = GC.InkText, modifier = Modifier.size(26.dp))
+        }
     }
 }
 
 @Composable
-private fun StatCard(title: String, value: String, modifier: Modifier = Modifier, footer: @Composable () -> Unit) {
+private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .width(70.dp)
+            .height(46.dp)
+            .clip(ChevShape)
+            .background(if (selected) GC.Signal else Color(0xFF141827))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        AIcon(
+            icon,
+            contentDescription = null,
+            tint = if (selected) Color.White else GC.InkSoft,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun BatteryGlyph(pct: Int) {
+    Canvas(Modifier.width(28.dp).height(14.dp)) {
+        val body = size.width - 3.dp.toPx()
+        val radius = 3.dp.toPx()
+        val fill = (pct.coerceIn(0, 100) / 100f)
+        drawRoundRect(
+            color = GC.Signal.copy(alpha = 0.35f),
+            size = androidx.compose.ui.geometry.Size(body, size.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius)
+        )
+        drawRoundRect(
+            color = GC.Signal,
+            size = androidx.compose.ui.geometry.Size((body - 2.dp.toPx()) * fill, size.height - 2.dp.toPx()),
+            topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius)
+        )
+        drawRoundRect(
+            color = GC.Signal.copy(alpha = 0.7f),
+            size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height * 0.42f),
+            topLeft = Offset(body + 1.dp.toPx(), size.height * 0.29f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+        )
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* app card + launch block                                             */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun AppCard(
+    entry: InstalledApp?,
+    name: String,
+    version: String,
+    minutes: Long,
+    primary: Boolean,
+    selected: Boolean,
+    emptyLabel: String,
+    onSelect: () -> Unit,
+    onFilter: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(if (primary) 22.dp else 18.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(GC.InkPanel)
+            .then(
+                if (selected && primary) Modifier.border(1.5.dp, GC.Signal.copy(alpha = 0.85f), shape)
+                else Modifier.border(1.dp, Color(0x14FFFFFF), shape)
+            )
+            .clickable(onClick = onSelect)
+    ) {
+        if (entry != null) {
+            // Icon blown up + blurred + tinted = a per-app wash so every card looks
+            // like a game still instead of a flat rectangle.
+            Image(
+                painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(scaleX = 2.6f, scaleY = 2.6f, alpha = 0.85f)
+                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(24.dp) else Modifier)
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0x33000000), Color(0x99101220), Color(0xF2060810))
+                        )
+                    )
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(listOf(Color(0xFF141828), Color(0xFF0B0D16)))
+                    )
+            )
+        }
+
+        if (onFilter != null) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(10.dp)
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xCC0A0C16))
+                    .border(1.dp, Color(0x24FFFFFF), RoundedCornerShape(12.dp))
+                    .clickable(onClick = onFilter),
+                contentAlignment = Alignment.Center
+            ) {
+                AIcon(Icons.Filled.Tune, contentDescription = "Texture filtering", tint = GC.InkText, modifier = Modifier.size(19.dp))
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 14.dp, end = 14.dp, bottom = 13.dp)
+                .fillMaxWidth()
+        ) {
+            Box(
+                Modifier
+                    .size(if (primary) 58.dp else 40.dp)
+                    .clip(RoundedCornerShape(if (primary) 17.dp else 12.dp))
+                    .background(Color(0x1FFFFFFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (entry != null) {
+                    Image(
+                        painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
+                        contentDescription = name,
+                        modifier = Modifier
+                            .size(if (primary) 54.dp else 38.dp)
+                            .clip(RoundedCornerShape(if (primary) 15.dp else 11.dp))
+                    )
+                } else {
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = GC.InkDim, modifier = Modifier.size(if (primary) 26.dp else 18.dp))
+                }
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (entry != null) name else emptyLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (entry != null) Color.White else GC.InkSoft,
+                    fontSize = if (primary) 20.sp else 13.sp,
+                    letterSpacing = 0.2.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    if (entry != null) "${formatMinutes(minutes)} · v$version" else "tap to choose",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (entry != null) Color(0xCCFFFFFF) else GC.InkDim,
+                    fontSize = if (primary) 12.sp else 10.sp,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LaunchBar(freeMb: Long, enabled: Boolean, onLaunch: () -> Unit, onBoost: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        Modifier
+            .height(54.dp)
+            .clip(shape)
+            .background(
+                if (enabled) Brush.horizontalGradient(listOf(GC.Signal, GC.SignalDeep))
+                else Brush.horizontalGradient(listOf(Color(0xFF2A2E42), Color(0xFF1B1E2C)))
+            )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxHeight()
+                .clickable(enabled = enabled, onClick = onLaunch)
+                .padding(horizontal = 24.dp)
+        ) {
+            Text(
+                "LAUNCH",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontSize = 18.sp,
+                letterSpacing = 2.4.sp
+            )
+        }
+        Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 12.dp).background(Color(0x40FFFFFF)))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxHeight()
+                .clickable(onClick = onBoost)
+                .padding(horizontal = 14.dp)
+        ) {
+            AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(
+                "${(freeMb / 100).coerceAtLeast(0)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+/** The 2x2 dot grid button that opens the app picker, drawn (not an icon) so it matches the reference. */
+@Composable
+private fun GridButton(onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(54.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(GC.InkPanelHi)
+            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            repeat(2) {
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    repeat(2) {
+                        Box(
+                            Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(1.5.dp))
+                                .background(GC.InkText)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PerformBlock(score: Int) {
+    Column(horizontalAlignment = Alignment.End) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                "$score%",
+                style = MaterialTheme.typography.headlineSmall,
+                color = GC.InkText,
+                fontSize = 25.sp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "PERFORM",
+                style = MaterialTheme.typography.labelMedium,
+                color = GC.InkDim,
+                fontSize = 11.sp,
+                letterSpacing = 1.8.sp
+            )
+        }
+        Spacer(Modifier.height(7.dp))
+        TickRow(filled = score / 10, segments = 10)
+    }
+}
+
+@Composable
+private fun TickRow(filled: Int, segments: Int) {
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(segments) { i ->
+            Box(
+                Modifier
+                    .width(13.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(if (i < filled) GC.Signal else Color(0x33FFFFFF))
+            )
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* stat wall                                                           */
+/* ------------------------------------------------------------------ */
+
+@Composable
+private fun StatBox(
+    title: String,
+    value: String,
+    good: Boolean,
+    modifier: Modifier = Modifier,
+    footer: @Composable () -> Unit
+) {
     Column(
         modifier
-            .clip(CutCornerShape(topStart = 2.dp, topEnd = 14.dp, bottomEnd = 2.dp, bottomStart = 14.dp))
-            .background(Color(0xCC120A0B))
-            .border(1.dp, Color(0x22FFFFFF), CutCornerShape(topStart = 2.dp, topEnd = 14.dp, bottomEnd = 2.dp, bottomStart = 14.dp))
-            .padding(13.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(GC.InkPanel)
+            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.5.sp)
-        Spacer(Modifier.height(6.dp))
-        Text(value, style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
-        Spacer(Modifier.height(8.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelMedium,
+            color = GC.InkDim,
+            fontSize = 9.sp,
+            letterSpacing = 1.9.sp,
+            maxLines = 1
+        )
+        Spacer(Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                color = GC.InkText,
+                fontSize = 20.sp,
+                maxLines = 1
+            )
+            Spacer(Modifier.width(6.dp))
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (good) Color(0xFF39D98A) else GC.Signal)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         footer()
     }
+}
+
+/** Thin temperature rail with a moving marker, like the reference panel. */
+@Composable
+private fun TempBar(celsius: Double) {
+    val pct = ((celsius.coerceIn(0.0, 80.0)) / 80.0).toFloat()
+    Box(Modifier.fillMaxWidth().height(8.dp)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val h = size.height
+            drawRoundRect(
+                color = Color(0xFF232841),
+                size = androidx.compose.ui.geometry.Size(size.width, h),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
+            )
+            drawRoundRect(
+                brush = Brush.horizontalGradient(listOf(Color(0xFF39D98A), Color(0xFFF2C94C), GC.Signal)),
+                size = androidx.compose.ui.geometry.Size(size.width * pct, h),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
+            )
+            val x = (size.width * pct).coerceIn(0f, size.width)
+            drawCircle(Color.White, radius = h * 0.75f, center = Offset(x, h / 2))
+        }
+    }
+}
+
+@Composable
+private fun CpuCard(ghz: Double, loadPct: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(GC.InkPanel)
+            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(16.dp))
+            .padding(6.dp)
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 7.dp.toPx()
+            val inset = stroke / 2 + 4.dp.toPx()
+            val arcSize = androidx.compose.ui.geometry.Size(
+                size.width - inset * 2,
+                size.height - inset * 2 + 26.dp.toPx()
+            )
+            drawArc(
+                color = Color(0xFF232841),
+                startAngle = 140f,
+                sweepAngle = 260f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+            drawArc(
+                brush = Brush.sweepGradient(listOf(GC.Signal, GC.SignalGlow, GC.Signal)),
+                startAngle = 140f,
+                sweepAngle = 260f * (loadPct.coerceIn(0, 100) / 100f),
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+        }
+        Column(
+            Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "CPU SPEED",
+                style = MaterialTheme.typography.labelMedium,
+                color = GC.InkDim,
+                fontSize = 9.sp,
+                letterSpacing = 1.6.sp
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                String.format("%.2f", ghz),
+                style = MaterialTheme.typography.headlineMedium,
+                color = GC.InkText,
+                fontSize = 23.sp
+            )
+            Text("GHz · $loadPct% load", style = MaterialTheme.typography.labelMedium, color = GC.InkSoft, fontSize = 9.sp)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+private fun formatMinutes(minutes: Long): String {
+    if (minutes <= 0) return "new"
+    if (minutes < 60) return "${minutes}m"
+    val h = minutes / 60
+    val m = minutes % 60
+    return if (m == 0L) "${h}h" else "${h}h ${m}m"
+}
+
+private fun versionOf(context: android.content.Context, pkg: String?): String {
+    if (pkg.isNullOrBlank()) return "?"
+    return try {
+        context.packageManager.getPackageInfo(pkg, 0).versionName ?: "?"
+    } catch (_: Throwable) {
+        "?"
+    }
+}
+
+/** 0..100 health score from live CPU load, memory pressure and battery temperature. */
+private fun performScore(cpuPct: Int, memPct: Int, temp: Double): Int {
+    val cpuPart = (100 - cpuPct.coerceIn(0, 100)) * 0.55
+    val memPart = (100 - memPct.coerceIn(0, 100)) * 0.30
+    val tempScore = ((60.0 - temp.coerceIn(0.0, 60.0)) / 60.0) * 15.0
+    return (cpuPart + memPart + tempScore).toInt().coerceIn(0, 100)
 }
 
 @Composable
@@ -520,102 +1003,203 @@ private fun ControlCenter(
     onDismiss: () -> Unit,
     onTouchSettings: () -> Unit,
     onDisplaySettings: () -> Unit,
+    onTextureSettings: () -> Unit,
+    onPickApps: () -> Unit,
     onOpenPanel: () -> Unit,
     panelRunning: Boolean
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val repo = remember { AppRepo(context) }
-    var dns by remember { mutableStateOf(repo.toggle("dns")) }
-    var session by remember { mutableStateOf(repo.toggle("session")) }
-    var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
+    val scope = rememberCoroutineScope()
+    val prefs = remember { context.getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE) }
+    var memNote by remember { mutableStateOf("") }
+    var working by remember { mutableStateOf(false) }
+
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x66000000))
+            .background(Color(0x9904050A))
             .clickable(onClick = onDismiss)
     ) {
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(16.dp)
-                .clip(CutCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomEnd = 6.dp, bottomStart = 22.dp))
-                .background(Color(0xF5160E0F))
+                .padding(14.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(GC.InkPanel.copy(alpha = 0.98f))
+                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(22.dp))
                 .clickable(enabled = false) {}
-                .padding(18.dp)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.width(4.dp).height(22.dp).background(LocalAccent.current))
+                Box(Modifier.width(3.dp).height(20.dp).background(GC.Signal))
                 Spacer(Modifier.width(10.dp))
-                Text("Control Center", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
-                Spacer(Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "CONTROL CENTER",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = GC.InkText,
+                        fontSize = 17.sp,
+                        letterSpacing = 1.4.sp
+                    )
+                    Text(
+                        if (memNote.isBlank()) "8 live tools — every tile does something real"
+                        else memNote,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (memNote.isBlank()) GC.InkDim else Color(0xFF39D98A),
+                        fontSize = 11.sp
+                    )
+                }
                 Box(
-                    Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                    Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x1AFFFFFF))
+                        .clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.InkText, modifier = Modifier.size(16.dp))
+                }
             }
             Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ControlCard(Icons.Filled.Dns, "VISUAL", "DNS & Latency Tuner", showState = true, on = dns, onToggle = {
-                    dns = it; repo.setToggle("dns", it)
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.GraphicEq, "VISUAL", "Session Monitor", showState = true, on = session, onToggle = {
-                    session = it; repo.setToggle("session", it)
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.TouchApp, "CONFIGS", "Touch Settings", showState = false, on = false, onToggle = {
-                    onTouchSettings()
-                }, modifier = Modifier.weight(1f))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                ToolTile(
+                    icon = Icons.Filled.Videocam,
+                    category = "CAPTURE",
+                    title = if (Recorder.isRecording) "Stop recording" else "Screen record",
+                    active = Recorder.isRecording,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (Recorder.isRecording) RecorderService.stop(context)
+                    else ProjectionActivity.launch(context, ProjectionActivity.MODE_RECORD)
+                }
+                ToolTile(
+                    icon = Icons.Filled.Podcasts,
+                    category = "LIVE",
+                    title = if (Stream.isStreaming) "Stop stream" else "Go Live (RTMP)",
+                    active = Stream.isStreaming,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (Stream.isStreaming) {
+                        StreamService.stop(context)
+                    } else {
+                        val url = prefs.getString("rtmp_url", "") ?: ""
+                        if (url.isBlank()) {
+                            onDismiss()
+                            runCatching {
+                                context.startActivity(
+                                    Intent(context, com.gamershub.MainActivity::class.java)
+                                        .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, "live")
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        } else {
+                            ProjectionActivity.launch(context, ProjectionActivity.MODE_LIVE, url)
+                        }
+                    }
+                }
+                ToolTile(
+                    icon = Icons.Filled.Bolt,
+                    category = "OVERLAY",
+                    title = if (panelRunning) "Pop-up panel on" else "Pop-up panel off",
+                    active = panelRunning,
+                    modifier = Modifier.weight(1f)
+                ) { onOpenPanel() }
+                ToolTile(
+                    icon = Icons.Filled.Memory,
+                    category = "MEMORY",
+                    title = "Boost RAM",
+                    active = false,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (working) return@ToolTile
+                    working = true
+                    scope.launch {
+                        val report = withContext(Dispatchers.IO) { com.gamershub.core.MemoryCleaner.boost(context) }
+                        memNote = com.gamershub.core.MemoryCleaner.describe(report)
+                        working = false
+                    }
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ControlCard(Icons.Filled.Tune, "CONFIGS", "Display Settings", showState = false, on = false, onToggle = {
-                    onDisplaySettings()
-                }, modifier = Modifier.weight(1f))
-                ControlCard(Icons.Filled.Apps, "CONFIGS", if (panelRunning) "Pop-up Panel (ON)" else "Pop-up Panel", showState = false, on = panelRunning, onToggle = { onOpenPanel() }, modifier = Modifier.weight(1f))
-                Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(9.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                ToolTile(
+                    icon = Icons.Filled.CleaningServices,
+                    category = "MEMORY",
+                    title = "Deep clean",
+                    active = false,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (working) return@ToolTile
+                    working = true
+                    scope.launch {
+                        val report = withContext(Dispatchers.IO) { com.gamershub.core.MemoryCleaner.deepClean(context) }
+                        memNote = com.gamershub.core.MemoryCleaner.describe(report)
+                        working = false
+                    }
+                }
+                ToolTile(
+                    icon = Icons.Filled.Tune,
+                    category = "GRAPHICS",
+                    title = "Texture · shadow",
+                    active = false,
+                    modifier = Modifier.weight(1f)
+                ) { onTextureSettings() }
+                ToolTile(
+                    icon = Icons.Filled.TouchApp,
+                    category = "CONFIG",
+                    title = "Touch settings",
+                    active = false,
+                    modifier = Modifier.weight(1f)
+                ) { onTouchSettings() }
+                ToolTile(
+                    icon = Icons.Filled.Apps,
+                    category = "APPS",
+                    title = "My apps",
+                    active = false,
+                    modifier = Modifier.weight(1f)
+                ) { onPickApps() }
             }
         }
     }
 }
 
 @Composable
-private fun ControlCard(
+private fun ToolTile(
     icon: ImageVector,
     category: String,
     title: String,
-    showState: Boolean,
-    on: Boolean,
-    onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
-    val accent = LocalAccent.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .clip(CutCornerShape(topStart = 2.dp, topEnd = 12.dp, bottomEnd = 2.dp, bottomStart = 12.dp))
-            .background(Color(0xFF1C1213))
-            .clickable { onToggle(!on) }
-            .padding(13.dp)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (active) GC.Signal.copy(alpha = 0.16f) else GC.InkPanelHi)
+            .border(
+                1.dp,
+                if (active) GC.Signal.copy(alpha = 0.7f) else Color(0x12FFFFFF),
+                RoundedCornerShape(14.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 11.dp, vertical = 12.dp)
     ) {
-        Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-            AIcon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
-        }
-        Spacer(Modifier.width(11.dp))
-        Column(Modifier.weight(1f)) {
-            Text(category, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 9.sp, letterSpacing = 1.2.sp)
-            Text(title, style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        if (showState) {
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF241718))
-                    .padding(horizontal = 11.dp, vertical = 6.dp)
-            ) {
-                Text(if (on) "ON" else "OFF", style = MaterialTheme.typography.labelMedium, color = if (on) accent else GC.TextDim, fontSize = 11.sp)
-            }
-        }
+        AIcon(icon, contentDescription = null, tint = if (active) GC.Signal else GC.InkSoft, modifier = Modifier.size(19.dp))
+        Spacer(Modifier.height(9.dp))
+        Text(category, style = MaterialTheme.typography.labelMedium, color = GC.InkDim, fontSize = 8.sp, letterSpacing = 1.4.sp)
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = GC.InkText,
+            fontSize = 12.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
+
 
 /** Per-game Texture Filtering panel (right side). */
 @Composable
@@ -779,18 +1363,65 @@ private fun PresetChip(text: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun HexBackdrop(modifier: Modifier) {
     Canvas(modifier) {
-        val step = 46f
-        val paintDot = Color(0x14FF6B4A)
-        var y = 0f
+        // pink bloom top-left, exactly where the reference art puts its light
+        drawRect(
+            Brush.radialGradient(
+                colors = listOf(Color(0x40FF2C5E), Color(0x00000000)),
+                center = Offset(size.width * 0.22f, size.height * 0.06f),
+                radius = size.width * 0.55f
+            )
+        )
+        drawRect(
+            Brush.radialGradient(
+                colors = listOf(Color(0x2600E0FF), Color(0x00000000)),
+                center = Offset(size.width * 0.92f, size.height * 0.9f),
+                radius = size.width * 0.5f
+            )
+        )
+
+        // hex lattice
+        val r = 56f
+        val hexW = r * sqrt(3f)
+        val path = Path()
         var row = 0
-        while (y < size.height) {
-            var x = if (row % 2 == 0) 0f else step / 2
-            while (x < size.width) {
-                drawCircle(paintDot, radius = 2.2f, center = Offset(x, y))
-                x += step
+        var y = -r
+        while (y < size.height + r) {
+            var x = if (row % 2 == 0) 0f else hexW / 2f
+            while (x < size.width + hexW) {
+                path.reset()
+                for (i in 0..5) {
+                    val a = (Math.PI / 3.0 * i - Math.PI / 6.0).toFloat()
+                    val px = x + r * cos(a)
+                    val py = y + r * sin(a)
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                path.close()
+                drawPath(path, Color(0x0BFFFFFF), style = Stroke(1f))
+                x += hexW
             }
-            y += step * 0.86f
+            y += r * 1.5f
             row++
+        }
+
+        // sparse signal dots
+        val step = 74f
+        var dy = 0f
+        var drow = 0
+        while (dy < size.height) {
+            var dx = if (drow % 2 == 0) 0f else step / 2f
+            var col = 0
+            while (dx < size.width) {
+                val lit = (drow * 7 + col * 3) % 11 == 0
+                drawCircle(
+                    if (lit) Color(0x66FF2C5E) else Color(0x14FFFFFF),
+                    radius = if (lit) 2.4f else 1.5f,
+                    center = Offset(dx, dy)
+                )
+                dx += step
+                col++
+            }
+            dy += step * 0.8f
+            drow++
         }
     }
 }
