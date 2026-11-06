@@ -102,7 +102,12 @@ private fun rememberPanelStats(): PanelStats {
                 val cpu = DeviceStats.cpu()
                 val mem = DeviceStats.mem(context)
                 val battery = DeviceStats.battery(context)
-                val ping = if (tick % 5 == 0) DeviceStats.pingMs() else value.ping
+                val sampled = if (tick % 5 == 0) DeviceStats.pingMs() else -2
+                val pingText = when {
+                    sampled >= 0 -> "$sampled ms"
+                    sampled == -2 -> value.ping
+                    else -> "--"
+                }
                 val pkg = FpsMeter.foregroundPackage(context)
                 val frames = pkg?.let { FpsMeter.totalFrames(it) }
                 val now = System.currentTimeMillis()
@@ -123,7 +128,7 @@ private fun rememberPanelStats(): PanelStats {
                     cpu = cpu.pct.coerceIn(0, 100),
                     ram = mem.pct.coerceIn(0, 100),
                     temp = if (battery.second > 0) "${battery.second.toInt()}°C" else "--",
-                    ping = if (ping >= 0) "$ping ms" else "--",
+                    ping = pingText,
                     ghz = String.format(Locale.US, "%.2fGHz", cpu.curGhz),
                     batt = battery.first.coerceIn(0, 100),
                     clock = SimpleDateFormat("hh:mm a", Locale.US).format(Date())
