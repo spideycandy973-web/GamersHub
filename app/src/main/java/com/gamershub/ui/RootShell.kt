@@ -116,8 +116,6 @@ sealed interface SheetState {
     data class Permission(val index: Int) : SheetState
     data object DisplayTuning : SheetState
     data object Activation : SheetState
-    data object LowEnergy : SheetState
-    data object Ad : SheetState
     data object GameReady : SheetState
     data object Ping : SheetState
     data object Gyro : SheetState
@@ -145,19 +143,8 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
         var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
         val uid = remember { repo.userId() }
 
-        // ---- energy economy (simulated) + boot intro ----
-        var energy by remember { mutableIntStateOf(repo.energy()) }
         var pendingLaunch by remember { mutableStateOf<InstalledApp?>(null) }
         var showIntro by remember { mutableStateOf(true) }
-        LaunchedEffect(Unit) {
-            repo.tickEnergy()
-            energy = repo.energy()
-            while (true) {
-                kotlinx.coroutines.delay(30_000)
-                repo.tickEnergy()
-                energy = repo.energy()
-            }
-        }
         // Stateful toggles — the source of truth for animated Toggle composables.
         val toggles = remember { mutableStateMapOf<String, Boolean>() }
         fun toggleGet(key: String): Boolean = toggles[key] ?: repo.toggle(key).also { toggles[key] = it }
@@ -377,8 +364,8 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     library = library,
                     version = "V6.0.0-32",
                     playMinutes = { pkg -> repo.playMinutes(pkg) },
-                    energy = energy,
-                    onAddEnergy = { sheet = SheetState.Ad },
+                    libraryCount = library.size,
+                    onSelectApps = { sheet = SheetState.AppSelector },
                     onAddGames = { sheet = SheetState.AppSelector },
                     onGameTap = { app -> sheet = SheetState.Launch(app) },
                     onGameSpace = {
@@ -551,26 +538,6 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         },
                         onDismiss = { sheet = SheetState.None }
                     )
-                    SheetState.LowEnergy -> com.gamershub.ui.sheets.LowEnergySheet(
-                        needed = 80,
-                        onWatchAd = { sheet = SheetState.Ad },
-                        onBuyPremium = {
-                            repo.setPremium(true)
-                            Toast.makeText(context, "Premium active — launches are free (demo)", Toast.LENGTH_LONG).show()
-                            sheet = SheetState.None
-                        },
-                        onDismiss = { sheet = SheetState.None }
-                    )
-                    SheetState.Ad -> Box(
-                        Modifier.fillMaxSize().background(Color(0x99000000)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        com.gamershub.ui.sheets.AdLoadingDialog(onFinished = { reward ->
-                            repo.addEnergy(reward)
-                            energy = repo.energy()
-                            sheet = pendingLaunch?.let { SheetState.Launch(it) } ?: SheetState.None
-                        })
-                    }
                     SheetState.GameReady -> com.gamershub.ui.sheets.GameReadySheet(
                         onDone = {
                             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager

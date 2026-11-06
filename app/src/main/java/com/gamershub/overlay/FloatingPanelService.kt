@@ -39,7 +39,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.BrightnessHigh
@@ -55,6 +54,7 @@ import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -308,7 +308,13 @@ private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
             .clickable(onClick = onTap),
         contentAlignment = Alignment.Center
     ) {
-        HeroMark(Modifier.size(34.dp))
+        // Gamepad bubble (the reference uses a controller mark, not a logo).
+        AIcon(
+            Icons.Filled.SportsEsports,
+            contentDescription = "GamersHub panel",
+            tint = Color(0xFF120C0D),
+            modifier = Modifier.size(30.dp)
+        )
     }
 }
 

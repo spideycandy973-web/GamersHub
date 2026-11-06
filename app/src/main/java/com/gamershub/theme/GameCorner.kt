@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.gamershub.R
 
@@ -58,20 +59,29 @@ object GC {
         listOf(Color(0xFF3A2A1E), Color(0xFF2B1F17), Color(0xFF241A13))
     )
 
-    /** Display face — the AX-GC family used across the whole app. */
+    /**
+     * Display face — Orbitron variable font (geometric, squared, arcade/tech look).
+     * Deliberately NOT a Roboto look-alike: the app needs its own voice.
+     */
     val Display = FontFamily(
-        Font(R.font.axgc_medium, weight = FontWeight.Medium),
-        Font(R.font.axgc_semibold, weight = FontWeight.SemiBold),
-        Font(R.font.axgc_bold, weight = FontWeight.Bold),
-        Font(R.font.axgc_black, weight = FontWeight.Black)
+        Font(R.font.orbitron, weight = FontWeight.Normal,
+            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+        Font(R.font.orbitron, weight = FontWeight.Medium,
+            variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+        Font(R.font.orbitron, weight = FontWeight.SemiBold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+        Font(R.font.orbitron, weight = FontWeight.Bold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+        Font(R.font.orbitron, weight = FontWeight.Black,
+            variationSettings = FontVariation.Settings(FontVariation.weight(900)))
     )
 
-    /** Body face — same family, lighter cuts, so the app has one voice. */
+    /** Body face — Chakra Petch, a semi-condensed techno sans that reads cleanly at 11–15sp. */
     val Body = FontFamily(
-        Font(R.font.axgc_regular, weight = FontWeight.Normal),
-        Font(R.font.axgc_medium, weight = FontWeight.Medium),
-        Font(R.font.axgc_semibold, weight = FontWeight.SemiBold),
-        Font(R.font.axgc_bold, weight = FontWeight.Bold)
+        Font(R.font.chakra_regular, weight = FontWeight.Normal),
+        Font(R.font.chakra_medium, weight = FontWeight.Medium),
+        Font(R.font.chakra_semibold, weight = FontWeight.SemiBold),
+        Font(R.font.chakra_bold, weight = FontWeight.Bold)
     )
 }
 

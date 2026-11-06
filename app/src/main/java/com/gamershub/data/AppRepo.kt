@@ -29,34 +29,6 @@ class AppRepo(private val context: Context) {
 
     fun added(): Set<String> = prefs.getStringSet("added", emptySet()) ?: emptySet()
 
-    // ---- energy economy (simulated — no real ads or billing) ----
-    fun energy(): Int = prefs.getInt("energy", 0)
-
-    fun setEnergy(v: Int) {
-        prefs.edit().putInt("energy", v.coerceIn(0, 560)).apply()
-    }
-
-    fun addEnergy(v: Int) {
-        setEnergy(energy() + v)
-    }
-
-    /** +10 energy per minute of real time, capped at 560. */
-    fun tickEnergy() {
-        val last = prefs.getLong("energy_ts", 0L)
-        val now = System.currentTimeMillis()
-        if (last > 0) {
-            val gained = ((now - last) / 60000L).toInt() * 10
-            if (gained > 0) setEnergy(energy() + gained)
-        }
-        prefs.edit().putLong("energy_ts", now).apply()
-    }
-
-    fun premium(): Boolean = prefs.getBoolean("premium", false)
-
-    fun setPremium(v: Boolean) {
-        prefs.edit().putBoolean("premium", v).apply()
-    }
-
     fun isAdded(pkg: String): Boolean = added().contains(pkg)
     fun setAdded(pkg: String, value: Boolean) {
         val cur = added().toMutableSet()
@@ -109,6 +81,19 @@ class AppRepo(private val context: Context) {
             .map { (pkg, label) -> InstalledApp(label, pkg, iconBitmap(pkg)) }
             .sortedBy { it.name.lowercase() }
             .toList()
+    }
+
+    /** The user's selected apps only — icons loaded for those packages alone. */
+    fun addedApps(): List<InstalledApp> {
+        val pm = context.packageManager
+        return added().mapNotNull { pkg ->
+            try {
+                val info = pm.getApplicationInfo(pkg, 0)
+                InstalledApp(pm.getApplicationLabel(info).toString(), pkg, iconBitmap(pkg))
+            } catch (_: Throwable) {
+                null
+            }
+        }.sortedBy { it.name.lowercase() }
     }
 
     fun launch(pkg: String): Boolean = try {

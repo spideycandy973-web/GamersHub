@@ -26,6 +26,7 @@ object GfxEngine {
         val effects: String = "HIGH",
         val antiAliasing: String = "HIGH",
         val resolution: Int = 100,        // sg.ResolutionQuality
+        val sharpness: Int = 60,          // r.Tonemapper.Sharpen 0..100
         val frameLimit: Int = 0           // 0 = unlimited
     )
 
@@ -208,6 +209,7 @@ object GfxEngine {
         effects: String,
         antiAliasing: String,
         resolution: Int,
+        sharpness: Int,
         frameLimit: Int
     ): Pair<String, ApplyResult> {
         val pkg = FpsMeter.foregroundPackage(context)
@@ -222,6 +224,7 @@ object GfxEngine {
                 effects = effects,
                 antiAliasing = antiAliasing,
                 resolution = resolution,
+                sharpness = sharpness,
                 frameLimit = frameLimit
             )
         )
@@ -269,7 +272,10 @@ object GfxEngine {
             appendLine("r.ShadowQuality=$shadow")
             appendLine("r.Shadow.MaxResolution=${if (shadow >= 2) 2048 else 1024}")
             appendLine("r.MipMapLODBias=${if (texture >= 2) -1 else 0}")
-            appendLine("r.Tonemapper.Sharpen=${if (options.effects.contains("HIGH")) "0.6" else "0.0"}")
+            val sharpen = options.sharpness.coerceIn(0, 100) / 100f
+            appendLine("r.Tonemapper.Sharpen=${String.format(java.util.Locale.US, "%.2f", sharpen)}")
+            appendLine("r.Tonemapper.Quality=${if (sharpen > 0.4f) 3 else 1}")
+            appendLine("r.Upscale.Quality=${if (sharpen > 0.4f) 3 else 1}")
             if (options.frameLimit > 0) {
                 appendLine("FrameRateLimit=${options.frameLimit}")
                 appendLine("bUseVSync=False")

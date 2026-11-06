@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Gamepad
@@ -53,8 +54,8 @@ fun LobbyScreen(
     library: List<InstalledApp>,
     version: String,
     playMinutes: (String) -> Long,
-    energy: Int,
-    onAddEnergy: () -> Unit,
+    libraryCount: Int,
+    onSelectApps: () -> Unit,
     onAddGames: () -> Unit,
     onGameTap: (InstalledApp) -> Unit,
     onGameSpace: () -> Unit
@@ -120,23 +121,33 @@ fun LobbyScreen(
                         .padding(horizontal = 16.dp, vertical = 11.dp)
                 ) {
                     Box(Modifier.size(42.dp).clip(CircleShape).background(GC.SurfaceHi), contentAlignment = Alignment.Center) {
-                        AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
+                        AIcon(Icons.Filled.Apps, contentDescription = null, tint = accent, modifier = Modifier.size(21.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("Energy", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                        Text("My Apps", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("$energy", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
-                            Text(" / 560", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                            Text("$libraryCount", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text(" added", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
                             Spacer(Modifier.width(8.dp))
                             Box(
-                                Modifier.size(22.dp).clip(CircleShape).background(accent).clickable(onClick = onAddEnergy),
-                                contentAlignment = Alignment.Center
+                                Modifier
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(accent)
+                                    .clickable(onClick = onSelectApps)
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
-                                AIcon(Icons.Filled.Add, contentDescription = "Add energy", tint = Color.White, modifier = Modifier.size(14.dp))
+                                Text(
+                                    "SELECT",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 1.sp
+                                )
                             }
                         }
                     }
+                    Spacer(Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

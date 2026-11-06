@@ -114,7 +114,7 @@ fun SheetFrame(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Uni
 }
 
 /* ------------------------------------------------------------------ */
-/* Launch mode + slide to open (energy economy, simulated rewards)     */
+/* Launch mode + slide to open                                        */
 /* ------------------------------------------------------------------ */
 @Composable
 fun LaunchModeSheet(
@@ -171,11 +171,11 @@ fun LaunchModeSheet(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LaunchModeCard(
-                icon = Icons.Filled.Rocket, title = "Game Space", cost = "⚡ 80 Energy",
+                icon = Icons.Filled.Rocket, title = "Game Space", cost = "FREE · panel + boosters",
                 selected = gameSpace, onSelect = { gameSpace = true }, modifier = Modifier.weight(1f)
             )
             LaunchModeCard(
-                icon = Icons.Filled.Android, title = "Direct Open", cost = "⚡ 40 Energy",
+                icon = Icons.Filled.Android, title = "Direct Open", cost = "FREE · plain launch",
                 selected = !gameSpace, onSelect = { gameSpace = false }, modifier = Modifier.weight(1f)
             )
         }
@@ -1072,139 +1072,8 @@ fun ActivationSheet(
 }
 
 /* ------------------------------------------------------------------ */
-/* Low Energy gate + simulated ad reward + Game Ready                  */
+/* Game Ready                                                          */
 /* ------------------------------------------------------------------ */
-
-@Composable
-fun LowEnergySheet(
-    needed: Int,
-    onWatchAd: () -> Unit,
-    onBuyPremium: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val accent = LocalAccent.current
-    SheetFrame(onDismiss = onDismiss) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            IconChip(Icons.Filled.Bolt, size = 62)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Low Energy",
-            Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.displaySmall,
-            color = GC.Text,
-            fontSize = 30.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "You need at least $needed Energy to open Space. Watch an ad to get 120 Energy instantly!",
-            Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = GC.TextDim,
-            fontSize = 15.sp,
-            lineHeight = 22.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        Spacer(Modifier.height(18.dp))
-        BigButton("⚡ Watch Ad (+120 Energy)", onWatchAd, Modifier.fillMaxWidth(), primary = true, leadingIcon = Icons.Filled.Bolt)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "Only if the ad is shown",
-            Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.labelMedium,
-            color = GC.TextDim,
-            fontSize = 11.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-        Spacer(Modifier.height(10.dp))
-        BigButton("Buy Premium (Optional)", onBuyPremium, Modifier.fillMaxWidth(), primary = false, leadingIcon = Icons.Filled.CheckCircle, textColor = accent)
-        Spacer(Modifier.height(10.dp))
-        BigButton("Maybe Later", onDismiss, Modifier.fillMaxWidth(), primary = false, textColor = GC.TextSoft)
-    }
-}
-
-@Composable
-fun AdLoadingDialog(
-    onFinished: (reward: Int) -> Unit
-) {
-    val accent = LocalAccent.current
-    var secondsLeft by remember { mutableStateOf(15) }
-    var skipLeft by remember { mutableStateOf(3) }
-    val progress by androidx.compose.animation.core.animateFloatAsState(
-        (15 - secondsLeft) / 15f,
-        label = "adprog"
-    )
-    LaunchedEffect(Unit) {
-        while (secondsLeft > 0) {
-            kotlinx.coroutines.delay(1000)
-            secondsLeft--
-            if (skipLeft > 0) skipLeft--
-        }
-        onFinished(120)
-    }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xF51A1314))
-            .padding(20.dp)
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Loading ad...", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Stay here — you'll get your reward even if the ad doesn't load.",
-                style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 19.sp
-            )
-            Spacer(Modifier.height(12.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0x22FFFFFF))
-            ) {
-                Box(Modifier.fillMaxWidth(progress).height(8.dp).background(accent))
-            }
-            Spacer(Modifier.height(6.dp))
-            Text("${secondsLeft}s", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-            Spacer(Modifier.height(12.dp))
-            RewardRow("If the ad is shown", "120 Energy", orange = true)
-            RewardRow("Alternative reward", "60 Energy", orange = false)
-            RewardRow("If the ad fails", "60 Energy", orange = false)
-            Spacer(Modifier.height(12.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(GC.SurfaceHi)
-                    .clickable(enabled = skipLeft == 0) { onFinished(60) }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (skipLeft > 0) "Skip ($skipLeft)" else "Skip",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (skipLeft > 0) GC.TextDim else GC.Text,
-                    fontSize = 14.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RewardRow(label: String, value: String, orange: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.labelLarge, color = if (orange) Color(0xFFE05A2B) else GC.Text, fontSize = 14.sp)
-    }
-}
 
 @Composable
 fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
