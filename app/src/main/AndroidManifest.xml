@@ -125,6 +125,22 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Shizuku user service: must be exported so the Shizuku server can bind it. -->
+        <service
+            android:name=".core.shizuku.GamersHubShellService"
+            android:exported="true"
+            android:process=":shellsvc" />
+
+        <!-- Invisible consent proxy: starts screen capture for the overlay panel
+             without leaving the running game. -->
+        <activity
+            android:name=".core.capture.ProjectionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=".projection"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- This provider is required by Shizuku. Do not remove. -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

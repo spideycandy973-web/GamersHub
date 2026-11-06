@@ -12,7 +12,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import com.gamershub.R
 
@@ -59,13 +58,20 @@ object GC {
         listOf(Color(0xFF3A2A1E), Color(0xFF2B1F17), Color(0xFF241A13))
     )
 
+    /** Display face — the AX-GC family used across the whole app. */
     val Display = FontFamily(
-        Font(R.font.fredoka, weight = FontWeight.Medium,
-            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-        Font(R.font.fredoka, weight = FontWeight.SemiBold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-        Font(R.font.fredoka, weight = FontWeight.Bold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(700)))
+        Font(R.font.axgc_medium, weight = FontWeight.Medium),
+        Font(R.font.axgc_semibold, weight = FontWeight.SemiBold),
+        Font(R.font.axgc_bold, weight = FontWeight.Bold),
+        Font(R.font.axgc_black, weight = FontWeight.Black)
+    )
+
+    /** Body face — same family, lighter cuts, so the app has one voice. */
+    val Body = FontFamily(
+        Font(R.font.axgc_regular, weight = FontWeight.Normal),
+        Font(R.font.axgc_medium, weight = FontWeight.Medium),
+        Font(R.font.axgc_semibold, weight = FontWeight.SemiBold),
+        Font(R.font.axgc_bold, weight = FontWeight.Bold)
     )
 }
 
@@ -87,8 +93,8 @@ fun GameCornerTheme(
         outline = GC.Stroke, error = GC.CrimsonRed
     )
     val type = Typography(
-        displayLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
-        displayMedium = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
+        displayLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Black),
+        displayMedium = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Black),
         displaySmall = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
         headlineLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
         headlineMedium = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
@@ -96,9 +102,12 @@ fun GameCornerTheme(
         titleLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Bold),
         titleMedium = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
         titleSmall = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
+        bodyLarge = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
+        bodyMedium = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
+        bodySmall = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
         labelLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
-        labelMedium = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
-        labelSmall = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.Medium)
+        labelMedium = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Medium),
+        labelSmall = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Medium)
     )
     androidx.compose.runtime.CompositionLocalProvider(
         LocalAccent provides accent,
