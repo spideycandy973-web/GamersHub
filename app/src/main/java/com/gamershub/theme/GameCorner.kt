@@ -18,33 +18,34 @@ import com.gamershub.R
 
 /** Game Corner design system — warm near-black, accent-driven, chunky display type. */
 object GC {
-    val Bg = Color(0xFF0A0A0B)
-    val Surface = Color(0xFF16110D)
-    val SurfaceHi = Color(0xFF211812)
-    val BrownPill = Color(0xFF3B2417)
-    val TagBg = Color(0xFF38200E)
-    val Stroke = Color(0xFF2C231C)
-    val Text = Color(0xFFF2F2F2)
-    val TextDim = Color(0xFF8E8E90)
-    val TextSoft = Color(0xFFB9B4B0)
+    val Bg = Color(0xFF100F0D)
+    val Surface = Color(0xFF1C1917)
+    val SurfaceHi = Color(0xFF262220)
+    val BrownPill = Color(0xFF35291F)
+    val TagBg = Color(0xFF332012)
+    val Stroke = Color(0xFF332E2A)
+    val Text = Color(0xFFF0EFED)
+    val TextDim = Color(0xFF948B84)
+    val TextSoft = Color(0xFFB5ACA6)
 
-    /* ---- Game Space (in-game hub) palette: deep navy + signal pink ---- */
-    val Void = Color(0xFF07080F)
-    val VoidMid = Color(0xFF0C0E18)
-    val InkPanel = Color(0xFF101320)
-    val InkPanelHi = Color(0xFF161A2A)
-    val InkStroke = Color(0xFF232841)
-    val InkText = Color(0xFFEDEFF7)
-    val InkDim = Color(0xFF7C82A0)
-    val InkSoft = Color(0xFFAEB4CC)
-    val Signal = Color(0xFFFF2C5E)
-    val SignalDeep = Color(0xFFB4123D)
-    val SignalGlow = Color(0xFFFF5C82)
+    /* ---- Game Space (in-game hub) palette — sampled from the reference console ---- */
+    val Void = Color(0xFF090607)
+    val VoidMid = Color(0xFF120A0B)
+    val InkPanel = Color(0xCC120C0D)
+    val InkPanelHi = Color(0xFF1C1315)
+    val InkStroke = Color(0x26FFFFFF)
+    val InkText = Color(0xFFF6F3F2)
+    val InkDim = Color(0xFF9C9294)
+    val InkSoft = Color(0xFFC8BEBF)
+    /** Reference signal red — the console accent. */
+    val Signal = Color(0xFFFF1717)
+    val SignalDeep = Color(0xFFC00B0B)
+    val SignalGlow = Color(0xFFFF5C5C)
 
-    val Orange = Color(0xFFF2681E)
+    val Orange = Color(0xFFE25E20)
     val OceanBlue = Color(0xFF2FA3E0)
     val NeonTosca = Color(0xFF1FE0C0)
-    val CrimsonRed = Color(0xFFE23645)
+    val CrimsonRed = Color(0xFFE23A20)
     val Beige = Color(0xFFC9B8A8)
 
     fun accentFor(index: Int): Color = when (index) {
@@ -73,29 +74,33 @@ object GC {
     )
 
     /**
-     * Display face — Space Grotesk (variable). A grotesk with squared shoulders
-     * and quirky open counters: reads as "this app is its own thing", never as a
-     * stock Roboto/Inter clone.
+     * Display face — Sora (variable). Geometric grotesk with a single-storey g,
+     * tall x-height and squared shoulders: the closest match to the reference
+     * console lettering, and nothing like a stock Android face.
      */
     val Display = FontFamily(
-        Font(R.font.space_grotesk, weight = FontWeight.Normal,
+        Font(R.font.sora, weight = FontWeight.Normal,
             variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-        Font(R.font.space_grotesk, weight = FontWeight.Medium,
+        Font(R.font.sora, weight = FontWeight.Medium,
             variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-        Font(R.font.space_grotesk, weight = FontWeight.SemiBold,
+        Font(R.font.sora, weight = FontWeight.SemiBold,
             variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-        Font(R.font.space_grotesk, weight = FontWeight.Bold,
+        Font(R.font.sora, weight = FontWeight.Bold,
             variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-        Font(R.font.space_grotesk, weight = FontWeight.Black,
+        Font(R.font.sora, weight = FontWeight.Black,
             variationSettings = FontVariation.Settings(FontVariation.weight(800)))
     )
 
-    /** Body face — Barlow, a low-contrast grotesk that holds up at 9–13sp with wide tracking. */
+    /** Body face — Plus Jakarta Sans (variable): humanist-geometric, crisp at 9–13sp. */
     val Body = FontFamily(
-        Font(R.font.barlow_regular, weight = FontWeight.Normal),
-        Font(R.font.barlow_medium, weight = FontWeight.Medium),
-        Font(R.font.barlow_semibold, weight = FontWeight.SemiBold),
-        Font(R.font.barlow_bold, weight = FontWeight.Bold)
+        Font(R.font.jakarta, weight = FontWeight.Normal,
+            variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+        Font(R.font.jakarta, weight = FontWeight.Medium,
+            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+        Font(R.font.jakarta, weight = FontWeight.SemiBold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+        Font(R.font.jakarta, weight = FontWeight.Bold,
+            variationSettings = FontVariation.Settings(FontVariation.weight(700)))
     )
 }
 

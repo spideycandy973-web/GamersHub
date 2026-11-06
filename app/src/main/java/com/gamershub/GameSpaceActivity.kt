@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -97,6 +98,8 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.ImageBitmap
 import com.gamershub.data.AppRepo
 import com.gamershub.data.InstalledApp
 import com.gamershub.data.DeviceStats
@@ -159,9 +162,6 @@ private fun GameSpaceScreen(
     onLaunch: (String) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    // Every selected app, each with its real launcher icon. The app we were
-    // started with is added to the selection if it is not there yet, so its icon
-    // and name always resolve.
     var library by remember { mutableStateOf(repo.addedApps()) }
     var currentPkg by remember { mutableStateOf(pkg.ifBlank { library.firstOrNull()?.pkg ?: "" }) }
     LaunchedEffect(pkg) {
@@ -210,243 +210,444 @@ private fun GameSpaceScreen(
     val freeMb = (mem.totalMb - mem.usedMb).coerceAtLeast(0)
     val level = envLevelOf(context)
     val perform = performScore(cpu.pct, mem.pct, battery.second)
+    val others = library.filter { it.pkg != currentPkg }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(GC.Void, GC.VoidMid, GC.Void)))) {
-        HexBackdrop(Modifier.fillMaxSize())
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val w = maxWidth
+        val h = maxHeight
+        Box(Modifier.fillMaxSize().background(GC.Void)) {
+            GsBackdrop(currentIcon, Modifier.fillMaxSize())
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 18.dp, vertical = 10.dp)
-        ) {
-            GsHeader(
-                freeTens = (freeMb / 10).toInt(),
-                totalTens = (mem.totalMb / 10).toInt(),
-                battery = battery.first,
-                clock = clock,
-                level = level,
-                tab = when {
-                    showControl -> 1
-                    showTexture -> 2
-                    showApps -> 3
-                    else -> 0
-                },
-                onTab = { index ->
-                    when (index) {
-                        1 -> { showControl = true; showTexture = false; showApps = false }
-                        2 -> { showTexture = true; showControl = false; showApps = false }
-                        3 -> { showApps = true; showControl = false; showTexture = false }
-                        else -> { showControl = false; showTexture = false; showApps = false }
-                    }
-                },
-                onClose = onClose
-            )
+            // ---------- top bar ----------
+            HeroMark(Modifier.offset(x = w * 0.048f, y = h * 0.070f).size(h * 0.115f))
+            Column(Modifier.offset(x = w * 0.048f + h * 0.130f, y = h * 0.072f)) {
+                Text(
+                    "GAME",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GC.InkText.copy(alpha = 0.9f),
+                    fontSize = (h.value * 0.020f).sp,
+                    letterSpacing = (h.value * 0.008f).sp
+                )
+                Text(
+                    "HUB",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = GC.InkText,
+                    fontSize = (h.value * 0.055f).sp,
+                    letterSpacing = (h.value * 0.002f).sp
+                )
+            }
 
-            Row(Modifier.weight(1f).padding(top = 12.dp)) {
-                // ---- left: app cards + launch ----
-                Column(Modifier.weight(1.62f)) {
-                    val others = library.filter { it.pkg != currentPkg }
-                    Row(Modifier.weight(1f)) {
-                        AppCard(
-                            entry = current,
-                            name = appName,
-                            version = appVersion,
-                            minutes = repo.playMinutes(currentPkg),
-                            primary = true,
-                            selected = true,
-                            emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
-                            onSelect = { if (library.isEmpty()) showApps = true },
-                            onFilter = { showTexture = true; showControl = false; showApps = false },
-                            modifier = Modifier.weight(1.42f)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            AppCard(
-                                entry = others.getOrNull(0),
-                                name = others.getOrNull(0)?.name ?: "EMPTY SLOT",
-                                version = versionOf(context, others.getOrNull(0)?.pkg),
-                                minutes = repo.playMinutes(others.getOrNull(0)?.pkg ?: ""),
-                                primary = false,
-                                selected = false,
-                                emptyLabel = "TAP + TO PICK",
-                                onSelect = {
-                                    val p = others.getOrNull(0)?.pkg
-                                    if (p != null) currentPkg = p else showApps = true
-                                },
-                                onFilter = null,
-                                modifier = Modifier.weight(1f)
-                            )
-                            AppCard(
-                                entry = others.getOrNull(1),
-                                name = others.getOrNull(1)?.name ?: "EMPTY SLOT",
-                                version = versionOf(context, others.getOrNull(1)?.pkg),
-                                minutes = repo.playMinutes(others.getOrNull(1)?.pkg ?: ""),
-                                primary = false,
-                                selected = false,
-                                emptyLabel = "TAP + TO PICK",
-                                onSelect = {
-                                    val p = others.getOrNull(1)?.pkg
-                                    if (p != null) currentPkg = p else showApps = true
-                                },
-                                onFilter = null,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        appName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = GC.InkText,
-                        fontSize = 27.sp,
-                        letterSpacing = 0.2.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        currentPkg.ifBlank { "no package" },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = GC.InkDim,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.6.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        LaunchBar(
-                            freeMb = freeMb,
-                            enabled = currentPkg.isNotBlank(),
-                            onLaunch = { if (currentPkg.isNotBlank()) onLaunch(currentPkg) },
-                            onBoost = { showControl = true }
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        GridButton { showApps = true }
-                        Spacer(Modifier.weight(1f))
-                        PerformBlock(score = perform)
-                    }
-                }
-
-                Spacer(Modifier.width(16.dp))
-
-                // ---- right: watermark + stat wall ----
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    Text(
-                        "${repo.userId()} · ${android.os.Process.myPid()}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0x3DFFFFFF),
-                        fontSize = 10.sp,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        StatBox(
-                            title = "PING INTERVAL",
-                            value = if (ping >= 0) String.format("%.1f ms", ping) else "-- ms",
-                            good = ping in 0.0..80.0,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            TickRow(filled = if (ping >= 0) (10 - (ping / 12).toInt()).coerceIn(0, 10) else 0, segments = 10)
-                        }
-                        StatBox(
-                            title = "TEMPERATURE",
-                            value = String.format("%.1f°C", battery.second.coerceAtLeast(0.0)),
-                            good = battery.second in 0.0..45.0,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            TempBar(celsius = battery.second)
-                        }
-                        CpuCard(
-                            ghz = cpu.curGhz,
-                            loadPct = cpu.pct,
-                            modifier = Modifier.weight(1.06f).height(148.dp)
+            Column(Modifier.offset(x = w * 0.228f, y = h * 0.086f)) {
+                Text(
+                    "LVL ${level.coerceAtLeast(2).coerceAtMost(3)}/3",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GC.InkText,
+                    fontSize = (h.value * 0.029f).sp,
+                    letterSpacing = (h.value * 0.004f).sp
+                )
+                Spacer(Modifier.height(h * 0.020f))
+                Row(horizontalArrangement = Arrangement.spacedBy(w * 0.006f)) {
+                    repeat(3) { i ->
+                        Box(
+                            Modifier
+                                .width(w * 0.016f)
+                                .height(h * 0.011f)
+                                .clip(RoundedCornerShape(1.dp))
+                                .background(if (i < level.coerceAtLeast(2)) GC.Signal else Color(0x33FFFFFF))
                         )
                     }
                 }
             }
-        }
 
-        // ---- panels ----
-        if (showControl) {
-            ControlCenter(
-                onDismiss = { showControl = false },
-                onTouchSettings = { showControl = false; showTouch = true },
-                onDisplaySettings = { showControl = false; showDisplay = true },
-                onTextureSettings = { showControl = false; showTexture = true },
-                onPickApps = { showControl = false; showApps = true },
-                onOpenPanel = {
-                    panelRunning = !panelRunning
-                    if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
-                },
-                panelRunning = panelRunning
+            // chevron tabs
+            val tabW = w * 0.050f
+            val tabH = h * 0.100f
+            val tabY = h * 0.075f
+            val tabX = w * 0.396f
+            val tabs = listOf(Icons.Filled.Bolt, Icons.Filled.Speed, Icons.Filled.Tune, Icons.Filled.Apps)
+            val activeTab = when {
+                showControl -> 1
+                showTexture -> 2
+                showApps -> 3
+                else -> 0
+            }
+            tabs.forEachIndexed { i, icon ->
+                Box(
+                    Modifier
+                        .offset(x = tabX + (tabW + w * 0.003f) * i, y = tabY)
+                        .width(tabW)
+                        .height(tabH)
+                        .clip(ChevShape)
+                        .background(if (i == activeTab) GC.Signal else Color(0xFF150E0F))
+                        .clickable {
+                            when (i) {
+                                1 -> { showControl = true; showTexture = false; showApps = false }
+                                2 -> { showTexture = true; showControl = false; showApps = false }
+                                3 -> { showApps = true; showControl = false; showTexture = false }
+                                else -> { showControl = false; showTexture = false; showApps = false }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    AIcon(
+                        icon,
+                        contentDescription = null,
+                        tint = if (i == activeTab) Color.White else GC.InkSoft,
+                        modifier = Modifier.size(h * 0.036f)
+                    )
+                }
+            }
+
+            // energy (free / total RAM in tens of MB)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.offset(x = w * 0.738f, y = h * 0.082f)
+            ) {
+                AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = GC.Signal, modifier = Modifier.size(h * 0.032f))
+                Spacer(Modifier.width(w * 0.004f))
+                Text(
+                    "${(freeMb / 10)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = GC.InkText,
+                    fontSize = (h.value * 0.030f).sp
+                )
+                Spacer(Modifier.width(w * 0.003f))
+                Text(
+                    "/ ${(mem.totalMb / 10)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GC.InkDim,
+                    fontSize = (h.value * 0.025f).sp
+                )
+            }
+
+            // battery + clock
+            Column(Modifier.offset(x = w * 0.827f, y = h * 0.080f), horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BatteryGlyph(pct = battery.first, w = w * 0.028f, h = h * 0.022f)
+                    Spacer(Modifier.width(w * 0.006f))
+                    Text(
+                        "${battery.first.coerceAtLeast(0)}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = GC.InkText,
+                        fontSize = (h.value * 0.028f).sp
+                    )
+                }
+                Spacer(Modifier.height(h * 0.012f))
+                Text(
+                    clock,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GC.InkSoft,
+                    fontSize = (h.value * 0.026f).sp
+                )
+            }
+
+            // power
+            Box(
+                Modifier
+                    .offset(x = w * 0.906f, y = h * 0.088f)
+                    .size(h * 0.060f)
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center
+            ) {
+                AIcon(
+                    Icons.Filled.PowerSettingsNew,
+                    contentDescription = "Close Game Space",
+                    tint = GC.InkText,
+                    modifier = Modifier.size(h * 0.048f)
+                )
+            }
+
+            // ---------- app cards ----------
+            AppCard(
+                entry = current,
+                name = appName,
+                version = appVersion,
+                minutes = repo.playMinutes(currentPkg),
+                selected = true,
+                primary = true,
+                emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
+                onSelect = { if (library.isEmpty()) showApps = true },
+                onFilter = { showTexture = true; showControl = false; showApps = false },
+                artSize = h * 0.115f,
+                nameSize = (h.value * 0.031f).sp,
+                metaSize = (h.value * 0.019f).sp,
+                modifier = Modifier
+                    .offset(x = w * 0.045f, y = h * 0.223f)
+                    .size(width = w * 0.356f, height = h * 0.461f)
             )
-        }
 
-        AnimatedVisibility(
-            visible = showApps,
-            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
-            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
-        ) {
-            AppsPanel(
-                library = library,
-                currentPkg = currentPkg,
-                onSelect = { currentPkg = it },
-                onLaunch = { p -> onLaunch(p) },
-                onPickApps = {
-                    showApps = false
-                    runCatching {
-                        context.startActivity(
-                            Intent(context, com.gamershub.MainActivity::class.java)
-                                .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, "apps#" + System.currentTimeMillis())
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (others.isEmpty()) {
+                EmptyCard(
+                    text = "ADD GAMES",
+                    onClick = { showApps = true },
+                    modifier = Modifier
+                        .offset(x = w * 0.417f, y = h * 0.281f)
+                        .size(width = w * 0.282f, height = h * 0.353f)
+                )
+            } else {
+                val twoUp = others.size > 1
+                AppCard(
+                    entry = others.getOrNull(0),
+                    name = others[0].name,
+                    version = versionOf(context, others[0].pkg),
+                    minutes = repo.playMinutes(others[0].pkg),
+                    selected = false,
+                    primary = false,
+                    emptyLabel = "",
+                    onSelect = { currentPkg = others[0].pkg },
+                    onFilter = null,
+                    artSize = h * 0.075f,
+                    nameSize = (h.value * 0.024f).sp,
+                    metaSize = (h.value * 0.016f).sp,
+                    modifier = Modifier
+                        .offset(x = w * 0.417f, y = h * 0.281f)
+                        .size(
+                            width = w * 0.282f,
+                            height = if (twoUp) h * 0.170f else h * 0.353f
                         )
-                    }
-                },
-                onDismiss = { showApps = false }
+                )
+                if (twoUp) {
+                    AppCard(
+                        entry = others.getOrNull(1),
+                        name = others[1].name,
+                        version = versionOf(context, others[1].pkg),
+                        minutes = repo.playMinutes(others[1].pkg),
+                        selected = false,
+                        primary = false,
+                        emptyLabel = "",
+                        onSelect = { currentPkg = others[1].pkg },
+                        onFilter = null,
+                        artSize = h * 0.075f,
+                        nameSize = (h.value * 0.024f).sp,
+                        metaSize = (h.value * 0.016f).sp,
+                        modifier = Modifier
+                            .offset(x = w * 0.417f, y = h * 0.464f)
+                            .size(width = w * 0.282f, height = h * 0.170f)
+                    )
+                }
+            }
+
+            // ---------- name / package ----------
+            Text(
+                appName,
+                style = MaterialTheme.typography.headlineMedium,
+                color = GC.InkText,
+                fontSize = (h.value * 0.048f).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .offset(x = w * 0.045f, y = h * 0.720f)
+                    .width(w * 0.30f)
+            )
+            Text(
+                currentPkg.ifBlank { "no package" },
+                style = MaterialTheme.typography.labelMedium,
+                color = GC.InkDim,
+                fontSize = (h.value * 0.020f).sp,
+                letterSpacing = (h.value * 0.0015f).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .offset(x = w * 0.045f + h * 0.008f, y = h * 0.786f)
+                    .width(w * 0.28f)
+            )
+
+            // ---------- launch row ----------
+            LaunchBar(
+                enabled = currentPkg.isNotBlank(),
+                onLaunch = { if (currentPkg.isNotBlank()) onLaunch(currentPkg) },
+                onBoost = { showControl = true },
+                freeMb = freeMb,
+                width = w * 0.189f,
+                height = h * 0.091f,
+                textSize = (h.value * 0.038f).sp,
+                modifier = Modifier.offset(x = w * 0.045f, y = h * 0.853f)
+            )
+            GridButton(
+                onClick = { showApps = true },
+                size = h * 0.091f,
+                modifier = Modifier.offset(x = w * 0.237f, y = h * 0.853f)
+            )
+            PerformBlock(
+                score = perform,
+                valueSize = (h.value * 0.040f).sp,
+                labelSize = (h.value * 0.019f).sp,
+                tickW = w * 0.0105f,
+                modifier = Modifier
+                    .offset(x = w * 0.286f, y = h * 0.858f)
+                    .width(w * 0.124f)
+            )
+
+            // ---------- watermark ----------
+            Text(
+                "${repo.userId()} · ${android.os.Process.myPid()}",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0x40FFFFFF),
+                fontSize = (h.value * 0.017f).sp,
+                letterSpacing = (h.value * 0.002f).sp,
+                modifier = Modifier.offset(x = w * 0.762f, y = h * 0.700f)
+            )
+
+            // ---------- stat wall ----------
+            StatBox(
+                title = "PING INTERVAL",
+                value = if (ping >= 0) String.format("%.1f ms", ping) else "-- ms",
+                good = ping in 0.0..80.0,
+                titleSize = (h.value * 0.017f).sp,
+                valueSize = (h.value * 0.031f).sp,
+                modifier = Modifier
+                    .offset(x = w * 0.577f, y = h * 0.764f)
+                    .size(width = w * 0.122f, height = h * 0.115f)
+            ) {
+                TickRow(filled = if (ping >= 0) (10 - (ping / 12).toInt()).coerceIn(0, 10) else 0, segments = 10, tickW = w * 0.007f)
+            }
+            StatBox(
+                title = "TEMPERATURE",
+                value = String.format("%.1f°C", battery.second.coerceAtLeast(0.0)),
+                good = battery.second in 0.0..45.0,
+                titleSize = (h.value * 0.017f).sp,
+                valueSize = (h.value * 0.031f).sp,
+                modifier = Modifier
+                    .offset(x = w * 0.708f, y = h * 0.764f)
+                    .size(width = w * 0.119f, height = h * 0.115f)
+            ) {
+                TempBar(celsius = battery.second, height = h * 0.014f)
+            }
+            CpuCard(
+                ghz = cpu.curGhz,
+                loadPct = cpu.pct,
+                titleSize = (h.value * 0.017f).sp,
+                valueSize = (h.value * 0.033f).sp,
+                modifier = Modifier
+                    .offset(x = w * 0.843f, y = h * 0.735f)
+                    .size(width = w * 0.112f, height = h * 0.173f)
             )
         }
+    }
 
-        AnimatedVisibility(
-            visible = showTexture,
-            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
-            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
-        ) {
-            TexturePanel(pkg = currentPkg, repo = repo, appName = appName, onDismiss = { showTexture = false })
-        }
+    // ---- panels ----
+    if (showControl) {
+        ControlCenter(
+            onDismiss = { showControl = false },
+            onTouchSettings = { showControl = false; showTouch = true },
+            onDisplaySettings = { showControl = false; showDisplay = true },
+            onTextureSettings = { showControl = false; showTexture = true },
+            onPickApps = { showControl = false; showApps = true },
+            onOpenPanel = {
+                panelRunning = !panelRunning
+                if (panelRunning) FloatingPanelService.start(context) else FloatingPanelService.stop(context)
+            },
+            panelRunning = panelRunning
+        )
+    }
 
-        AnimatedVisibility(
-            visible = showTouch,
-            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
-            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
-        ) {
-            TouchPanel(repo = repo, onDismiss = { showTouch = false })
-        }
-        AnimatedVisibility(
-            visible = showDisplay,
-            enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
-            exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
-        ) {
-            DisplayPanel(onDismiss = { showDisplay = false })
-        }
+    AnimatedVisibility(
+        visible = showApps,
+        enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+        exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+    ) {
+        AppsPanel(
+            library = library,
+            currentPkg = currentPkg,
+            onSelect = { currentPkg = it },
+            onLaunch = { p -> onLaunch(p) },
+            onPickApps = {
+                showApps = false
+                runCatching {
+                    context.startActivity(
+                        Intent(context, com.gamershub.MainActivity::class.java)
+                            .putExtra(com.gamershub.MainActivity.EXTRA_OPEN, "apps#" + System.currentTimeMillis())
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            },
+            onDismiss = { showApps = false }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = showTexture,
+        enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+        exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+    ) {
+        TexturePanel(pkg = currentPkg, repo = repo, appName = appName, onDismiss = { showTexture = false })
+    }
+
+    AnimatedVisibility(
+        visible = showTouch,
+        enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+        exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+    ) {
+        TouchPanel(repo = repo, onDismiss = { showTouch = false })
+    }
+    AnimatedVisibility(
+        visible = showDisplay,
+        enter = slideInHorizontally(tween(320)) { it } + fadeIn(tween(280)),
+        exit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(200))
+    ) {
+        DisplayPanel(onDismiss = { showDisplay = false })
     }
 }
 
 /* ------------------------------------------------------------------ */
-/* header                                                              */
+/* backdrop + header pieces                                            */
 /* ------------------------------------------------------------------ */
 
-/** Slanted hex-ish tile used by the four navigation chevrons. */
+/** The reference screen is tinted by the selected app's own artwork. */
+@Composable
+private fun GsBackdrop(icon: ImageBitmap?, modifier: Modifier) {
+    Box(modifier) {
+        if (icon != null) {
+            Image(
+                painter = androidx.compose.ui.graphics.painter.BitmapPainter(icon),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(scaleX = 4f, scaleY = 4f, alpha = 0.75f)
+                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(60.dp) else Modifier)
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            GC.Void.copy(alpha = 0.62f),
+                            GC.Void.copy(alpha = 0.80f),
+                            GC.Void.copy(alpha = 0.92f)
+                        )
+                    )
+                )
+        )
+        Canvas(Modifier.fillMaxSize()) {
+            val step = size.height * 0.075f
+            var y = 0f
+            var row = 0
+            while (y < size.height) {
+                var x = if (row % 2 == 0) 0f else step / 2f
+                var col = 0
+                while (x < size.width) {
+                    val lit = (row * 5 + col * 7) % 9 == 0
+                    drawCircle(
+                        if (lit) GC.Signal.copy(alpha = 0.45f) else Color(0x10FFFFFF),
+                        radius = if (lit) size.height * 0.004f else size.height * 0.0022f,
+                        center = Offset(x, y)
+                    )
+                    x += step
+                    col++
+                }
+                y += step * 0.78f
+                row++
+            }
+        }
+    }
+}
+
+/** Slanted tile used by the four navigation chevrons. */
 private val ChevShape = GenericShape { size, _ ->
-    val cut = size.height * 0.34f
+    val cut = size.height * 0.30f
     moveTo(cut, 0f)
     lineTo(size.width, 0f)
     lineTo(size.width - cut, size.height)
@@ -455,153 +656,35 @@ private val ChevShape = GenericShape { size, _ ->
 }
 
 @Composable
-private fun GsHeader(
-    freeTens: Int,
-    totalTens: Int,
-    battery: Int,
-    clock: String,
-    level: Int,
-    tab: Int,
-    onTab: (Int) -> Unit,
-    onClose: () -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        HeroMark(Modifier.size(44.dp))
-        Spacer(Modifier.width(9.dp))
-        Column {
-            Text("GAME", style = MaterialTheme.typography.labelMedium, color = GC.InkSoft, fontSize = 10.sp, letterSpacing = 3.sp)
-            Text("HUB", style = MaterialTheme.typography.titleLarge, color = GC.InkText, fontSize = 23.sp, letterSpacing = 0.5.sp)
-        }
-        Spacer(Modifier.width(11.dp))
-        Box(Modifier.width(1.dp).height(30.dp).background(Color(0x26FFFFFF)))
-        Spacer(Modifier.width(11.dp))
-        Column {
-            Text(
-                "LVL $level/3",
-                style = MaterialTheme.typography.labelLarge,
-                color = GC.InkText,
-                fontSize = 12.sp,
-                letterSpacing = 1.6.sp
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(3) { i ->
-                    Box(
-                        Modifier
-                            .width(19.dp)
-                            .height(5.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(if (i < level) GC.Signal else Color(0x33FFFFFF))
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            ChevronTab(Icons.Filled.Bolt, tab == 0) { onTab(0) }
-            ChevronTab(Icons.Filled.Speed, tab == 1) { onTab(1) }
-            ChevronTab(Icons.Filled.Tune, tab == 2) { onTab(2) }
-            ChevronTab(Icons.Filled.Apps, tab == 3) { onTab(3) }
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        // energy / memory chip
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = GC.Signal, modifier = Modifier.size(15.dp))
-            Spacer(Modifier.width(5.dp))
-            Text(
-                "$freeTens",
-                style = MaterialTheme.typography.titleMedium,
-                color = GC.InkText,
-                fontSize = 16.sp
-            )
-            Spacer(Modifier.width(3.dp))
-            Text(
-                "/ $totalTens",
-                style = MaterialTheme.typography.labelMedium,
-                color = GC.InkDim,
-                fontSize = 13.sp
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Box(Modifier.width(1.dp).height(28.dp).background(Color(0x26FFFFFF)))
-        Spacer(Modifier.width(12.dp))
-
-        Column(horizontalAlignment = Alignment.End) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BatteryGlyph(pct = battery)
-                Spacer(Modifier.width(7.dp))
-                Text(
-                    "${battery.coerceAtLeast(0)}%",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = GC.InkText,
-                    fontSize = 15.sp
-                )
-            }
-            Spacer(Modifier.height(3.dp))
-            Text(clock, style = MaterialTheme.typography.labelLarge, color = GC.InkSoft, fontSize = 14.sp)
-        }
-        Spacer(Modifier.width(12.dp))
-        Box(
-            Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onClose),
-            contentAlignment = Alignment.Center
-        ) {
-            AIcon(Icons.Filled.PowerSettingsNew, contentDescription = "Close Game Space", tint = GC.InkText, modifier = Modifier.size(24.dp))
-        }
-    }
-}
-
-@Composable
-private fun ChevronTab(icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .width(60.dp)
-            .height(44.dp)
-            .clip(ChevShape)
-            .background(if (selected) GC.Signal else Color(0xFF141827))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        AIcon(
-            icon,
-            contentDescription = null,
-            tint = if (selected) Color.White else GC.InkSoft,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-private fun BatteryGlyph(pct: Int) {
-    Canvas(Modifier.width(28.dp).height(14.dp)) {
+private fun BatteryGlyph(pct: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
+    Canvas(Modifier.width(w).height(h)) {
         val body = size.width - 3.dp.toPx()
-        val radius = 3.dp.toPx()
-        val fill = (pct.coerceIn(0, 100) / 100f)
+        val radius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
         drawRoundRect(
-            color = GC.Signal.copy(alpha = 0.35f),
+            color = Color(0x40FFFFFF),
             size = androidx.compose.ui.geometry.Size(body, size.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius)
+            cornerRadius = radius
         )
         drawRoundRect(
             color = GC.Signal,
-            size = androidx.compose.ui.geometry.Size((body - 2.dp.toPx()) * fill, size.height - 2.dp.toPx()),
+            size = androidx.compose.ui.geometry.Size(
+                (body - 2.dp.toPx()) * (pct.coerceIn(0, 100) / 100f),
+                size.height - 2.dp.toPx()
+            ),
             topLeft = Offset(1.dp.toPx(), 1.dp.toPx()),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius)
+            cornerRadius = radius
         )
         drawRoundRect(
-            color = GC.Signal.copy(alpha = 0.7f),
-            size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height * 0.42f),
-            topLeft = Offset(body + 1.dp.toPx(), size.height * 0.29f),
+            color = GC.Signal,
+            size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height * 0.40f),
+            topLeft = Offset(body + 1.dp.toPx(), size.height * 0.30f),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
         )
     }
 }
 
 /* ------------------------------------------------------------------ */
-/* app card + launch block                                             */
+/* app cards + launch block                                            */
 /* ------------------------------------------------------------------ */
 
 @Composable
@@ -610,42 +693,55 @@ private fun AppCard(
     name: String,
     version: String,
     minutes: Long,
-    primary: Boolean,
     selected: Boolean,
+    primary: Boolean,
     emptyLabel: String,
     onSelect: () -> Unit,
     onFilter: (() -> Unit)?,
+    artSize: androidx.compose.ui.unit.Dp,
+    nameSize: androidx.compose.ui.unit.TextUnit,
+    metaSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(if (primary) 22.dp else 18.dp)
+    val shape = RoundedCornerShape(artSize * 0.20f)
     Box(
         modifier
             .clip(shape)
             .background(GC.InkPanel)
             .then(
-                if (selected && primary) Modifier.border(1.5.dp, GC.Signal.copy(alpha = 0.85f), shape)
-                else Modifier.border(1.dp, Color(0x14FFFFFF), shape)
+                if (selected) Modifier.border(1.dp, GC.Signal.copy(alpha = 0.55f), shape)
+                else Modifier.border(1.dp, Color(0x12FFFFFF), shape)
             )
             .clickable(onClick = onSelect)
     ) {
         if (entry != null) {
-            // Icon blown up + blurred + tinted = a per-app wash so every card looks
-            // like a game still instead of a flat rectangle.
             Image(
                 painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
                 contentDescription = null,
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(scaleX = 2.6f, scaleY = 2.6f, alpha = 0.85f)
-                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(24.dp) else Modifier)
+                    .graphicsLayer(scaleX = 3.4f, scaleY = 3.4f, alpha = 0.95f)
+                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(26.dp) else Modifier)
+            )
+            // the crisp, real game art sits over the wash, like a still
+            Image(
+                painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxHeight(0.62f)
+                    .fillMaxWidth(0.62f)
+                    .graphicsLayer(rotationZ = -8f, alpha = 0.55f)
+                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(10.dp) else Modifier)
             )
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0x33000000), Color(0x99101220), Color(0xF2060810))
+                            listOf(Color(0x00000000), Color(0x44FFFFFF).copy(alpha = 0f), Color(0xCC0A0708))
                         )
                     )
             )
@@ -653,9 +749,7 @@ private fun AppCard(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(listOf(Color(0xFF141828), Color(0xFF0B0D16)))
-                    )
+                    .background(Brush.linearGradient(listOf(Color(0xFF1A1113), Color(0xFF0C0809))))
             )
         }
 
@@ -663,15 +757,15 @@ private fun AppCard(
             Box(
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(10.dp)
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xCC0A0C16))
-                    .border(1.dp, Color(0x24FFFFFF), RoundedCornerShape(12.dp))
+                    .padding(artSize * 0.16f)
+                    .size(artSize * 0.55f)
+                    .clip(RoundedCornerShape(artSize * 0.14f))
+                    .background(Color(0xCC0A0708))
+                    .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(artSize * 0.14f))
                     .clickable(onClick = onFilter),
                 contentAlignment = Alignment.Center
             ) {
-                AIcon(Icons.Filled.Tune, contentDescription = "Texture filtering", tint = GC.InkText, modifier = Modifier.size(19.dp))
+                AIcon(Icons.Filled.Tune, contentDescription = "Texture filtering", tint = GC.InkText, modifier = Modifier.size(artSize * 0.30f))
             }
         }
 
@@ -679,13 +773,13 @@ private fun AppCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 14.dp, end = 14.dp, bottom = 13.dp)
+                .padding(start = artSize * 0.22f, end = artSize * 0.22f, bottom = artSize * 0.20f)
                 .fillMaxWidth()
         ) {
             Box(
                 Modifier
-                    .size(if (primary) 58.dp else 40.dp)
-                    .clip(RoundedCornerShape(if (primary) 17.dp else 12.dp))
+                    .size(artSize)
+                    .clip(RoundedCornerShape(artSize * 0.26f))
                     .background(Color(0x1FFFFFFF)),
                 contentAlignment = Alignment.Center
             ) {
@@ -694,21 +788,20 @@ private fun AppCard(
                         painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),
                         contentDescription = name,
                         modifier = Modifier
-                            .size(if (primary) 54.dp else 38.dp)
-                            .clip(RoundedCornerShape(if (primary) 15.dp else 11.dp))
+                            .size(artSize * 0.94f)
+                            .clip(RoundedCornerShape(artSize * 0.23f))
                     )
                 } else {
-                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = GC.InkDim, modifier = Modifier.size(if (primary) 26.dp else 18.dp))
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = GC.InkDim, modifier = Modifier.size(artSize * 0.45f))
                 }
             }
-            Spacer(Modifier.width(11.dp))
+            Spacer(Modifier.width(artSize * 0.20f))
             Column(Modifier.weight(1f)) {
                 Text(
                     if (entry != null) name else emptyLabel,
                     style = MaterialTheme.typography.titleMedium,
                     color = if (entry != null) Color.White else GC.InkSoft,
-                    fontSize = if (primary) 20.sp else 13.sp,
-                    letterSpacing = 0.2.sp,
+                    fontSize = nameSize,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -716,7 +809,7 @@ private fun AppCard(
                     if (entry != null) "${formatMinutes(minutes)} · v$version" else "tap to choose",
                     style = MaterialTheme.typography.labelMedium,
                     color = if (entry != null) Color(0xCCFFFFFF) else GC.InkDim,
-                    fontSize = if (primary) 12.sp else 10.sp,
+                    fontSize = metaSize,
                     maxLines = 1
                 )
             }
@@ -725,15 +818,47 @@ private fun AppCard(
 }
 
 @Composable
-private fun LaunchBar(freeMb: Long, enabled: Boolean, onLaunch: () -> Unit, onBoost: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
+private fun EmptyCard(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xAA110B0C))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AIcon(Icons.Filled.Apps, contentDescription = null, tint = GC.InkDim, modifier = Modifier.size(26.dp))
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = GC.InkSoft,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp
+        )
+    }
+}
+
+@Composable
+private fun LaunchBar(
+    enabled: Boolean,
+    onLaunch: () -> Unit,
+    onBoost: () -> Unit,
+    freeMb: Long,
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    textSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier
+) {
     Row(
-        Modifier
-            .height(54.dp)
-            .clip(shape)
+        modifier
+            .width(width)
+            .height(height)
+            .clip(RoundedCornerShape(height * 0.16f))
             .background(
-                if (enabled) Brush.horizontalGradient(listOf(GC.Signal, GC.SignalDeep))
-                else Brush.horizontalGradient(listOf(Color(0xFF2A2E42), Color(0xFF1B1E2C)))
+                if (enabled) Brush.horizontalGradient(listOf(Color(0xFFFF2B2B), GC.SignalDeep))
+                else Brush.horizontalGradient(listOf(Color(0xFF2A1E1F), Color(0xFF180F10)))
             )
     ) {
         Row(
@@ -741,56 +866,66 @@ private fun LaunchBar(freeMb: Long, enabled: Boolean, onLaunch: () -> Unit, onBo
             modifier = Modifier
                 .fillMaxHeight()
                 .clickable(enabled = enabled, onClick = onLaunch)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = height * 0.30f)
         ) {
             Text(
                 "LAUNCH",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
-                fontSize = 18.sp,
-                letterSpacing = 2.4.sp
+                fontSize = textSize,
+                letterSpacing = (textSize.value * 0.16f).sp
             )
         }
-        Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 12.dp).background(Color(0x40FFFFFF)))
+        Box(
+            Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .padding(vertical = height * 0.24f)
+                .background(Color(0x55FFFFFF))
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxHeight()
                 .clickable(onClick = onBoost)
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = height * 0.18f)
         ) {
-            AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(17.dp))
-            Spacer(Modifier.width(5.dp))
+            AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(height * 0.34f))
+            Spacer(Modifier.width(width * 0.012f))
             Text(
                 "${(freeMb / 100).coerceAtLeast(0)}",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
-                fontSize = 16.sp
+                fontSize = (textSize.value * 0.82f).sp
             )
         }
     }
 }
 
-/** The 2x2 dot grid button that opens the app picker, drawn (not an icon) so it matches the reference. */
+/** 2x2 dot grid button — opens the app picker. */
 @Composable
-private fun GridButton(onClick: () -> Unit) {
+private fun GridButton(
+    onClick: () -> Unit,
+    size: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
     Box(
-        Modifier
-            .size(54.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(GC.InkPanelHi)
-            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(14.dp))
+        modifier
+            .size(size)
+            .clip(RoundedCornerShape(size * 0.16f))
+            .background(Color(0xFF1B1113))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(size * 0.16f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(size * 0.09f)) {
             repeat(2) {
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(size * 0.09f)) {
                     repeat(2) {
                         Box(
                             Modifier
-                                .size(6.dp)
-                                .clip(RoundedCornerShape(1.5.dp))
+                                .size(size * 0.11f)
+                                .clip(RoundedCornerShape(size * 0.03f))
                                 .background(GC.InkText)
                         )
                     }
@@ -801,38 +936,44 @@ private fun GridButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun PerformBlock(score: Int) {
-    Column(horizontalAlignment = Alignment.End) {
+private fun PerformBlock(
+    score: Int,
+    valueSize: androidx.compose.ui.unit.TextUnit,
+    labelSize: androidx.compose.ui.unit.TextUnit,
+    tickW: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 "$score%",
                 style = MaterialTheme.typography.headlineSmall,
                 color = GC.InkText,
-                fontSize = 25.sp
+                fontSize = valueSize
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(tickW * 0.4f))
             Text(
                 "PERFORM",
                 style = MaterialTheme.typography.labelMedium,
                 color = GC.InkDim,
-                fontSize = 11.sp,
-                letterSpacing = 1.8.sp
+                fontSize = labelSize,
+                letterSpacing = (labelSize.value * 0.14f).sp
             )
         }
-        Spacer(Modifier.height(7.dp))
-        TickRow(filled = score / 10, segments = 10)
+        Spacer(Modifier.height(labelSize.value.dp * 0.8f))
+        TickRow(filled = score / 10, segments = 10, tickW = tickW)
     }
 }
 
 @Composable
-private fun TickRow(filled: Int, segments: Int) {
-    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+private fun TickRow(filled: Int, segments: Int, tickW: androidx.compose.ui.unit.Dp) {
+    Row(horizontalArrangement = Arrangement.spacedBy(tickW * 0.28f)) {
         repeat(segments) { i ->
             Box(
                 Modifier
-                    .width(11.dp)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(1.5.dp))
+                    .width(tickW)
+                    .height(tickW * 0.28f)
+                    .clip(RoundedCornerShape(1.dp))
                     .background(if (i < filled) GC.Signal else Color(0x33FFFFFF))
             )
         }
@@ -848,124 +989,137 @@ private fun StatBox(
     title: String,
     value: String,
     good: Boolean,
+    titleSize: androidx.compose.ui.unit.TextUnit,
+    valueSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier,
     footer: @Composable () -> Unit
 ) {
     Column(
         modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(GC.InkPanel)
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xB3100809))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             title,
             style = MaterialTheme.typography.labelMedium,
             color = GC.InkDim,
-            fontSize = 8.sp,
-            letterSpacing = 1.2.sp,
+            fontSize = titleSize,
+            letterSpacing = (titleSize.value * 0.22f).sp,
             maxLines = 1,
             softWrap = false
         )
-        Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 value,
                 style = MaterialTheme.typography.titleMedium,
                 color = GC.InkText,
-                fontSize = 20.sp,
-                maxLines = 1
+                fontSize = valueSize,
+                maxLines = 1,
+                softWrap = false
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(5.dp))
             Box(
                 Modifier
-                    .size(6.dp)
+                    .size(5.dp)
                     .clip(CircleShape)
                     .background(if (good) Color(0xFF39D98A) else GC.Signal)
             )
         }
-        Spacer(Modifier.height(10.dp))
         footer()
     }
 }
 
-/** Thin temperature rail with a moving marker, like the reference panel. */
 @Composable
-private fun TempBar(celsius: Double) {
+private fun TempBar(celsius: Double, height: androidx.compose.ui.unit.Dp) {
     val pct = ((celsius.coerceIn(0.0, 80.0)) / 80.0).toFloat()
-    Box(Modifier.fillMaxWidth().height(8.dp)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val h = size.height
-            drawRoundRect(
-                color = Color(0xFF232841),
-                size = androidx.compose.ui.geometry.Size(size.width, h),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
-            )
-            drawRoundRect(
-                brush = Brush.horizontalGradient(listOf(Color(0xFF39D98A), Color(0xFFF2C94C), GC.Signal)),
-                size = androidx.compose.ui.geometry.Size(size.width * pct, h),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
-            )
-            val x = (size.width * pct).coerceIn(0f, size.width)
-            drawCircle(Color.White, radius = h * 0.75f, center = Offset(x, h / 2))
-        }
+    Canvas(Modifier.fillMaxWidth().height(height)) {
+        val h = size.height
+        drawRoundRect(
+            color = Color(0xFF2A2426),
+            size = androidx.compose.ui.geometry.Size(size.width, h),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
+        )
+        drawRoundRect(
+            brush = Brush.horizontalGradient(listOf(Color(0xFF6BD34F), Color(0xFFF2C94C), GC.Signal)),
+            size = androidx.compose.ui.geometry.Size(size.width * pct, h),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
+        )
+        val x = (size.width * pct).coerceIn(0f, size.width)
+        drawCircle(Color.White, radius = h * 0.65f, center = Offset(x, h / 2))
     }
 }
 
 @Composable
-private fun CpuCard(ghz: Double, loadPct: Int, modifier: Modifier = Modifier) {
+private fun CpuCard(
+    ghz: Double,
+    loadPct: Int,
+    titleSize: androidx.compose.ui.unit.TextUnit,
+    valueSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(GC.InkPanel)
-            .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(16.dp))
-            .padding(6.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xB3100809))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(10.dp))
+            .padding(4.dp)
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val stroke = 7.dp.toPx()
-            val inset = stroke / 2 + 4.dp.toPx()
+            val stroke = 6.dp.toPx()
+            val inset = stroke / 2 + 5.dp.toPx()
             val arcSize = androidx.compose.ui.geometry.Size(
                 size.width - inset * 2,
-                size.height - inset * 2 + 26.dp.toPx()
+                size.height - inset * 2
             )
             drawArc(
-                color = Color(0xFF232841),
-                startAngle = 140f,
-                sweepAngle = 260f,
+                color = Color(0xFF2E2326),
+                startAngle = 150f,
+                sweepAngle = 240f,
                 useCenter = false,
-                topLeft = Offset(inset, inset),
+                topLeft = Offset(inset, inset + size.height * 0.06f),
                 size = arcSize,
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
             drawArc(
-                brush = Brush.sweepGradient(listOf(GC.Signal, GC.SignalGlow, GC.Signal)),
-                startAngle = 140f,
-                sweepAngle = 260f * (loadPct.coerceIn(0, 100) / 100f),
+                brush = Brush.sweepGradient(listOf(GC.SignalDeep, GC.Signal, Color(0xFFFFFFFF))),
+                startAngle = 150f,
+                sweepAngle = 240f * (loadPct.coerceIn(0, 100) / 100f),
                 useCenter = false,
-                topLeft = Offset(inset, inset),
+                topLeft = Offset(inset, inset + size.height * 0.06f),
                 size = arcSize,
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
         }
-        Column(
-            Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(Modifier.align(Alignment.TopCenter).padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "CPU SPEED",
                 style = MaterialTheme.typography.labelMedium,
                 color = GC.InkDim,
-                fontSize = 9.sp,
-                letterSpacing = 1.6.sp
+                fontSize = titleSize,
+                letterSpacing = (titleSize.value * 0.18f).sp,
+                maxLines = 1,
+                softWrap = false
             )
-            Spacer(Modifier.height(2.dp))
+        }
+        Column(
+            Modifier.align(Alignment.Center).padding(top = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 String.format("%.2f", ghz),
                 style = MaterialTheme.typography.headlineMedium,
                 color = GC.InkText,
-                fontSize = 23.sp
+                fontSize = valueSize
             )
-            Text("GHz · $loadPct% load", style = MaterialTheme.typography.labelMedium, color = GC.InkSoft, fontSize = 9.sp)
+            Text(
+                "GHz",
+                style = MaterialTheme.typography.labelMedium,
+                color = GC.InkSoft,
+                fontSize = (valueSize.value * 0.42f).sp
+            )
         }
     }
 }
@@ -975,11 +1129,11 @@ private fun CpuCard(ghz: Double, loadPct: Int, modifier: Modifier = Modifier) {
 /* ------------------------------------------------------------------ */
 
 private fun formatMinutes(minutes: Long): String {
-    if (minutes <= 0) return "new"
+    if (minutes <= 0) return "0m"
     if (minutes < 60) return "${minutes}m"
-    val h = minutes / 60
-    val m = minutes % 60
-    return if (m == 0L) "${h}h" else "${h}h ${m}m"
+    val hrs = minutes / 60
+    val mins = minutes % 60
+    return if (mins == 0L) "${hrs}h" else "${hrs}h ${mins}m"
 }
 
 private fun versionOf(context: android.content.Context, pkg: String?): String {
@@ -1205,28 +1359,73 @@ private fun ToolTile(
 /** Per-game Texture Filtering panel (right side). */
 @Composable
 private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss: () -> Unit) {
-    val accent = LocalAccent.current
-    var sharp by remember { mutableStateOf(repo.gfx(pkg, "sharp", false)) }
-    var hard by remember { mutableStateOf(repo.gfx(pkg, "hard", false)) }
-    var aniso by remember { mutableStateOf(repo.gfx(pkg, "aniso", false)) }
-    var angle by remember { mutableStateOf(repo.gfx(pkg, "angle", false)) }
-    var res by remember { mutableStateOf(repo.gfxRes(pkg)) }
-    var preset by remember { mutableStateOf(repo.gfxPreset(pkg)) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { context.getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE) }
+    val engine = remember { com.gamershub.core.RenderEngine }
+    var texture by remember { mutableStateOf(prefs.getString("ax_texture", "HIGH") ?: "HIGH") }
+    var shadow by remember { mutableStateOf(prefs.getString("ax_shadow", "HIGH") ?: "HIGH") }
+    var sharp by remember { mutableStateOf(prefs.getInt("ax_sharp", 60)) }
+    var renderScale by remember { mutableStateOf(prefs.getInt("ax_res", 100)) }
+    var lossless by remember { mutableStateOf(prefs.getInt("ax_lossless", 100)) }
+    var fps by remember { mutableStateOf(prefs.getInt("ax_fps", 0)) }
+    var mode by remember { mutableStateOf(prefs.getString("ax_gpu_mode", "standard") ?: "standard") }
+    var angle by remember { mutableStateOf(prefs.getBoolean("ax_angle", false)) }
+    var report by remember { mutableStateOf("") }
+    var deviceNow by remember { mutableStateOf("--") }
+    var working by remember { mutableStateOf(false) }
 
-    fun applyPreset(i: Int) {
-        preset = i
-        when (i) {
-            1 -> { sharp = true; hard = false; aniso = false; res = 1 }
-            2 -> { sharp = true; hard = true; aniso = true; res = 2 }
-            3 -> { sharp = false; hard = false; aniso = true; res = 3 }
-            else -> { sharp = false; hard = false; aniso = false; res = 0 }
+    fun persist() = prefs.edit()
+        .putString("ax_texture", texture)
+        .putString("ax_shadow", shadow)
+        .putInt("ax_sharp", sharp)
+        .putInt("ax_res", renderScale)
+        .putInt("ax_lossless", lossless)
+        .putInt("ax_fps", fps)
+        .putString("ax_gpu_mode", mode)
+        .putBoolean("ax_angle", angle)
+        .apply()
+
+    fun apply() {
+        persist()
+        if (working) return
+        working = true
+        scope.launch {
+            val r = withContext(Dispatchers.IO) {
+                engine.apply(
+                    context = context,
+                    pkg = pkg,
+                    texture = texture,
+                    shadow = shadow,
+                    sharpness = sharp,
+                    scalePct = renderScale,
+                    fps = fps,
+                    mode = mode,
+                    angle = angle,
+                    losslessPct = lossless
+                )
+            }
+            report = r.details()
+            deviceNow = r.verified
+            working = false
+            android.widget.Toast.makeText(context, r.summary(), android.widget.Toast.LENGTH_SHORT).show()
         }
+    }
+
+    LaunchedEffect(pkg) {
+        deviceNow = withContext(Dispatchers.IO) { engine.verify(pkg) }
+    }
+
+    val levels = listOf("LOW", "MEDIUM", "HIGH", "ULTRA")
+    fun cycleLevel(cur: String, step: Int): String {
+        val i = levels.indexOf(cur).let { if (it < 0) 2 else it }
+        return levels[(i + step + levels.size) % levels.size]
     }
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x55000000))
+            .background(Color(0x99000000))
             .clickable(onClick = onDismiss)
     ) {
         Column(
@@ -1235,89 +1434,223 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 .fillMaxHeight()
                 .padding(14.dp)
                 .width(560.dp)
-                .clip(CutCornerShape(topStart = 6.dp, topEnd = 22.dp, bottomEnd = 6.dp, bottomStart = 22.dp))
-                .background(Color(0xF5170E0F))
+                .clip(RoundedCornerShape(22.dp))
+                .background(GC.InkPanel)
+                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(22.dp))
                 .clickable(enabled = false) {}
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFF241718)), contentAlignment = Alignment.Center) {
-                    AIcon(Icons.Filled.Memory, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
-                }
-                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("GRAPHICS · $appName", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.2.sp)
-                    Text("Texture Filtering", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 21.sp)
                     Text(
-                        if (sharp || hard || aniso || res != 0 || angle) "Active" else "Not active",
-                        style = MaterialTheme.typography.labelMedium, color = if (sharp || hard || aniso || res != 0 || angle) accent else GC.TextDim, fontSize = 12.sp
+                        "GPU PIPELINE · ${appName.uppercase()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GC.InkDim,
+                        fontSize = 10.sp,
+                        letterSpacing = 1.4.sp
+                    )
+                    Text(
+                        "Runs real commands",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = GC.InkText,
+                        fontSize = 20.sp
+                    )
+                    Text(
+                        if (engine.shellReady()) engine.statusLine() else "Shizuku needed for real changes",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (engine.shellReady()) GC.Signal else GC.InkDim,
+                        fontSize = 11.sp
                     )
                 }
                 Box(
-                    Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                    Modifier.size(32.dp).clip(CircleShape).background(Color(0x1AFFFFFF)).clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.InkText, modifier = Modifier.size(16.dp)) }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Column(
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1B1213))
+                    .background(Color(0x66000000))
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(14.dp)
             ) {
-                GfxRow("ANGLE renderer", "Runs this game on ANGLE (OpenGL ES over Vulkan).", angle) {
-                    angle = it; repo.setGfx(pkg, "angle", it)
-                }
-                Divider()
-                SectionBar("QUICK PRESETS")
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    PresetChip("Original", preset == 0) { applyPreset(0) }
-                    PresetChip("Pixel", preset == 1) { applyPreset(1) }
-                    PresetChip("Retro", preset == 2) { applyPreset(2) }
-                    PresetChip("Lite", preset == 3) { applyPreset(3) }
-                }
-                Text(
-                    when (preset) {
-                        1 -> "Sharp blocky textures at half resolution."
-                        2 -> "Banded detail, soft anisotropy, quarter resolution."
-                        3 -> "Lighter GPU load at eighth resolution."
-                        else -> "The game's own filtering."
+                Stepper(
+                    "LOSSLESS SCALING", if (lossless >= 100) "OFF" else "$lossless%",
+                    onMinus = {
+                    lossless = (lossless - 10).coerceAtLeast(50); apply()
                     },
-                    style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
+                    onPlus = {
+                    lossless = (lossless + 10).coerceAtMost(100); apply()
+                    }
                 )
                 Divider()
-                SectionBar("FINE TUNING")
-                GfxRow("Sharp pixels", "Textures are not smoothed, giving a blocky look up close.", sharp) {
-                    sharp = it; repo.setGfx(pkg, "sharp", it)
-                }
-                Divider()
-                GfxRow("Hard detail steps", "Visible bands where texture detail changes in the distance.", hard) {
-                    hard = it; repo.setGfx(pkg, "hard", it)
-                }
-                Divider()
-                GfxRow("Anisotropic off", "Angled ground and roads look softer. Slightly lighter on the GPU.", aniso) {
-                    aniso = it; repo.setGfx(pkg, "aniso", it)
-                }
-                Divider()
-                Text("Texture resolution", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val labels = listOf("Full", "½", "¼", "⅛", "1/16")
-                    labels.forEachIndexed { i, label ->
-                        PresetChip(label, res == i) {
-                            res = i; repo.setGfxRes(pkg, i)
-                        }
+                Stepper(
+                    "RENDER SCALE (THIS APP)", "$renderScale%",
+                    onMinus = {
+                    renderScale = (renderScale - 10).coerceAtLeast(50); apply()
+                    },
+                    onPlus = {
+                    renderScale = (renderScale + 10).coerceAtMost(100); apply()
                     }
+                )
+                Divider()
+                Stepper(
+                    "FPS LIMIT", if (fps == 0) "UNLIMITED" else "$fps",
+                    onMinus = {
+                    fps = fpsOf(fps, -1); apply()
+                    },
+                    onPlus = {
+                    fps = fpsOf(fps, 1); apply()
+                    }
+                )
+                Divider()
+                Stepper(
+                    "GPU MODE", mode.uppercase(),
+                    onMinus = {
+                    mode = when (mode) { "standard" -> "battery"; "battery" -> "performance"; else -> "standard" }; apply()
+                    },
+                    onPlus = {
+                    mode = when (mode) { "standard" -> "performance"; "performance" -> "battery"; else -> "standard" }; apply()
+                    }
+                )
+                Divider()
+                Stepper(
+                    "TEXTURE QUALITY", texture,
+                    onMinus = {
+                    texture = cycleLevel(texture, -1); apply()
+                    },
+                    onPlus = {
+                    texture = cycleLevel(texture, 1); apply()
+                    }
+                )
+                Divider()
+                Stepper(
+                    "SHADOW QUALITY", shadow,
+                    onMinus = {
+                    shadow = cycleLevel(shadow, -1); apply()
+                    },
+                    onPlus = {
+                    shadow = cycleLevel(shadow, 1); apply()
+                    }
+                )
+                Divider()
+                Stepper(
+                    "SHARPNESS", "$sharp%",
+                    onMinus = {
+                    sharp = (sharp - 10).coerceAtLeast(0); apply()
+                    },
+                    onPlus = {
+                    sharp = (sharp + 10).coerceAtMost(100); apply()
+                    }
+                )
+                Divider()
+                GfxRow("ANGLE GL DRIVER", "Swap the GL driver for this app.", angle) {
+                    angle = it; apply()
+                }
+                Divider()
+                Text(
+                    "DEVICE NOW: $deviceNow",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GC.InkSoft,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp
+                )
+                if (report.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        report,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GC.InkDim,
+                        fontSize = 9.sp,
+                        lineHeight = 13.sp
+                    )
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Text(
-                "Saved automatically. Applied every time you launch the game from here.",
-                style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GC.Signal)
+                        .clickable { apply() }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("APPLY NOW", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.4.sp)
+                }
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x1AFFFFFF))
+                        .clickable {
+                            scope.launch {
+                                val r = withContext(Dispatchers.IO) { engine.restore(context, pkg) }
+                                report = r.details()
+                                deviceNow = r.verified
+                                lossless = 100
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("RESTORE", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                }
+            }
         }
     }
+}
+
+/** Small +/- stepper used by the GPU pipeline panel. */
+@Composable
+private fun Stepper(
+    label: String,
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = GC.InkSoft,
+            fontSize = 11.sp,
+            letterSpacing = 1.1.sp,
+            modifier = Modifier.weight(1f)
+        )
+        KeyBox("−", onMinus)
+        Text(
+            value,
+            style = MaterialTheme.typography.labelLarge,
+            color = GC.InkText,
+            fontSize = 13.sp,
+            modifier = Modifier.width(96.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        KeyBox("+", onPlus)
+    }
+}
+
+@Composable
+private fun KeyBox(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x1FFFFFFF))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = GC.InkText, fontSize = 16.sp, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+private fun fpsOf(current: Int, step: Int): Int {
+    val steps = listOf(0, 30, 45, 60, 90, 120, 144)
+    val i = steps.indexOf(current).let { if (it < 0) 3 else it }
+    return steps[(i + step).coerceIn(0, steps.size - 1)]
 }
 
 @Composable
@@ -1358,72 +1691,6 @@ private fun PresetChip(text: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 11.dp)
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = if (selected) Color.White else GC.TextSoft, fontSize = 13.sp)
-    }
-}
-
-@Composable
-private fun HexBackdrop(modifier: Modifier) {
-    Canvas(modifier) {
-        // pink bloom top-left, exactly where the reference art puts its light
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(Color(0x40FF2C5E), Color(0x00000000)),
-                center = Offset(size.width * 0.22f, size.height * 0.06f),
-                radius = size.width * 0.55f
-            )
-        )
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(Color(0x2600E0FF), Color(0x00000000)),
-                center = Offset(size.width * 0.92f, size.height * 0.9f),
-                radius = size.width * 0.5f
-            )
-        )
-
-        // hex lattice
-        val r = 56f
-        val hexW = r * sqrt(3f)
-        val path = Path()
-        var row = 0
-        var y = -r
-        while (y < size.height + r) {
-            var x = if (row % 2 == 0) 0f else hexW / 2f
-            while (x < size.width + hexW) {
-                path.reset()
-                for (i in 0..5) {
-                    val a = (Math.PI / 3.0 * i - Math.PI / 6.0).toFloat()
-                    val px = x + r * cos(a)
-                    val py = y + r * sin(a)
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                }
-                path.close()
-                drawPath(path, Color(0x0BFFFFFF), style = Stroke(1f))
-                x += hexW
-            }
-            y += r * 1.5f
-            row++
-        }
-
-        // sparse signal dots
-        val step = 74f
-        var dy = 0f
-        var drow = 0
-        while (dy < size.height) {
-            var dx = if (drow % 2 == 0) 0f else step / 2f
-            var col = 0
-            while (dx < size.width) {
-                val lit = (drow * 7 + col * 3) % 11 == 0
-                drawCircle(
-                    if (lit) Color(0x66FF2C5E) else Color(0x14FFFFFF),
-                    radius = if (lit) 2.4f else 1.5f,
-                    center = Offset(dx, dy)
-                )
-                dx += step
-                col++
-            }
-            dy += step * 0.8f
-            drow++
-        }
     }
 }
 
