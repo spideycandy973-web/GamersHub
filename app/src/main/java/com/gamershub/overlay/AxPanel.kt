@@ -1059,6 +1059,7 @@ private fun UpscalePage(api: AxApi) {
     var integer by remember { mutableStateOf(prefs.getBoolean("ax_up_integer", false)) }
     var bench by remember { mutableStateOf<UpscaleEngine.Bench?>(null) }
     var measured by remember { mutableStateOf("") }
+    var frameGen by remember { mutableStateOf(prefs.getBoolean("ax_up_framegen", false)) }
 
     val caps = remember { UpscaleEngine.caps(context) }
     val state = rememberLive<RenderEngine.LosslessState?>(null, 2500) {
@@ -1082,6 +1083,7 @@ private fun UpscalePage(api: AxApi) {
             .putString("ax_up_quality", quality.name)
             .putInt("ax_up_sharp", sharpen)
             .putBoolean("ax_up_integer", integer)
+            .putBoolean("ax_up_framegen", frameGen)
             .apply()
     }
 
@@ -1169,6 +1171,25 @@ private fun UpscalePage(api: AxApi) {
                 api.say(bench?.line() ?: "no measurement")
             }
         }
+        SectionLabel("FRAME GENERATION")
+        SwitchRow(
+            title = "FRAME GENERATION",
+            subtitle = "optical flow + motion-compensated synthesis · generated frames are counted separately",
+            checked = frameGen,
+            onClick = {
+                frameGen = !frameGen
+                persist()
+                UpscaleMirror.frameGen = frameGen
+                api.say(
+                    if (frameGen) "Frame gen arms with the mirror · real frames stay real"
+                    else "Frame generation off"
+                )
+            }
+        )
+        ReadRow("GENERATED", if (frameGen) "${UpscaleMirror.generated}/s synthesised" else "off")
+        if (UpscaleMirror.frameGenError.isNotBlank()) {
+            ReadRow("FRAMEGEN", UpscaleMirror.frameGenError)
+        }
         SectionLabel("UPSCALE MIRROR")
         ReadRow("STATE", mirrorState)
         ActionRow(
@@ -1185,15 +1206,85 @@ private fun UpscalePage(api: AxApi) {
                 UpscaleMirror.quality = quality
                 UpscaleMirror.sharpen = sharpen / 100f
                 UpscaleMirror.integer = integer
+                UpscaleMirror.frameGen = frameGen
                 UpscaleMirror.start(context)
                 api.say(if (UpscaleMirror.supported()) "Choose the game in the capture dialog" else UpscaleMirror.whyNot())
             }
         }
+        SectionLabel("PROFILES")
+        ActionRow(
+            title = "MAX ULTRA",
+            subtitle = "native resolution · ULTRA preset · sharpness 70 · ultra engine cvars · max Hz",
+            button = "ONE TAP"
+        ) {
+            percent = 100
+            quality = UpscaleEngine.Quality.ULTRA
+            sharpen = 70
+            integer = false
+            frameGen = false
+            persist()
+            api.work {
+                val lossless = withContext(Dispatchers.IO) { RenderEngine.applyLossless(context, 100) }
+                val pkg = withContext(Dispatchers.IO) { FpsMeter.foregroundPackageDeep(context) } ?: ""
+                val game = if (pkg.isNotBlank()) withContext(Dispatchers.IO) {
+                    RenderEngine.apply(
+                        context = context,
+                        pkg = pkg,
+                        texture = "ULTRA",
+                        shadow = "ULTRA",
+                        sharpness = 70,
+                        scalePct = 100,
+                        fps = 0,
+                        mode = "performance",
+                        losslessPct = 100
+                    )
+                } else null
+                val hz = GfxEngine.panelRates().maxOrNull() ?: FpsMeter.refreshRate(context)
+                val hzOk = withContext(Dispatchers.IO) { GfxEngine.setRefreshRate(hz) }
+                api.say(
+                    "MAX ULTRA · native ${lossless.count { it.ok }}/${lossless.size} · " +
+                        (game?.summary() ?: "no game in front") + " · ${hz}Hz ${if (hzOk) "on" else "refused"}"
+                )
+            }
+        }
+        ActionRow(
+            title = "MAX FPS",
+            subtitle = "70% render scale · balanced upscale · frame generation · performance mode",
+            button = "ONE TAP"
+        ) {
+            percent = 70
+            quality = UpscaleEngine.Quality.BALANCED
+            sharpen = 40
+            frameGen = true
+            persist()
+            UpscaleMirror.frameGen = true
+            api.work {
+                val lossless = withContext(Dispatchers.IO) { RenderEngine.applyLossless(context, 70) }
+                val pkg = withContext(Dispatchers.IO) { FpsMeter.foregroundPackageDeep(context) } ?: ""
+                val game = if (pkg.isNotBlank()) withContext(Dispatchers.IO) {
+                    RenderEngine.apply(
+                        context = context,
+                        pkg = pkg,
+                        texture = "MEDIUM",
+                        shadow = "MEDIUM",
+                        sharpness = 40,
+                        scalePct = 70,
+                        fps = 0,
+                        mode = "performance",
+                        losslessPct = 70
+                    )
+                } else null
+                api.say(
+                    "MAX FPS · 70% ${lossless.count { it.ok }}/${lossless.size} · " +
+                        (game?.summary() ?: "no game in front") + " · frame gen ready in the mirror"
+                )
+            }
+        }
         SectionLabel("WHAT IS REAL HERE")
         ReadRow("LEVEL 1", "display size · refresh · fps · thermal — no root")
-        ReadRow("LEVEL 2", "GLES 2.0 upscale + adaptive sharpen · integer scale")
-        ReadRow("LEVEL 3", "frame generation or in-game upscale: needs a present hook (root / custom ROM)")
-        ReadRow("FRAME GEN", "not faked — Android exposes no way to inject frames into another app")
+        ReadRow("LEVEL 2", "GLES upscale + adaptive sharpen · integer scale · frame gen in the mirror")
+        ReadRow("LEVEL 3", "frames inside the GAME's own pipeline need a present hook (root / ROM)")
+        ReadRow("NOTE", "generated frames smooth motion — they never raise the game's render fps")
     }
 }
 

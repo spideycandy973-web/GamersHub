@@ -52,7 +52,22 @@ Presets: Performance (0.12), Balanced (0.28), Quality (0.45 + detail), Ultra (0.
 `UpscaleEngine.benchmark()` renders real frames on the device's GPU and returns
 **measured** ms/frame — the panel shows that number, it is not estimated.
 
-### 3. Upscale mirror — `core/upscale/UpscaleMirrorService.kt`
+### 3. Frame generation — `core/upscale/FrameGen.kt`
+
+The Android version of LSFG, built on the captured frames:
+
+| pass | resolution | what it does |
+|---|---|---|
+| copy | source | the captured OES frame is copied into a texture; the previous frame is kept |
+| flow | source / 4 | **Lucas-Kanade** optical flow: 9-tap gradients, 2x2 structure tensor solved per block → motion vector in pixels |
+| interpolate | source | warps `prev` forward and `cur` backward by **half** the motion vector, blends, and falls back to the real frame where the two warped samples disagree (occlusion) — that is the anti-ghosting term |
+| present | panel | real frame presented, then the synthesised frame paced to **half a capture interval**, so the panel receives two pictures per captured frame |
+
+It is labelled for what it is: the panel counts `generated/s` separately from the game's own
+frames, and the game's render rate is never claimed to increase. Costs: latency and GPU time,
+both measured and displayed.
+
+### 4. Upscale mirror — `core/upscale/UpscaleMirrorService.kt`
 
 This is the only way a non-root app can upscale *another* app's frames:
 
@@ -79,7 +94,8 @@ Honest limits, shown in the UI:
 | display size, refresh rate, FPS, frame time, thermal, battery | 1 | real, Shizuku only |
 | GLES upscale + adaptive sharpen + integer scale | 2 | real, needs GLES 2.0 (every device) |
 | upscale mirror of another app | 2 | real, Android 14+ single-app capture |
-| frame generation inside a game | 3 | **not implemented** — requires a present hook; Android exposes nothing like it |
+| frame generation **inside a game's own pipeline** | 3 | not possible without a present hook (root / ROM) |
+| frame generation **in the mirror** | 2 | real — optical flow + synthesis on captured frames, counted separately |
 | texture/shadow quality inside a game | 3 | only where the engine ships a config (UE4/UE5 `.ini`), otherwise the platform GPU mode + render scale |
 
 ## What was removed and will not come back
