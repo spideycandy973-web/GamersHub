@@ -947,24 +947,18 @@ private fun GfxPage(api: AxApi) {
             )
         }
 
-        SectionLabel("SYSTEM-WIDE · EVERY APP")
-        SwitchRow("VULKAN RENDERER", "Skia Vulkan backend (debug.hwui.renderer)", st.vulkan) {
-            val target = !st.vulkan
-            st.vulkan = target
-            prefs.edit().putBoolean("ax_vulkan", target).apply()
-            pushSystem(vulkan = target)
-        }
-        SwitchRow("UNCAPPED VSYNC", "debug.hwui.disable_vsync", st.noVsync) {
-            val target = !st.noVsync
-            st.noVsync = target
-            prefs.edit().putBoolean("ax_vsync", target).apply()
-            pushSystem(vsync = target)
-        }
-        SwitchRow("GAME DRIVER", "Updatable GPU driver for all apps", st.gameDriver) {
-            val target = !st.gameDriver
-            st.gameDriver = target
-            prefs.edit().putBoolean("ax_driver", target).apply()
-            pushSystem(driver = target)
+        SectionLabel("RENDERING SAFETY")
+        ReadRow("STATUS", com.gamershub.core.GfxSafe.status())
+        ActionRow(
+            title = "REPAIR RENDERING",
+            subtitle = "Clears every graphics override old builds left behind (they cause green/corrupt screens in other apps until reboot), resets display scaling and GameMode",
+            button = "REPAIR"
+        ) {
+            api.work {
+                val log = withContext(Dispatchers.IO) { com.gamershub.core.GfxSafe.repair(context, targetPkg) }
+                st.lastReport = log.joinToString("\n")
+                api.say(log.firstOrNull() ?: "Repaired")
+            }
         }
         SwitchRow("SUSTAINED FRAME PACING", "Fixed performance + GameMode", st.frameBoost) {
             api.work {

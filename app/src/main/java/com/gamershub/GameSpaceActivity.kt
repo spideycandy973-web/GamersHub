@@ -151,6 +151,21 @@ class GameSpaceActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Leaving the hub must not leave the display scaled: a `wm size` override that
+     * outlives the session is what makes the whole phone look odd afterwards.
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            val prefs = getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE)
+            if (prefs.getInt("ax_lossless", 100) in 40..99) {
+                runCatching { com.gamershub.core.GfxEngine.resetRenderScale() }
+                prefs.edit().putInt("ax_lossless", 100).apply()
+            }
+        }
+    }
+
     companion object {
         const val EXTRA_PKG = "pkg"
     }

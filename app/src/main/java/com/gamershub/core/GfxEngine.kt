@@ -30,6 +30,9 @@ object GfxEngine {
         val frameLimit: Int = 0           // 0 = unlimited
     )
 
+    /** Does this ROM ship `cmd game` (GameManager, Android 12+)? */
+    fun hasGameManager(): Boolean = RenderEngine.hasGameManager()
+
     fun displayState(context: Context): DisplayState {
         val metrics = context.resources.displayMetrics
         return DisplayState(
@@ -85,16 +88,17 @@ object GfxEngine {
         false
     }
 
-    fun setVulkanRenderer(on: Boolean): Boolean = try {
-        if (on) {
-            Shell.ok("setprop debug.hwui.renderer skiavk") &&
-                Shell.ok("setprop debug.renderengine.backend skiavkthreaded")
-        } else {
-            Shell.ok("setprop debug.hwui.renderer opengl") &&
-                Shell.ok("setprop debug.renderengine.backend skiaglthreaded")
-        }
-    } catch (_: Throwable) {
-        false
+    /**
+     * Kept for source compatibility only.
+     *
+     * Forcing `debug.hwui.renderer skiavk` globally corrupts rendering on many
+     * devices (green / half-black surfaces in unrelated apps) and survives until a
+     * reboot. This now always *clears* the override instead of setting it.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun setVulkanRenderer(on: Boolean): Boolean {
+        GfxSafe.clearUnsafeProps()
+        return true
     }
 
     fun rendererStatus(): String = try {
@@ -165,31 +169,22 @@ object GfxEngine {
         )
     }
 
-    /** Applies (or reverts) the system graphics switches. Returns the log lines. */
+    /**
+     * Applies the *safe* system switches only.
+     *
+     * The three prop-based switches of older builds (Skia Vulkan backend, vsync
+     * disable, updatable driver) are gone: they are global, survive a reboot and
+     * corrupt rendering on a large number of GPUs. Anything they may have left
+     * behind is cleared first.
+     */
     fun applySystemGfx(opts: SysGfx): List<String> {
         val log = ArrayList<String>()
         if (!Shell.available()) {
             log.add("No shell — grant Shizuku first")
             return log
         }
-        if (opts.vulkan) {
-            val ok = Shell.ok("setprop debug.hwui.renderer skiavk") &&
-                Shell.ok("setprop debug.renderengine.backend skiavkthreaded")
-            log.add(if (ok) "Skia Vulkan backend ON (restart apps to pick it up)" else "Vulkan backend rejected")
-        } else {
-            Shell.ok("setprop debug.hwui.renderer skiagl")
-            Shell.ok("setprop debug.renderengine.backend skiaglthreaded")
-            log.add("Renderer back to OpenGL")
-        }
-        if (Shell.ok("setprop debug.hwui.disable_vsync ${opts.noVsync}")) {
-            log.add(if (opts.noVsync) "HWUI vsync disabled (uncapped compositor)" else "HWUI vsync restored")
-        }
-        if (Shell.ok("settings put global game_driver_all_apps ${if (opts.gameDriver) 1 else 0}")) {
-            log.add(if (opts.gameDriver) "Game Driver enabled for all apps" else "Game Driver back to default")
-        }
-        if (Shell.ok("setprop debug.sf.hw ${if (opts.gpuComposition) 1 else 0}")) {
-            log.add(if (opts.gpuComposition) "GPU composition forced" else "GPU composition default")
-        }
+        val cleared = GfxSafe.clearUnsafeProps()
+        if (cleared.isNotEmpty()) log.add("cleared " + cleared.size + " old graphics override(s)")
         val boost = Shell.ok(
             if (opts.frameBoost) "cmd power set-fixed-performance-mode-enabled true && cmd game set --mode performance"
             else "cmd power set-fixed-performance-mode-enabled false && cmd game set --mode standard"
