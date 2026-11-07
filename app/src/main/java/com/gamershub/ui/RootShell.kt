@@ -251,9 +251,24 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             if (!prefs.getBoolean("gfx_repair_v634", false)) {
                 withContext(kotlinx.coroutines.Dispatchers.IO) {
                     runCatching { com.gamershub.core.GfxSafe.repair(context) }
-                    runCatching { com.gamershub.core.DeviceSpoofer.cleanStaleSpoofName(context) }
                 }
                 prefs.edit().putBoolean("gfx_repair_v634", true).apply()
+            }
+        }
+
+        // Device identity repair — runs on EVERY launch, not once.
+        // An older build permanently renamed the phone to a spoof preset
+        // ("REDMAGIC 9 Pro" on a Redmi, for example). This is idempotent: it only
+        // writes the setting when the current name is one of our presets, or when a
+        // spoofed name is still flagged as active.
+        LaunchedEffect(Unit) {
+            withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.gamershub.core.DeviceSpoofer.cleanStaleSpoofName(context) }
+                runCatching {
+                    if (com.gamershub.core.DeviceSpoofer.nameSpoofActive(context)) {
+                        com.gamershub.core.DeviceSpoofer.restoreDeviceName(context)
+                    }
+                }
             }
         }
 
