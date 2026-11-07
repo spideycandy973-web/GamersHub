@@ -669,6 +669,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
                 log = buildString {
                     if (applied.isEmpty()) append("Needs Shizuku to change display/name.\n")
                     applied.forEach { append("✓ $it\n") }
+                    append("Device name is restored automatically when you leave the Game Space.\n")
                     append("Apps now see ${DeviceSpoofer.observed(context)}\n")
                     identity?.let { (ok, model) ->
                         if (ok) append("✓ Identity props → $model\n")
@@ -682,7 +683,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
         BigButton(
             text = "RESTORE STOCK",
             onClick = {
-                val restored = DeviceSpoofer.restore()
+                val restored = DeviceSpoofer.restore(context)
                 log = if (restored.isEmpty()) "Needs Shizuku to restore." else restored.joinToString("\n") { "✓ $it" }
             },
             modifier = Modifier.fillMaxWidth(),

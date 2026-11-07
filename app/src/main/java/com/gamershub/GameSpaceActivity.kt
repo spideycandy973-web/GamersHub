@@ -163,6 +163,12 @@ class GameSpaceActivity : ComponentActivity() {
                 runCatching { com.gamershub.core.GfxEngine.resetRenderScale() }
                 prefs.edit().putInt("ax_lossless", 100).apply()
             }
+            // A spoofed Bluetooth/USB name must not outlive the session.
+            runCatching {
+                if (com.gamershub.core.DeviceSpoofer.nameSpoofActive(applicationContext)) {
+                    com.gamershub.core.DeviceSpoofer.restoreDeviceName(applicationContext)
+                }
+            }
         }
     }
 

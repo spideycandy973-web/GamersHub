@@ -1127,8 +1127,14 @@ private fun SpoofPage(api: AxApi) {
     val preset = DeviceSpoofer.presets[st.spoofIndex.coerceIn(0, DeviceSpoofer.presets.lastIndex)]
     val observed = rememberLive("--", 4000) { DeviceSpoofer.observed(context) }
 
+    val deviceName = rememberLive("--", 4000) {
+        com.gamershub.core.shizuku.Shell.exec("settings get global device_name")?.trim().orEmpty()
+            .ifBlank { "stock" }
+    }
+
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
         ReadRow("APPS SEE", observed)
+        ReadRow("DEVICE NAME", deviceName)
         StepRow(
             label = "PRESET",
             value = preset.name,
@@ -1154,9 +1160,9 @@ private fun SpoofPage(api: AxApi) {
                 api.say(if (result.first) "Identity → ${preset.model}" else result.second)
             }
         }
-        ActionRow("RESTORE EVERYTHING", "wm reset + original props", "RESTORE") {
+        ActionRow("RESTORE EVERYTHING", "wm reset, real device name, refresh, props", "RESTORE") {
             api.work {
-                val lines = withContext(Dispatchers.IO) { DeviceSpoofer.restore() }
+                val lines = withContext(Dispatchers.IO) { DeviceSpoofer.restore(context) }
                 api.say(lines.firstOrNull() ?: "Restored")
             }
         }
