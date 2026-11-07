@@ -8,8 +8,8 @@ import kotlin.math.roundToInt
  * Real graphics / performance control.
  *
  * Everything in here changes an actual system surface:
- *  - render scale and density: `wm size` + `wm density` (compositor upscales,
- *    the GPU renders fewer pixels — the lossless-scaling path);
+ *  - render scale: `wm size` only (the compositor upscales, the GPU renders fewer
+ *    pixels — the lossless path; the density is never scaled);
  *  - refresh rate: `peak_refresh_rate` / `min_refresh_rate`;
  *  - renderer: `debug.hwui.renderer` (Skia Vulkan backend) applied to every app;
  *  - frame pacing: fixed-performance mode + GameMode override, which is what
@@ -59,18 +59,21 @@ object GfxEngine {
         ""
     }
 
-    /** Renders at [percent] of the panel resolution and lets the compositor upscale. */
-    fun setRenderScale(context: Context, percent: Int, scaleDensity: Boolean = true): Boolean {
-        val state = displayState(context)
+    /**
+     * Renders at [percent] of the **physical** panel and lets the compositor upscale.
+     *
+     * The density is deliberately left untouched: scaling it as well is what made the
+     * whole interface shrink instead of the GPU simply doing less work.
+     */
+    fun setRenderScale(context: Context, percent: Int): Boolean {
+        val physical = RenderEngine.physicalMetrics(context)
         val clamped = percent.coerceIn(40, 100)
-        val width = even((state.width * clamped) / 100)
-        val height = even((state.height * clamped) / 100)
-        var ok = Shell.ok("wm size ${width}x${height}")
-        if (scaleDensity) {
-            val density = ((state.density * clamped) / 100.0).roundToInt().coerceIn(120, 640)
-            ok = Shell.ok("wm density $density") || ok
-        }
-        return ok
+        if (clamped >= 100) return resetRenderScale()
+        // clear any legacy density override first (the 6.4.0 shrink bug)
+        Shell.ok("wm density reset")
+        val width = even((physical.first * clamped) / 100)
+        val height = even((physical.second * clamped) / 100)
+        return Shell.ok("wm size ${width}x${height}")
     }
 
     fun resetRenderScale(): Boolean {

@@ -109,6 +109,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <!-- Real upscale mirror: MediaProjection -> GLES sharpen -> full-screen overlay -->
+        <service
+            android:name=".core.upscale.UpscaleMirrorService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
         <!-- RTMP live stream (MediaProjection -> MediaCodec -> RTMP) -->
         <service
             android:name=".core.capture.StreamService"

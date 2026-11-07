@@ -3,6 +3,7 @@ package com.gamershub.core
 import android.content.Context
 import com.gamershub.core.shizuku.Shell
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Real render pipeline for **any** app, not just one engine.
@@ -135,12 +136,7 @@ object RenderEngine {
 
         // 2. global lossless scaling — physical baseline, size AND density scale together,
         //    so the picture keeps its exact layout and only the rendered pixel count drops.
-        if (losslessPct in 40..99) {
-            steps.addAll(applyLossless(context, losslessPct))
-        } else if (losslessPct >= 100) {
-            steps.add(Step("lossless scaling off", "wm size reset", Shell.ok("wm size reset")))
-            steps.add(Step("density reset", "wm density reset", Shell.ok("wm density reset")))
-        }
+        steps.addAll(applyLossless(context, losslessPct))
 
         // 3. fps / refresh
         if (fps > 0) {
@@ -217,69 +213,141 @@ object RenderEngine {
         return Report(pkg, steps, verify(pkg))
     }
 
+    /* ---------------------------------------------------------------- */
+    /* lossless scaling — the real thing                                 */
+    /* ---------------------------------------------------------------- */
+
     /**
-     * True lossless scaling: render at [percent] of the **physical** panel and scale the
-     * density by the same factor. The system then upscales to the panel, so the UI keeps
-     * the same physical size (nothing shrinks) while the GPU only fills [percent]% of the
-     * pixels. Always computed from the physical size, never from a previous override, so
-     * repeated taps cannot compound.
+     * What the lossless path is doing right now, read back from the system.
+     *
+     * `wm size` changes the size of the logical framebuffer the GPU has to fill; the
+     * compositor stretches that framebuffer to the physical panel, so a game still fills
+     * the whole screen while rendering fewer pixels. The **density is never touched**:
+     * writing a smaller density is what made everything shrink in 6.4.0.
+     */
+    data class LosslessState(
+        val baseW: Int,
+        val baseH: Int,
+        val baseDpi: Int,
+        val overrideW: Int,
+        val overrideH: Int,
+        val densityOverride: Int,
+        val gameManager: Boolean
+    ) {
+        val active: Boolean get() = overrideW > 0 && overrideH > 0
+        val percent: Int
+            get() = if (!active || baseW <= 0) 100 else (overrideW * 100.0 / baseW).roundToInt()
+        val gpuPixels: Long
+            get() = if (active) overrideW.toLong() * overrideH else baseW.toLong() * baseH
+        val panelPixels: Long get() = baseW.toLong() * baseH
+        val savedPercent: Int
+            get() = if (panelPixels <= 0L) 0 else (100 - (gpuPixels * 100.0 / panelPixels)).roundToInt()
+
+        fun megapixels(): String = String.format(
+            Locale.US,
+            "%.2f → %.2f Mpx",
+            panelPixels / 1_000_000.0,
+            gpuPixels / 1_000_000.0
+        )
+
+        fun summary(): String = when {
+            active -> "render $percent% · ${overrideW}x$overrideH of ${baseW}x${baseH} · -$savedPercent% pixels"
+            densityOverride > 0 -> "stock size · density $densityOverride still set"
+            else -> "stock · GPU renders ${baseW}x$baseH"
+        }
+    }
+
+    fun losslessState(context: Context): LosslessState {
+        val sizeOut = try {
+            Shell.exec("wm size")
+        } catch (_: Throwable) {
+            null
+        } ?: ""
+        val densityOut = try {
+            Shell.exec("wm density")
+        } catch (_: Throwable) {
+            null
+        } ?: ""
+        val metrics = context.resources.displayMetrics
+        val physical = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)
+        val override = Regex("Override size:\\s*(\\d+)x(\\d+)").find(sizeOut)
+        val baseW = physical?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.widthPixels
+        val baseH = physical?.groupValues?.getOrNull(2)?.toIntOrNull() ?: metrics.heightPixels
+        val baseDpi = Regex("Physical density:\\s*(\\d+)").find(densityOut)
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.densityDpi
+        val overDpi = Regex("Override density:\\s*(\\d+)").find(densityOut)
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        return LosslessState(
+            baseW = baseW,
+            baseH = baseH,
+            baseDpi = baseDpi,
+            overrideW = override?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0,
+            overrideH = override?.groupValues?.getOrNull(2)?.toIntOrNull() ?: 0,
+            densityOverride = overDpi,
+            gameManager = hasGameManager()
+        )
+    }
+
+    /**
+     * Lower the number of pixels the GPU fills — and nothing else.
+     *
+     *  1. an old density override is deleted first (that was the 6.4.0 shrink bug);
+     *  2. `wm size <pct>%` of the **physical** panel, aspect preserved, even numbers;
+     *  3. the override is read back and the exact pixel maths is reported.
      */
     fun applyLossless(context: Context, percent: Int): List<Step> {
         val steps = ArrayList<Step>()
         if (!Shell.available()) {
-            steps.add(Step("lossless scaling", "shizuku", false, Shell.reason()))
+            steps.add(Step("shell", "shizuku", false, Shell.reason()))
             return steps
         }
-        val sizeOut = Shell.exec("wm size") ?: ""
-        val densityOut = Shell.exec("wm density") ?: ""
-        val physical = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)
-        val physicalDensity = Regex("Physical density:\\s*(\\d+)").find(densityOut)
-            ?: Regex("Physical density:\\s*(\\d+)").find(densityOut)
-        val metrics = context.resources.displayMetrics
-        val baseW = physical?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.widthPixels
-        val baseH = physical?.groupValues?.getOrNull(2)?.toIntOrNull() ?: metrics.heightPixels
-        val baseDpi = physicalDensity?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.densityDpi
+        val st = losslessState(context)
         val pct = percent.coerceIn(40, 100)
-        val w = even((baseW * pct) / 100)
-        val h = even((baseH * pct) / 100)
-        val dpi = ((baseDpi * pct) / 100.0).toInt().coerceIn(120, 640)
 
-        // size and density must move together, otherwise the UI would shrink
-        val sizeCmd = "wm size ${w}x$h"
-        val sizeOk = Shell.ok(sizeCmd)
-        val densityCmd = "wm density $dpi"
-        val densityOk = Shell.ok(densityCmd)
-        if (sizeOk && !densityOk) {
-            Shell.ok("wm size reset")
-            steps.add(Step("lossless scaling", sizeCmd, false, "density refused — reverted so nothing shrinks"))
+        if (st.densityOverride > 0) {
+            val cmd = "wm density reset"
+            steps.add(Step("density override removed (it was shrinking the UI)", cmd, Shell.ok(cmd)))
+        }
+
+        if (pct >= 100) {
+            val cmd = "wm size reset"
+            val ok = Shell.ok(cmd)
+            val after = losslessState(context)
+            steps.add(Step("lossless off · panel back to ${st.baseW}x${st.baseH}", cmd, ok))
+            steps.add(Step("verified", "wm size", !after.active, after.summary()))
             return steps
         }
-        steps.add(Step("render ${pct}% (${w}x$h, was ${baseW}x${baseH})", sizeCmd, sizeOk))
-        steps.add(Step("density $dpi dpi (was $baseDpi, same physical size)", densityCmd, densityOk))
-        val readBack = Shell.exec("wm size")?.trim().orEmpty() + " | " + Shell.exec("wm density")?.trim().orEmpty()
+
+        val w = even((st.baseW * pct) / 100)
+        val h = even((st.baseH * pct) / 100)
+        val cmd = "wm size ${w}x$h"
+        val ok = Shell.ok(cmd)
+        val after = losslessState(context)
+        steps.add(Step("render $pct% → ${w}x${h} (panel ${st.baseW}x${st.baseH})", cmd, ok))
+        val filled = String.format(Locale.US, "%.1f", w.toLong() * h * 100.0 / (st.baseW.toLong() * st.baseH))
         steps.add(
             Step(
-                "verified",
-                "wm size / wm density",
-                readBack.contains("${w}x$h") && readBack.contains(dpi.toString()),
-                readBack.replace("\n", " ")
+                "gpu fills $filled% of the pixels",
+                "pixel maths",
+                true,
+                "${w.toLong() * h / 1000}K vs ${st.baseW.toLong() * st.baseH / 1000}K px · " +
+                    String.format(
+                        Locale.US,
+                        "%.2f → %.2f Mpx",
+                        st.baseW.toLong() * st.baseH / 1_000_000.0,
+                        w.toLong() * h / 1_000_000.0
+                    )
             )
         )
+        val verified = after.overrideW == w && after.overrideH == h && after.densityOverride == 0
+        steps.add(Step("verified", "wm size", verified, after.summary()))
         return steps
     }
 
     /** The physical panel, unaffected by any override we applied. */
     fun physicalMetrics(context: Context): Triple<Int, Int, Int> {
-        val sizeOut = Shell.exec("wm size") ?: ""
-        val densityOut = Shell.exec("wm density") ?: ""
-        val metrics = context.resources.displayMetrics
-        val w = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            ?: metrics.widthPixels
-        val h = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)?.groupValues?.getOrNull(2)?.toIntOrNull()
-            ?: metrics.heightPixels
-        val dpi = Regex("Physical density:\\s*(\\d+)").find(densityOut)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            ?: metrics.densityDpi
-        return Triple(w, h, dpi)
+        val st = losslessState(context)
+        return Triple(st.baseW, st.baseH, st.baseDpi)
     }
 
     private fun even(value: Int): Int = if (value % 2 == 0) value else value - 1

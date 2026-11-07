@@ -160,8 +160,17 @@ class GameSpaceActivity : ComponentActivity() {
         if (isFinishing) {
             val prefs = getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE)
             if (prefs.getInt("ax_lossless", 100) in 40..99) {
-                runCatching { com.gamershub.core.GfxEngine.resetRenderScale() }
-                prefs.edit().putInt("ax_lossless", 100).apply()
+                // Keep the render scale alive when the user goes straight back into the
+                // game that was running underneath; restore the panel otherwise.
+                val target = intent?.getStringExtra(EXTRA_PKG) ?: ""
+                val front = runCatching {
+                    com.gamershub.core.FpsMeter.foregroundPackageDeep(applicationContext)
+                }.getOrNull()
+                val stillPlaying = target.isNotBlank() && front == target
+                if (!stillPlaying) {
+                    runCatching { com.gamershub.core.GfxEngine.resetRenderScale() }
+                    prefs.edit().putInt("ax_lossless", 100).apply()
+                }
             }
             // A spoofed Bluetooth/USB name must not outlive the session.
             runCatching {

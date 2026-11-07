@@ -170,6 +170,71 @@ object FpsMeter {
         return match2?.groupValues?.getOrNull(1)?.takeIf { it != context.packageName }
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Real frame times                                                    */
+    /* ------------------------------------------------------------------ */
+
+    data class FrameStats(
+        val frames: Int = 0,
+        val p50: Float = 0f,
+        val p95: Float = 0f,
+        val worst: Float = 0f,
+        val jankPct: Int = 0,
+        val hz: Int = 60
+    ) {
+        val ok: Boolean get() = frames > 0
+        fun line(): String = if (!ok) "no frame data" else String.format(
+            java.util.Locale.US,
+            "%d frames · p50 %.1fms · p95 %.1fms · jank %d%%",
+            frames, p50, p95, jankPct
+        )
+    }
+
+    /**
+     * Real frame times from `dumpsys gfxinfo <pkg> framestats`, the CSV the platform
+     * writes for every produced frame. Frame latency = FrameCompleted - IntendedVsync.
+     * Jank = frames that missed one and a half refresh intervals.
+     */
+    fun frameStats(pkg: String, hz: Int = 60): FrameStats {
+        if (pkg.isBlank()) return FrameStats(hz = hz)
+        val out = Shell.exec("dumpsys gfxinfo $pkg framestats") ?: return FrameStats(hz = hz)
+        var header: List<String>? = null
+        val durations = ArrayList<Float>(256)
+        for (line in out.lines()) {
+            val text = line.trim()
+            if (text.startsWith("Flags")) {
+                header = text.split(",").map { it.trim() }
+                continue
+            }
+            val columns = header ?: continue
+            if (text.isEmpty() || !text.first().isDigit()) continue
+            val cells = text.split(",")
+            if (cells.size < columns.size) continue
+            val startIdx = columns.indexOf("IntendedVsync")
+            val endIdx = columns.indexOf("FrameCompleted")
+            if (startIdx < 0 || endIdx < 0) continue
+            val start = cells[startIdx].trim().toLongOrNull() ?: continue
+            val end = cells[endIdx].trim().toLongOrNull() ?: continue
+            if (end <= start) continue
+            val ms = (end - start) / 1_000_000.0
+            if (ms in 0.5..2000.0) durations.add(ms.toFloat())
+        }
+        if (durations.isEmpty()) return FrameStats(hz = hz)
+        durations.sort()
+        val p50 = durations[durations.size / 2]
+        val p95 = durations[(durations.size * 95 / 100).coerceAtMost(durations.size - 1)]
+        val budget = 1000.0 / hz.coerceIn(30, 240)
+        val jank = durations.count { it > budget * 1.5 }
+        return FrameStats(
+            frames = durations.size,
+            p50 = p50,
+            p95 = p95,
+            worst = durations.last(),
+            jankPct = jank * 100 / durations.size,
+            hz = hz
+        )
+    }
+
     /** Display refresh rate as the compositor reports it (falls back to WM). */
     fun compositorHz(context: Context): Int {
         val out = Shell.exec("dumpsys display 2>/dev/null | grep -m1 -oE 'refreshRate[= ]+[0-9.]+'") ?: ""
