@@ -33,7 +33,9 @@ class ProjectionActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ && resultCode == RESULT_OK && data != null) {
             val mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_RECORD
-            if (mode == MODE_LIVE) {
+            if (mode == MODE_UPSCALE) {
+                com.gamershub.core.upscale.UpscaleMirrorService.start(this, resultCode, data)
+            } else if (mode == MODE_LIVE) {
                 StreamService.start(
                     this,
                     resultCode,
@@ -68,6 +70,7 @@ class ProjectionActivity : Activity() {
         const val EXTRA_BITRATE = "bitrate"
         const val MODE_RECORD = "record"
         const val MODE_LIVE = "live"
+        const val MODE_UPSCALE = "upscale"
 
         /** Fire-and-forget start from an overlay service. */
         fun launch(context: Context, mode: String, url: String = "") {

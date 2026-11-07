@@ -82,11 +82,14 @@ import com.gamershub.core.capture.Recorder
 import com.gamershub.core.capture.RecorderService
 import com.gamershub.core.capture.Stream
 import com.gamershub.core.capture.StreamService
+import com.gamershub.core.upscale.UpscaleEngine
+import com.gamershub.core.upscale.UpscaleMirror
 import com.gamershub.core.shizuku.Shell
 import com.gamershub.data.DeviceStats
 import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.HeroMark
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -115,6 +118,7 @@ private enum class AxPage(val title: String) {
     MENU("ALL FEATURES"),
     GFX("GRAPHICS UNLOCK"),
     DISPLAY("DISPLAY"),
+    UPSCALE("LOSSLESS / UPSCALE"),
     PERF("MEMORY & PERFORMANCE"),
     NET("NETWORK / DNS"),
     SPOOF("DEVICE SPOOF"),
@@ -327,6 +331,7 @@ fun AxPanel(onClose: () -> Unit) {
                 AxPage.MENU -> MenuPage(api)
                 AxPage.GFX -> GfxPage(api)
                 AxPage.DISPLAY -> DisplayPage(api)
+                AxPage.UPSCALE -> UpscalePage(api)
                 AxPage.PERF -> PerfPage(api, stats)
                 AxPage.NET -> NetPage(api, stats)
                 AxPage.SPOOF -> SpoofPage(api)
@@ -747,6 +752,7 @@ private fun PageHeader(api: AxApi, title: String) {
 private fun MenuPage(api: AxApi) {
     val items = listOf(
         Triple(AxPage.GFX, Icons.Filled.Speed, "Graphics unlock · texture, shadows, AA, Vulkan"),
+        Triple(AxPage.UPSCALE, Icons.Filled.Bolt, "Real upscaling · lossless scale · GLES shader"),
         Triple(AxPage.DISPLAY, Icons.Filled.Autorenew, "Refresh rate · render scale · resolution"),
         Triple(AxPage.PERF, Icons.Filled.Memory, "Clean / boost / deep clean · thermal"),
         Triple(AxPage.NET, Icons.Filled.Dns, "Ping, jitter, DNS and radio tuning"),
@@ -1034,6 +1040,160 @@ private fun DisplayPage(api: AxApi) {
                 api.say(if (ok) "Display restored" else Shell.reason())
             }
         }
+    }
+}
+
+@Composable
+private fun UpscalePage(api: AxApi) {
+    val context = api.context
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    var percent by remember { mutableStateOf(prefs.getInt("ax_lossless", 100)) }
+    var quality by remember {
+        mutableStateOf(
+            runCatching {
+                UpscaleEngine.Quality.valueOf(prefs.getString("ax_up_quality", "BALANCED") ?: "BALANCED")
+            }.getOrDefault(UpscaleEngine.Quality.BALANCED)
+        )
+    }
+    var sharpen by remember { mutableStateOf(prefs.getInt("ax_up_sharp", 35)) }
+    var integer by remember { mutableStateOf(prefs.getBoolean("ax_up_integer", false)) }
+    var bench by remember { mutableStateOf<UpscaleEngine.Bench?>(null) }
+    var measured by remember { mutableStateOf("") }
+
+    val caps = remember { UpscaleEngine.caps(context) }
+    val state = rememberLive<RenderEngine.LosslessState?>(null, 2500) {
+        RenderEngine.losslessState(context)
+    }
+    val liveFps = rememberLive("--", 2000) {
+        val fps = FpsMeter.liveFps(context)
+        if (fps > 0) "$fps fps · ${FpsMeter.compositorHz(context)} Hz panel" else "game not readable"
+    }
+    val frameTimes = rememberLive("--", 2500) {
+        val hz = FpsMeter.compositorHz(context)
+        val pkg = FpsMeter.foregroundPackageDeep(context) ?: ""
+        val stats = FpsMeter.frameStats(pkg, hz)
+        if (stats.ok) stats.line() else "no frame data"
+    }
+    val mirrorState = rememberLive("--", 1200) { UpscaleMirror.state() }
+
+    fun persist() {
+        prefs.edit()
+            .putInt("ax_lossless", percent)
+            .putString("ax_up_quality", quality.name)
+            .putInt("ax_up_sharp", sharpen)
+            .putBoolean("ax_up_integer", integer)
+            .apply()
+    }
+
+    fun applyScale(target: Int) {
+        percent = target.coerceIn(40, 100)
+        persist()
+        api.work {
+            val before = withContext(Dispatchers.IO) { FpsMeter.liveFps(context) }
+            val steps = withContext(Dispatchers.IO) { RenderEngine.applyLossless(context, percent) }
+            // let the compositor settle so the second sample is a real measurement
+            delay(1600)
+            val after = withContext(Dispatchers.IO) { FpsMeter.liveFps(context) }
+            measured = if (before > 0 && after > 0) "$before → $after fps" else "fps not readable"
+            val applied = steps.count { it.ok }
+            api.say(
+                if (percent >= 100) "Native · $measured"
+                else "$applied/${steps.size} applied · $measured"
+            )
+        }
+    }
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
+        ReadRow("GPU", caps.renderer.take(30))
+        ReadRow("CAPABLE", caps.line())
+        ReadRow("LIVE", liveFps + if (measured.isNotBlank()) " · $measured" else "")
+        ReadRow("FRAME TIME", frameTimes)
+        StepRow(
+            label = "LOSSLESS SCALE",
+            value = if (percent >= 100) "OFF" else "$percent%",
+            onPlus = { applyScale(percent + 5) },
+            onMinus = { applyScale(percent - 5) }
+        )
+        ReadRow("PIXELS", state?.summary() ?: "reading…")
+        ActionRow("NATIVE RESOLUTION", "wm size reset · back to the panel", "RESET") {
+            applyScale(100)
+        }
+        SectionLabel("UPSCALER")
+        StepRow(
+            label = "PRESET",
+            value = quality.label.uppercase(),
+            onPlus = {
+                val all = UpscaleEngine.Quality.values()
+                quality = all[(quality.ordinal + 1) % all.size]
+                persist()
+                api.say("${quality.label} · ${quality.blurb}")
+            },
+            onMinus = {
+                val all = UpscaleEngine.Quality.values()
+                quality = all[(quality.ordinal - 1 + all.size) % all.size]
+                persist()
+                api.say("${quality.label} · ${quality.blurb}")
+            }
+        )
+        StepRow(
+            label = "SHARPNESS",
+            value = "$sharpen%",
+            onPlus = { sharpen = (sharpen + 5).coerceAtMost(100); persist() },
+            onMinus = { sharpen = (sharpen - 5).coerceAtLeast(0); persist() }
+        )
+        SwitchRow(
+            title = "INTEGER SCALE",
+            subtitle = "nearest-neighbour · pixel perfect, no blur",
+            checked = integer,
+            onClick = {
+                integer = !integer
+                persist()
+                api.say(if (integer) "Integer scaling · GL_NEAREST" else "Adaptive scaling · GL_LINEAR")
+            }
+        )
+        ActionRow(
+            title = "SHADER TEST",
+            subtitle = bench?.let { it.line() + " · " + it.quality.label } ?: "renders real frames on this GPU",
+            button = "RUN"
+        ) {
+            api.work {
+                val metrics = context.resources.displayMetrics
+                bench = withContext(Dispatchers.IO) {
+                    UpscaleEngine.benchmark(
+                        context,
+                        metrics.widthPixels,
+                        metrics.heightPixels,
+                        quality
+                    )
+                }
+                api.say(bench?.line() ?: "no measurement")
+            }
+        }
+        SectionLabel("UPSCALE MIRROR")
+        ReadRow("STATE", mirrorState)
+        ActionRow(
+            title = "UPSCALE MIRROR",
+            subtitle = if (UpscaleMirror.supported())
+                "pick the GAME in the dialog · opaque overlay · touches still reach the game"
+            else UpscaleMirror.whyNot(),
+            button = if (UpscaleMirror.isRunning) "STOP" else "START"
+        ) {
+            if (UpscaleMirror.isRunning) {
+                UpscaleMirror.stop(context)
+                api.say("Mirror stopped")
+            } else {
+                UpscaleMirror.quality = quality
+                UpscaleMirror.sharpen = sharpen / 100f
+                UpscaleMirror.integer = integer
+                UpscaleMirror.start(context)
+                api.say(if (UpscaleMirror.supported()) "Choose the game in the capture dialog" else UpscaleMirror.whyNot())
+            }
+        }
+        SectionLabel("WHAT IS REAL HERE")
+        ReadRow("LEVEL 1", "display size · refresh · fps · thermal — no root")
+        ReadRow("LEVEL 2", "GLES 2.0 upscale + adaptive sharpen · integer scale")
+        ReadRow("LEVEL 3", "frame generation or in-game upscale: needs a present hook (root / custom ROM)")
+        ReadRow("FRAME GEN", "not faked — Android exposes no way to inject frames into another app")
     }
 }
 
