@@ -251,6 +251,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             if (!prefs.getBoolean("gfx_repair_v634", false)) {
                 withContext(kotlinx.coroutines.Dispatchers.IO) {
                     runCatching { com.gamershub.core.GfxSafe.repair(context) }
+                    runCatching { com.gamershub.core.DeviceSpoofer.cleanStaleSpoofName(context) }
                 }
                 prefs.edit().putBoolean("gfx_repair_v634", true).apply()
             }

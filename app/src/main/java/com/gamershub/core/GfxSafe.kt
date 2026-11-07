@@ -62,8 +62,9 @@ object GfxSafe {
         if (Shell.ok("settings delete global angle_gl_driver_selection_pkgs")) {
             log.add("ANGLE driver selection cleared")
         }
-        if (Shell.ok("settings put system peak_refresh_rate 0")) log.add("refresh rate override cleared")
-        if (Shell.ok("settings put system min_refresh_rate 0")) log.add("min refresh cleared")
+        val peak = Shell.ok("settings delete system peak_refresh_rate")
+        val mins = Shell.ok("settings delete system min_refresh_rate")
+        if (peak || mins) log.add("refresh-rate override cleared")
         if (GfxEngine.hasGameManager()) {
             val target = pkg.ifBlank { GfxEngine.currentGamePackage(context) ?: "" }
             if (target.isNotBlank()) {
@@ -75,6 +76,9 @@ object GfxSafe {
             Shell.ok("cmd power set-fixed-performance-mode-enabled false")
             log.add("fixed performance mode off")
         }
+        // a spoofed Bluetooth/USB/file-transfer name left behind by an older build
+        runCatching { log.addAll(DeviceSpoofer.restoreDeviceName(context)) }
+        runCatching { DeviceSpoofer.cleanStaleSpoofName(context)?.let { log.add(it) } }
         val restored = if (pkg.isNotBlank()) GfxEngine.restoreGameGfx(pkg) else 0
         if (restored > 0) log.add("$restored game config file(s) restored from backup")
         context.getSharedPreferences("gamershub", Context.MODE_PRIVATE).edit()

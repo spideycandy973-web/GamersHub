@@ -146,14 +146,94 @@ object DeviceSpoofer {
         return size || density
     }
 
-    fun setDeviceName(name: String): Boolean = try {
+    /** The name the phone shipped with, as the system itself reports it. */
+    fun stockDeviceName(): String = try {
+        android.os.Build.MODEL.ifBlank { "Android" }
+    } catch (_: Throwable) {
+        "Android"
+    }
+
+    /**
+     * Renames the phone (Bluetooth / USB / file transfer / casting all read this).
+     *
+     * The stock name is remembered first so it can always be put back — an older
+     * build left devices permanently named "REDMAGIC 9 Pro" because restore() only
+     * reset the display.
+     */
+    fun setDeviceName(context: Context?, name: String, rememberStock: Boolean = true): Boolean = try {
         if (name.isBlank()) {
             false
         } else {
+            if (rememberStock && context != null) {
+                val prefs = context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+                if (!prefs.getBoolean("spoof_name_active", false)) {
+                    val current = Shell.exec("settings get global device_name")?.trim().orEmpty()
+                    prefs.edit()
+                        .putString("spoof_name_stock", current.ifBlank { stockDeviceName() })
+                        .putBoolean("spoof_name_active", true)
+                        .apply()
+                }
+            }
             val safe = name.replace("'", "")
             Shell.ok("settings put global device_name '$safe'") &&
                 Shell.ok("settings put secure bluetooth_name '$safe'")
         }
+    } catch (_: Throwable) {
+        false
+    }
+
+    /**
+     * Puts the phone's real name back. Deletes the overrides so the system falls
+     * back to `ro.product.model`, and writes the remembered stock name as a fallback.
+     */
+    fun restoreDeviceName(context: Context): List<String> {
+        val done = ArrayList<String>()
+        if (!Shell.available()) return done
+        val prefs = context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+        val stock = prefs.getString("spoof_name_stock", null)?.ifBlank { null } ?: stockDeviceName()
+        val safe = stock.replace("'", "")
+        val delGlobal = Shell.ok("settings delete global device_name")
+        val delBt = Shell.ok("settings delete secure bluetooth_name")
+        val current = Shell.exec("settings get global device_name")?.trim().orEmpty()
+        if (current.isBlank() || current == "null") {
+            Shell.ok("settings put global device_name '$safe'")
+        }
+        val after = Shell.exec("settings get global device_name")?.trim().orEmpty()
+        if (delGlobal || delBt) {
+            done.add("Device name back to '${after.ifBlank { safe }}'")
+        }
+        prefs.edit().putBoolean("spoof_name_active", false).apply()
+        return done
+    }
+
+    /**
+     * Repairs a phone that an older build renamed permanently (e.g. shows up as
+     * "REDMAGIC 9 Pro" in Bluetooth / USB / file transfer and never went back).
+     * Only touches the name when it is one of our presets.
+     */
+    fun cleanStaleSpoofName(context: Context): String? {
+        if (!Shell.available()) return null
+        val current = Shell.exec("settings get global device_name")?.trim().orEmpty()
+        if (current.isBlank() || current == "null") return null
+        val isPreset = presets.any { it.name.equals(current, ignoreCase = true) }
+        if (!isPreset) return null
+        val stock = stockDeviceName()
+        Shell.ok("settings delete global device_name")
+        Shell.ok("settings delete secure bluetooth_name")
+        val after = Shell.exec("settings get global device_name")?.trim().orEmpty()
+        if (after.isBlank() || after == "null") {
+            Shell.ok("settings put global device_name '${stock.replace("'", "")}'")
+        }
+        context.getSharedPreferences("gamershub", Context.MODE_PRIVATE).edit()
+            .putBoolean("spoof_name_active", false)
+            .apply()
+        return "device name restored to $stock"
+    }
+
+    /** True when a spoofed name is still live on the device. */
+    fun nameSpoofActive(context: Context): Boolean = try {
+        val prefs = context.getSharedPreferences("gamershub", Context.MODE_PRIVATE)
+        prefs.getBoolean("spoof_name_active", false)
     } catch (_: Throwable) {
         false
     }
@@ -180,15 +260,24 @@ object DeviceSpoofer {
     fun applySafe(context: Context, preset: Preset): List<String> {
         val applied = ArrayList<String>()
         applied.addAll(applyDisplay(context, preset))
-        if (setDeviceName(preset.name)) applied.add("Device name → ${preset.name}")
+        if (setDeviceName(context, preset.name)) applied.add("Device name → ${preset.name} (restored automatically)")
         if (GfxEngine.setRefreshRate(preset.refresh)) applied.add("Refresh → ${preset.refresh} Hz")
         return applied
     }
 
-    fun restore(): List<String> {
+    fun restore(context: Context? = null): List<String> {
         val restored = ArrayList<String>()
         if (resetDisplay()) restored.add("Display and density reset to stock")
-        if (GfxEngine.setRefreshRate(60)) restored.add("Refresh reset to 60 Hz")
+        // Deleting the override returns the panel to its own adaptive rate — an
+        // older build pinned every phone to 60 Hz here, which is a downgrade.
+        val peak = Shell.ok("settings delete system peak_refresh_rate")
+        val min = Shell.ok("settings delete system min_refresh_rate")
+        if (peak || min) restored.add("Refresh rate back to the panel default")
+        if (context != null) {
+            restored.addAll(restoreDeviceName(context))
+            // leftover GPU property from older builds
+            restored.addAll(GfxSafe.clearUnsafeProps())
+        }
         return restored
     }
 
