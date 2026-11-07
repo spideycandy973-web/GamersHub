@@ -484,15 +484,18 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Vulkan renderer", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text("Skia Vulkan backend for every app (debug.hwui.renderer)", color = GC.TextDim, fontSize = 11.sp)
+                Text("Repair rendering", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    com.gamershub.core.GfxSafe.status() +
+                        " — clears leftover graphics overrides that can corrupt other apps",
+                    color = if (rendererVk) GC.TextDim else GC.TextDim,
+                    fontSize = 11.sp
+                )
             }
-            Chip(if (rendererVk) "ON" else "OFF", rendererVk) {
-                rendererVk = !rendererVk
-                GfxEngine.setVulkanRenderer(rendererVk)
-                prefs.edit().putBoolean("gfx_vulkan", rendererVk).apply()
-                log = if (rendererVk) "Vulkan renderer requested — restart apps to pick it up."
-                else "Renderer back to OpenGL."
+            Chip("REPAIR", false) {
+                rendererVk = false
+                prefs.edit().putBoolean("gfx_vulkan", false).apply()
+                log = com.gamershub.core.GfxSafe.repair(context).joinToString(" · ")
             }
         }
         Spacer(Modifier.height(8.dp))

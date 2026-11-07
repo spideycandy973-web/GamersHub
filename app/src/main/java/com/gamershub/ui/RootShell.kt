@@ -243,6 +243,19 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             if (!repo.firstRunDone()) sheet = SheetState.Permission(0)
         }
 
+        // One-time repair of graphics overrides that older builds forced globally.
+        // They are the reason some devices showed green/corrupted surfaces in
+        // unrelated apps (photo editors, video editors) until a reboot.
+        LaunchedEffect(Unit) {
+            val prefs = context.getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("gfx_repair_v634", false)) {
+                withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching { com.gamershub.core.GfxSafe.repair(context) }
+                }
+                prefs.edit().putBoolean("gfx_repair_v634", true).apply()
+            }
+        }
+
         fun sheetFor(rawKey: String?): SheetState = when (rawKey?.substringBefore('#')) {
             "ping" -> SheetState.Ping
             "gyro" -> SheetState.Gyro
