@@ -94,4 +94,87 @@ object FpsMeter {
     } catch (_: Throwable) {
         -1
     }
+
+    /* ------------------------------------------------------------------ */
+    /* Real frame rate from SurfaceFlinger                                 */
+    /* ------------------------------------------------------------------ */
+
+    @Volatile
+    private var cachedLayer: String? = null
+    @Volatile
+    private var cachedLayerPkg: String? = null
+
+    /** The compositor layer of [pkg] (`dumpsys SurfaceFlinger --list`). */
+    fun layerFor(pkg: String): String? {
+        if (cachedLayerPkg == pkg && cachedLayer != null) return cachedLayer
+        val list = Shell.exec("dumpsys SurfaceFlinger --list") ?: return null
+        val candidates = list.lines().map { it.trim() }.filter { it.isNotBlank() && it.contains(pkg) }
+        if (candidates.isEmpty()) return null
+        // Prefer the real game surface, then the first window of the package.
+        val best = candidates.firstOrNull { it.contains("SurfaceView", true) }
+            ?: candidates.firstOrNull { it.contains("BLAST", true) }
+            ?: candidates.firstOrNull { it.contains("#0") }
+            ?: candidates.first()
+        cachedLayer = best
+        cachedLayerPkg = pkg
+        return best
+    }
+
+    /**
+     * Frames per second straight from the compositor's present timestamps.
+     * Returns -1 when the ROM does not expose latency data.
+     */
+    fun surfaceFlingerFps(pkg: String): Int {
+        val layer = layerFor(pkg) ?: return -1
+        val out = Shell.exec("dumpsys SurfaceFlinger --latency '$layer'") ?: return -1
+        val stamps = ArrayList<Long>(160)
+        for (line in out.lines()) {
+            val parts = line.trim().split(Regex("\\s+"))
+            if (parts.size < 3) continue
+            val present = parts[1].toLongOrNull() ?: continue
+            if (present <= 0L) continue
+            if (present == Long.MAX_VALUE || present >= 9_223_372_036_854_775_000L) continue
+            stamps.add(present)
+        }
+        if (stamps.size < 3) return -1
+        val sorted = stamps.sorted()
+        val first = sorted.first()
+        val last = sorted.last()
+        val spanNs = last - first
+        if (spanNs <= 0L) return -1
+        val fps = ((sorted.size - 1) * 1_000_000_000.0 / spanNs).toInt()
+        return if (fps in 1..240) fps else -1
+    }
+
+    /** Best available FPS: compositor first, then the app's own frame counter. */
+    fun liveFps(context: Context): Int {
+        val pkg = foregroundPackageDeep(context) ?: return -1
+        val fromCompositor = surfaceFlingerFps(pkg)
+        if (fromCompositor > 0) return fromCompositor
+        return -1
+    }
+
+    /**
+     * Foreground package: usage-stats when the permission exists, otherwise the
+     * window manager's focus through shell — so the monitor still works on ROMs
+     * where usage access was never granted.
+     */
+    fun foregroundPackageDeep(context: Context): String? {
+        foregroundPackage(context)?.let { return it }
+        val focus = Shell.exec("dumpsys window 2>/dev/null | grep -E 'mCurrentFocus|mFocusedApp'") ?: ""
+        val match = Regex("([a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+)/").find(focus)
+        val pkg = match?.groupValues?.getOrNull(1)
+        if (!pkg.isNullOrBlank() && pkg != context.packageName) return pkg
+        val top = Shell.exec("dumpsys activity activities 2>/dev/null | grep -m1 topResumedActivity") ?: ""
+        val match2 = Regex("([a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)+)/").find(top)
+        return match2?.groupValues?.getOrNull(1)?.takeIf { it != context.packageName }
+    }
+
+    /** Display refresh rate as the compositor reports it (falls back to WM). */
+    fun compositorHz(context: Context): Int {
+        val out = Shell.exec("dumpsys display 2>/dev/null | grep -m1 -oE 'refreshRate[= ]+[0-9.]+'") ?: ""
+        val value = Regex("([0-9.]+)").find(out)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+        if (value != null && value > 20) return value.toInt()
+        return refreshRate(context)
+    }
 }

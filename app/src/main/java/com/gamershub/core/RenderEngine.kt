@@ -133,16 +133,10 @@ object RenderEngine {
             }
         }
 
-        // 2. global lossless scaling — real for every app, no engine support needed
+        // 2. global lossless scaling — physical baseline, size AND density scale together,
+        //    so the picture keeps its exact layout and only the rendered pixel count drops.
         if (losslessPct in 40..99) {
-            val state = GfxEngine.displayState(context)
-            val w = even((state.width * losslessPct) / 100)
-            val h = even((state.height * losslessPct) / 100)
-            val density = ((state.density * losslessPct) / 100.0).toInt().coerceIn(120, 640)
-            val sizeCmd = "wm size ${w}x$h"
-            steps.add(Step("lossless scaling $losslessPct% → ${w}x$h", sizeCmd, Shell.ok(sizeCmd)))
-            val densityCmd = "wm density $density"
-            steps.add(Step("density $density", densityCmd, Shell.ok(densityCmd)))
+            steps.addAll(applyLossless(context, losslessPct))
         } else if (losslessPct >= 100) {
             steps.add(Step("lossless scaling off", "wm size reset", Shell.ok("wm size reset")))
             steps.add(Step("density reset", "wm density reset", Shell.ok("wm density reset")))
@@ -221,6 +215,71 @@ object RenderEngine {
             steps.add(Step("engine config restored", "cp *.ghbak", restored > 0, "$restored files"))
         }
         return Report(pkg, steps, verify(pkg))
+    }
+
+    /**
+     * True lossless scaling: render at [percent] of the **physical** panel and scale the
+     * density by the same factor. The system then upscales to the panel, so the UI keeps
+     * the same physical size (nothing shrinks) while the GPU only fills [percent]% of the
+     * pixels. Always computed from the physical size, never from a previous override, so
+     * repeated taps cannot compound.
+     */
+    fun applyLossless(context: Context, percent: Int): List<Step> {
+        val steps = ArrayList<Step>()
+        if (!Shell.available()) {
+            steps.add(Step("lossless scaling", "shizuku", false, Shell.reason()))
+            return steps
+        }
+        val sizeOut = Shell.exec("wm size") ?: ""
+        val densityOut = Shell.exec("wm density") ?: ""
+        val physical = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)
+        val physicalDensity = Regex("Physical density:\\s*(\\d+)").find(densityOut)
+            ?: Regex("Physical density:\\s*(\\d+)").find(densityOut)
+        val metrics = context.resources.displayMetrics
+        val baseW = physical?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.widthPixels
+        val baseH = physical?.groupValues?.getOrNull(2)?.toIntOrNull() ?: metrics.heightPixels
+        val baseDpi = physicalDensity?.groupValues?.getOrNull(1)?.toIntOrNull() ?: metrics.densityDpi
+        val pct = percent.coerceIn(40, 100)
+        val w = even((baseW * pct) / 100)
+        val h = even((baseH * pct) / 100)
+        val dpi = ((baseDpi * pct) / 100.0).toInt().coerceIn(120, 640)
+
+        // size and density must move together, otherwise the UI would shrink
+        val sizeCmd = "wm size ${w}x$h"
+        val sizeOk = Shell.ok(sizeCmd)
+        val densityCmd = "wm density $dpi"
+        val densityOk = Shell.ok(densityCmd)
+        if (sizeOk && !densityOk) {
+            Shell.ok("wm size reset")
+            steps.add(Step("lossless scaling", sizeCmd, false, "density refused — reverted so nothing shrinks"))
+            return steps
+        }
+        steps.add(Step("render ${pct}% (${w}x$h, was ${baseW}x${baseH})", sizeCmd, sizeOk))
+        steps.add(Step("density $dpi dpi (was $baseDpi, same physical size)", densityCmd, densityOk))
+        val readBack = Shell.exec("wm size")?.trim().orEmpty() + " | " + Shell.exec("wm density")?.trim().orEmpty()
+        steps.add(
+            Step(
+                "verified",
+                "wm size / wm density",
+                readBack.contains("${w}x$h") && readBack.contains(dpi.toString()),
+                readBack.replace("\n", " ")
+            )
+        )
+        return steps
+    }
+
+    /** The physical panel, unaffected by any override we applied. */
+    fun physicalMetrics(context: Context): Triple<Int, Int, Int> {
+        val sizeOut = Shell.exec("wm size") ?: ""
+        val densityOut = Shell.exec("wm density") ?: ""
+        val metrics = context.resources.displayMetrics
+        val w = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: metrics.widthPixels
+        val h = Regex("Physical size:\\s*(\\d+)x(\\d+)").find(sizeOut)?.groupValues?.getOrNull(2)?.toIntOrNull()
+            ?: metrics.heightPixels
+        val dpi = Regex("Physical density:\\s*(\\d+)").find(densityOut)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: metrics.densityDpi
+        return Triple(w, h, dpi)
     }
 
     private fun even(value: Int): Int = if (value % 2 == 0) value else value - 1

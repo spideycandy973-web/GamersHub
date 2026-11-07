@@ -137,12 +137,17 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                                 val cpu = DeviceStats.cpu()
                                 val mem = DeviceStats.mem(ctx)
                                 val batt = DeviceStats.battery(ctx)
-                                val hz = FpsMeter.refreshRate(ctx)
-                                val pkg = FpsMeter.foregroundPackage(ctx)
-                                val frames = pkg?.let { FpsMeter.totalFrames(it) }
+                                val hz = FpsMeter.compositorHz(ctx)
+                                // 1) compositor present timestamps — works for any Vulkan/GL game
+                                val fromCompositor = FpsMeter.liveFps(ctx)
+                                // 2) fallback: the app's own HWUI frame counter
+                                val pkg = FpsMeter.foregroundPackageDeep(ctx)
+                                val frames = if (fromCompositor > 0) null else pkg?.let { FpsMeter.totalFrames(it) }
                                 val now = System.currentTimeMillis()
                                 var fps = "--"
-                                if (frames != null && lastFrames != null && lastStamp > 0) {
+                                if (fromCompositor > 0) {
+                                    fps = fromCompositor.toString()
+                                } else if (frames != null && lastFrames != null && lastStamp > 0) {
                                     val dt = (now - lastStamp) / 1000.0
                                     if (dt > 0.2) {
                                         val value = ((frames - (lastFrames ?: 0L)) / dt).toInt()
