@@ -77,8 +77,15 @@ object UpscaleMirror {
     @Volatile var quality = UpscaleEngine.Quality.BALANCED
     @Volatile var sharpen = 0.35f
     @Volatile var integer = false
+    /** Motion-compensated frame generation on top of the mirrored feed. */
+    @Volatile var frameGen = false
+    /** Synthesised frames presented in the last second — never counted as game frames. */
+    @Volatile var generated = 0
+    @Volatile var frameGenError = ""
 
     fun state(): String = when {
+        isRunning && frameGen && frameGenError.isBlank() ->
+            "${srcW}×$srcH → ${dstW}×$dstH · $fps fps presented · $generated/s generated · ${latencyMs}ms"
         isRunning -> "${srcW}×$srcH → ${dstW}×$dstH · $fps fps · ${latencyMs}ms"
         lastError.isNotBlank() -> lastError
         else -> "idle"
@@ -301,10 +308,35 @@ class UpscaleMirrorService : Service() {
             return
         }
 
+        // Real frame generation: three render targets + optical flow, or nothing at all.
+        var gen: FrameGen? = null
+        if (UpscaleMirror.frameGen) {
+            val attempt = FrameGen(srcW, srcH)
+            if (attempt.begin()) {
+                gen = attempt
+                UpscaleMirror.frameGenError = ""
+            } else {
+                UpscaleMirror.frameGenError = attempt.error.ifBlank { "frame gen unavailable" }
+                attempt.release()
+            }
+        }
+        val plain = UpscaleEngine.Gl(external = false)
+        plain.quality = UpscaleMirror.quality
+        plain.sharpness = UpscaleMirror.sharpen
+        plain.integer = UpscaleMirror.integer
+        if (gen != null && !plain.build()) {
+            UpscaleMirror.frameGenError = "2D presenter: " + plain.log.toString().take(100)
+            gen?.release()
+            gen = null
+        }
+
         UpscaleMirror.isRunning = true
         val matrix = FloatArray(16)
-        var frames = 0
+        var presented = 0
+        var generated = 0
         var lastStat = System.nanoTime()
+        var lastStamp = 0L
+        var intervalNs = 16_666_667L
 
         while (running) {
             frameLock.lock()
@@ -316,16 +348,51 @@ class UpscaleMirrorService : Service() {
             } finally {
                 frameLock.unlock()
             }
+            val active = gen
             val drew = runCatching {
                 texture.updateTexImage()
                 texture.getTransformMatrix(matrix)
                 val stamp = texture.timestamp
-                gl.draw(textures[0], srcW, srcH, dstW, dstH, matrix)
-                egl.swap()
+                if (stamp > 0L && lastStamp > 0L && stamp > lastStamp) {
+                    // measured capture interval, clamped to 24..120 fps
+                    intervalNs = (stamp - lastStamp).coerceIn(8_000_000L, 42_000_000L)
+                }
+                if (stamp > 0L) lastStamp = stamp
+
+                if (active == null) {
+                    gl.draw(textures[0], srcW, srcH, dstW, dstH, matrix)
+                    egl.swap()
+                    presented++
+                } else {
+                    active.capture(textures[0], matrix)
+                    val real = active.current()
+                    plain.draw(real, srcW, srcH, dstW, dstH, null)
+                    egl.swap()
+                    presented++
+                    if (active.hasPrevious()) {
+                        val synthesised = active.interpolate()
+                        if (synthesised != 0) {
+                            // pace the generated frame to the middle of the capture interval
+                            val target = stamp + intervalNs / 2
+                            val waitNs = target - System.nanoTime()
+                            if (waitNs > 1_000_000L) {
+                                runCatching {
+                                    Thread.sleep(waitNs / 1_000_000L, (waitNs % 1_000_000L).toInt())
+                                }
+                            }
+                            plain.draw(synthesised, srcW, srcH, dstW, dstH, null)
+                            egl.swap()
+                            presented++
+                            generated++
+                        }
+                    }
+                    active.promote()
+                }
                 stamp
             }.getOrNull()
             if (drew == null) {
                 // capture stopped or surface lost — one bad frame is not a reason to die
+                gen?.discard()
                 runCatching { Thread.sleep(4L) }
                 continue
             }
@@ -333,10 +400,11 @@ class UpscaleMirrorService : Service() {
             if (drew > 0L) {
                 UpscaleMirror.latencyMs = ((now - drew) / 1_000_000L).toInt().coerceIn(0, 999)
             }
-            frames++
             if (now - lastStat >= 1_000_000_000L) {
-                UpscaleMirror.fps = frames
-                frames = 0
+                UpscaleMirror.fps = presented
+                UpscaleMirror.generated = generated
+                presented = 0
+                generated = 0
                 lastStat = now
             }
         }
@@ -347,9 +415,12 @@ class UpscaleMirrorService : Service() {
         texture.release()
         input.release()
         GLES20.glDeleteTextures(1, textures, 0)
+        gen?.release()
+        plain.release()
         gl.release()
         egl.release()
         UpscaleMirror.isRunning = false
+        UpscaleMirror.generated = 0
     }
 
     private fun fail(message: String) {
