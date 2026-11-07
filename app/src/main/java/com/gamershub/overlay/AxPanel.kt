@@ -985,6 +985,7 @@ private fun DisplayPage(api: AxApi) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
         ReadRow("SURFACE", "${state.width}x${state.height} · ${state.density}dpi")
         ReadRow("OVERRIDE", override.ifBlank { "none" })
+        ReadRow("REFRESH NOW", rememberLive("--", 3000) { GfxEngine.refreshSummary(context) })
         StepRow(
             label = "REFRESH RATE",
             value = st.refresh,
@@ -999,7 +1000,10 @@ private fun DisplayPage(api: AxApi) {
                         else -> FpsMeter.refreshRate(context)
                     }
                     val ok = withContext(Dispatchers.IO) { GfxEngine.setRefreshRate(hz) }
-                    api.say(if (ok) "Refresh → $hz Hz" else Shell.reason())
+                    api.say(
+                        if (ok) "Refresh → $hz Hz · " + GfxEngine.refreshSummary(context)
+                        else "Refused · " + GfxEngine.refreshSummary(context)
+                    )
                 }
             },
             onMinus = {
@@ -1131,10 +1135,21 @@ private fun SpoofPage(api: AxApi) {
         com.gamershub.core.shizuku.Shell.exec("settings get global device_name")?.trim().orEmpty()
             .ifBlank { "stock" }
     }
+    val spoofStatus = rememberLive(DeviceSpoofer.status(context), 4000) { DeviceSpoofer.status(context) }
+    val refreshLine = rememberLive("--", 4000) { GfxEngine.refreshSummary(context) }
+    val rooted = rememberLive(false, 8000) { DeviceSpoofer.isRooted() }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
         ReadRow("APPS SEE", observed)
         ReadRow("DEVICE NAME", deviceName)
+        // What CPU-Z / any app reads — model identity needs root, and this row says so.
+        ReadRow(
+            "MODEL (CPU-Z)",
+            spoofStatus.model + if (!spoofStatus.model.equals(preset.model, ignoreCase = true))
+                (if (rooted) "" else " · needs root") else " ✓"
+        )
+        ReadRow("MANUFACTURER", spoofStatus.manufacturer)
+        ReadRow("REFRESH", refreshLine)
         StepRow(
             label = "PRESET",
             value = preset.name,
@@ -1154,7 +1169,12 @@ private fun SpoofPage(api: AxApi) {
                 api.say(lines.firstOrNull() ?: "Display spoofed")
             }
         }
-        ActionRow("SPOOF IDENTITY", "${preset.manufacturer} ${preset.model}", "APPLY") {
+        ActionRow(
+            "SPOOF MODEL IDENTITY",
+            if (rooted) "${preset.manufacturer} ${preset.model}"
+            else "Root required: Android makes ro.product.model read-only. Display, density, refresh and the device name are applied without root.",
+            if (rooted) "APPLY" else "ROOT?"
+        ) {
             api.work {
                 val result = withContext(Dispatchers.IO) { DeviceSpoofer.applyIdentity(preset) }
                 api.say(if (result.first) "Identity → ${preset.model}" else result.second)

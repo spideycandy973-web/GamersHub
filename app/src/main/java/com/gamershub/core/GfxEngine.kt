@@ -79,13 +79,62 @@ object GfxEngine {
         return size || density
     }
 
-    fun setRefreshRate(hz: Int): Boolean = try {
+    /**
+     * Requests a refresh rate the way the platform actually reads it.
+     *
+     * `peak_refresh_rate` / `min_refresh_rate` are **floats** ("144.0"). Writing the
+     * integer string is silently ignored by a lot of ROMs, which is why "144 Hz" used
+     * to do nothing. MIUI also keeps its own `user_refresh_rate`. All three are
+     * written, then the result is read back.
+     */
+    fun setRefreshRate(hz: Int): Boolean {
         val value = hz.coerceIn(48, 240)
-        val okSystem = Shell.ok("settings put system peak_refresh_rate $value")
-        val okMin = Shell.ok("settings put system min_refresh_rate $value")
-        okMin || okSystem
+        val asFloat = String.format(java.util.Locale.US, "%.1f", value.toFloat())
+        var ok = false
+        ok = Shell.ok("settings put system peak_refresh_rate $asFloat") || ok
+        ok = Shell.ok("settings put system min_refresh_rate $asFloat") || ok
+        ok = Shell.ok("settings put system user_refresh_rate $value") || ok
+        ok = Shell.ok("settings put global peak_refresh_rate $asFloat") || ok
+        // Some ROMs only honour the display-mode switch through the window manager.
+        Shell.ok("service call SurfaceFlinger 1035 i32 1")
+        return ok && refreshApplied(value)
+    }
+
+    /** Reads the requested rate back; true when it survived. */
+    fun refreshApplied(hz: Int): Boolean = try {
+        val peak = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
+        val min = Shell.exec("settings get system min_refresh_rate")?.trim().orEmpty()
+        val request = peak.toDoubleOrNull() ?: min.toDoubleOrNull()
+        if (request == null) false else Math.abs(request - hz) < 1.0
     } catch (_: Throwable) {
         false
+    }
+
+    /** Every refresh rate this panel can do, from the display manager. */
+    fun panelRates(): List<Int> = try {
+        val out = Shell.exec("dumpsys display | grep -oE 'fps=[0-9.]+'") ?: ""
+        out.lines()
+            .mapNotNull { Regex("([0-9.]+)").find(it)?.groupValues?.getOrNull(1)?.toDoubleOrNull() }
+            .map { it.toInt() }
+            .filter { it in 30..240 }
+            .distinct()
+            .sorted()
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    /** What the panel is doing right now, for the UI. */
+    fun refreshSummary(context: Context): String {
+        val current = FpsMeter.refreshRate(context)
+        val requested = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
+        val rates = panelRates()
+        val max = rates.maxOrNull()
+        val req = requested.toDoubleOrNull()?.toInt()
+        return buildString {
+            append(if (req != null && req > 0) "requested ${req}Hz" else "auto")
+            append(" · now ${current}Hz")
+            if (max != null) append(" · panel max ${max}Hz")
+        }
     }
 
     /**

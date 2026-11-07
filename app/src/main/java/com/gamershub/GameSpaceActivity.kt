@@ -408,10 +408,10 @@ private fun GameSpaceScreen(
                 onSelect = { currentPkg = it },
                 onAdd = { showApps = true },
                 modifier = Modifier
-                    .offset(x = w * 0.045f, y = h * 0.196f)
-                    .size(width = w * 0.910f, height = h * 0.074f),
-                iconSize = h * 0.044f,
-                nameSize = (h.value * 0.0155f).sp
+                    .offset(x = w * 0.045f, y = h * 0.184f)
+                    .size(width = w * 0.910f, height = h * 0.132f),
+                iconSize = h * 0.082f,
+                nameSize = (h.value * 0.027f).sp
             )
 
             // ---------- featured card with a real captured frame ----------
@@ -436,8 +436,8 @@ private fun GameSpaceScreen(
                 nameSize = (h.value * 0.031f).sp,
                 metaSize = (h.value * 0.019f).sp,
                 modifier = Modifier
-                    .offset(x = w * 0.045f, y = h * 0.296f)
-                    .size(width = w * 0.356f, height = h * 0.394f)
+                    .offset(x = w * 0.045f, y = h * 0.340f)
+                    .size(width = w * 0.356f, height = h * 0.348f)
             )
 
             // ---------- live app facts, 2x2 ----------
@@ -447,8 +447,8 @@ private fun GameSpaceScreen(
                 minutes = repo.playMinutes(currentPkg),
                 version = appVersion,
                 modifier = Modifier
-                    .offset(x = w * 0.417f, y = h * 0.296f)
-                    .size(width = w * 0.288f, height = h * 0.394f),
+                    .offset(x = w * 0.417f, y = h * 0.340f)
+                    .size(width = w * 0.288f, height = h * 0.348f),
                 titleSize = (h.value * 0.016f).sp,
                 valueSize = (h.value * 0.030f).sp,
                 noteSize = (h.value * 0.014f).sp
@@ -2126,12 +2126,22 @@ private fun DisplayPanel(onDismiss: () -> Unit) {
                     val prev = refreshStep
                     refreshStep = i
                     val hz = when (i) { 1 -> 90f; 2 -> 120f; 3 -> 144f; else -> 60f }
-                    val ok = try {
-                        Settings.System.putFloat(context.contentResolver, "peak_refresh_rate", hz) &&
-                            Settings.System.putFloat(context.contentResolver, "min_refresh_rate", hz)
-                    } catch (_: Throwable) { false }
-                    if (!ok) refreshStep = prev
-                    feedbackOnWrite(context, ok)
+                    // real write through the shell (float settings + MIUI key), verified
+                    val ok = com.gamershub.core.GfxEngine.setRefreshRate(hz.toInt())
+                    if (!ok) {
+                        refreshStep = prev
+                        android.widget.Toast.makeText(
+                            context,
+                            com.gamershub.core.GfxEngine.refreshSummary(context),
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Refresh → ${hz.toInt()} Hz · " + com.gamershub.core.GfxEngine.refreshSummary(context),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         }
