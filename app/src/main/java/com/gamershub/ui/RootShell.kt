@@ -137,6 +137,7 @@ sealed interface SheetState {
 fun RootShell(repo: AppRepo, initialSheet: String? = null) {
     val context = LocalContext.current
     var accentIdx by remember { mutableIntStateOf(repo.accentIndex()) }
+    var iconIdx by remember { mutableIntStateOf(com.gamershub.data.AppIcon.current(context)) }
 
     GameCornerTheme(accentIdx) {
         val accent = LocalAccent.current
@@ -498,6 +499,16 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         onAccent = { i ->
                             accentIdx = i
                             repo.setAccentIndex(i)
+                        },
+                        iconIndex = iconIdx,
+                        onIcon = { i ->
+                            iconIdx = i
+                            com.gamershub.data.AppIcon.set(context, i)
+                            Toast.makeText(
+                                context,
+                                "Icon set to ${com.gamershub.data.AppIcon.label(i)} — check your home screen",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         },
                         onLanguage = {
                             runCatching {

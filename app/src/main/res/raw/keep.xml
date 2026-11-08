@@ -9,4 +9,4 @@
   here makes the shrinker deterministic.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@raw/intro_1080_portrait_comp,@raw/game_space_intro,@raw/intro_gamepad,@raw/preview_color,@raw/preview_scale,@raw/preview_sharpen,@drawable/intro_gamepad,@mipmap/ic_launcher,@mipmap/ic_launcher_round,@drawable/ic_launcher_foreground,@drawable/ic_launcher_background,@drawable/ic_launcher_monochrome" />
+    tools:keep="@raw/intro_1080_portrait_comp,@raw/game_space_intro,@raw/intro_gamepad,@raw/preview_color,@raw/preview_scale,@raw/preview_sharpen,@drawable/intro_gamepad,@mipmap/ic_launcher,@mipmap/ic_launcher_round,@drawable/ic_launcher_foreground,@drawable/ic_launcher_background,@drawable/ic_launcher_mono,@drawable/ic_launcher_chevron_mono,@drawable/ic_launcher_gh_mono,@mipmap/ic_launcher_chevron,@mipmap/ic_launcher_gh,@drawable/ic_stat_gh" />
