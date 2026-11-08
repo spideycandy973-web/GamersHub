@@ -49,6 +49,14 @@ jobs:
             -Pandroid.injected.signing.key.alias=gamershub \
             -Pandroid.injected.signing.key.password=gamershub 2>&1 | tee build.log
 
+      - name: Media audit
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK total: $(stat -c%s "$APK") bytes"
+          unzip -l "$APK" | awk 'NR>3 && $4 ~ /\.mp4$/ {print "::warning::MEDIA "$1" "$4}'
+          unzip -l "$APK" | awk 'NR>3 && $4 ~ /\.png$/ && $1 > 300000 {print "::warning::BIGPNG "$1" "$4}'
+          unzip -l "$APK" | awk 'NR>3 && $4 ~ /mipmap/ {print "::notice::ICON "$1" "$4}'
+
       - name: Report errors as annotations
         if: failure()
         run: |
