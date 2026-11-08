@@ -104,11 +104,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.ShaderBrush
 import com.gamershub.data.AppRepo
 import com.gamershub.data.InstalledApp
 import com.gamershub.data.DeviceStats
@@ -707,7 +709,7 @@ private fun dotPattern(): Brush {
     canvas.drawCircle(n * 0.86f, n * 0.90f, 2.2f, paint)
     paint.color = android.graphics.Color.argb(0x12, 255, 255, 255)
     canvas.drawCircle(n * 0.34f, n * 0.86f, 1.2f, paint)
-    return Brush.ShaderBrush(
+    return ShaderBrush(
         androidx.compose.ui.graphics.ImageShader(
             bmp.asImageBitmap(),
             androidx.compose.ui.graphics.TileMode.Repeated,

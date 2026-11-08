@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.animateColorAsState
 
 /**
  * TOOLS — the complete feature surface of the clone in one place.
@@ -469,7 +470,7 @@ private fun ToolRow(
         if (onToggle != null) {
             val tgInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             val tgPressed by tgInter.collectIsPressedAsState()
-            val tgBg by androidx.compose.animation.core.animateColorAsState(
+            val tgBg by androidx.compose.animation.animateColorAsState(
                 if (active) accent else GC.SurfaceHi,
                 androidx.compose.animation.core.tween(200), label = "toggleBg"
             )

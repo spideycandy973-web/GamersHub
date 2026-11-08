@@ -119,7 +119,7 @@ fun GameLabsScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LabsTab.entries.forEach { t ->
                     val selected = tab == t
-                    val labBg by androidx.compose.animation.core.animateColorAsState(
+                    val labBg by androidx.compose.animation.animateColorAsState(
                         if (selected) accent else GC.SurfaceHi,
                         androidx.compose.animation.core.tween(200), label = "labBg"
                     )
