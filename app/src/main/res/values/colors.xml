@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="gh_bg_dark">#070A14</color>
-    <color name="gh_bg_light">#EFF2FB</color>
+    <color name="gh_bg_light">#100F0D</color>
     <color name="gh_cyber">#22D3EE</color>
     <color name="gh_violet">#8B5CF6</color>
     <color name="gh_magenta">#F472B6</color>
-    <color name="ic_launcher_background">#0B1020</color>
+    <color name="ic_launcher_background">#100F0D</color>
 </resources>

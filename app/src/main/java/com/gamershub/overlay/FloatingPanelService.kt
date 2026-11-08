@@ -90,8 +90,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Pop-up panel — a pixel copy of the AX-MODE Game Corner overlay:
- * red/black angular panel with the icon rows, the AX-MODE band with
+ * Pop-up panel — the GamersHub overlay:
+ * warm-black angular panel with the icon rows, the GAMERSHUB band with
  * real clock + battery, a live CPU chevron column on the left and a
  * live RAM chevron column on the right, and the info stats strip.
  * Every control writes REAL system state where the platform allows.
@@ -258,7 +258,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         }
         return builder
             .setContentTitle("GamersHub panel active")
-            .setContentText("Tap the bubble for the AX-MODE panel")
+            .setContentText("Tap the bubble for the GamersHub panel")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
     }

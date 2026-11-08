@@ -725,7 +725,7 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text("Floating Panel", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("AX-MODE bubble + pop-up panel", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text("GamersHub bubble + pop-up panel", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }

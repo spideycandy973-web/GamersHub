@@ -14,8 +14,8 @@ android {
         applicationId = "com.gamershub"
         minSdk = 26
         targetSdk = 34
-        versionCode = 53
-        versionName = "6.6.0"
+        versionCode = 57
+        versionName = "6.7.3"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -30,7 +30,11 @@ android {
             // reflection and kotlinx-serialization on real devices (random
             // crashes after Shizuku connects). Stability > ~200 KB of APK size.
             isMinifyEnabled = true
-            isShrinkResources = true
+            // Resource shrinking stays OFF on purpose: R8 inlines R.raw.* ids, so a cold
+            // shrinker pass decided the intro clips were unused and silently deleted
+            // 12 MB of media (v6.7.0 shipped without the intro video). The unused
+            // view resources cost a few hundred KB — the intro is not negotiable.
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
