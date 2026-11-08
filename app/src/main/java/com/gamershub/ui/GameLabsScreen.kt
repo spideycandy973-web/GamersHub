@@ -59,6 +59,8 @@ import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.IconChip
 import com.gamershub.ui.components.Toggle
 import java.util.Locale
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 
 private enum class LabsTab(val label: String) { ALL("All"), VISUAL("Visual"), CONFIGS("Configs") }
 
@@ -117,12 +119,23 @@ fun GameLabsScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LabsTab.entries.forEach { t ->
                     val selected = tab == t
+                    val labBg by androidx.compose.animation.core.animateColorAsState(
+                        if (selected) accent else GC.SurfaceHi,
+                        androidx.compose.animation.core.tween(200), label = "labBg"
+                    )
+                    val labInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val labPressed by labInter.collectIsPressedAsState()
+                    val labScale by androidx.compose.animation.core.animateFloatAsState(
+                        if (labPressed) 0.93f else 1f,
+                        androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 900f), label = "labScale"
+                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
+                            .graphicsLayer { scaleX = labScale; scaleY = labScale }
                             .clip(RoundedCornerShape(50))
-                            .background(if (selected) accent else GC.SurfaceHi)
-                            .clickable { tab = t }
+                            .background(labBg)
+                            .clickable(labInter, indication = null) { tab = t }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         AIcon(

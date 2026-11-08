@@ -66,6 +66,8 @@ import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.StatusPill
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 
 /**
  * TOOLS — the complete feature surface of the clone in one place.
@@ -465,16 +467,27 @@ private fun ToolRow(
             Text(subtitle, color = GC.TextDim, fontSize = 11.sp, maxLines = 1)
         }
         if (onToggle != null) {
+            val tgInter = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val tgPressed by tgInter.collectIsPressedAsState()
+            val tgBg by androidx.compose.animation.core.animateColorAsState(
+                if (active) accent else GC.SurfaceHi,
+                androidx.compose.animation.core.tween(200), label = "toggleBg"
+            )
+            val tgScale by androidx.compose.animation.core.animateFloatAsState(
+                if (tgPressed) 0.90f else 1f,
+                androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 900f), label = "toggleScale"
+            )
             Box(
                 Modifier
+                    .graphicsLayer { scaleX = tgScale; scaleY = tgScale }
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (active) accent else GC.SurfaceHi)
-                    .clickable(onClick = onToggle)
+                    .background(tgBg)
+                    .clickable(tgInter, indication = null, onClick = onToggle)
                     .padding(horizontal = 11.dp, vertical = 7.dp)
             ) {
                 Text(
                     if (active) "ON" else "OFF",
-                    color = if (active) Color.White else GC.TextSoft,
+                    color = if (active) GC.OnAccent else GC.TextSoft,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )

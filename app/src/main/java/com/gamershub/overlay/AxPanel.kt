@@ -67,6 +67,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import com.gamershub.core.DeviceSpoofer
 import com.gamershub.core.FpsMeter
 import com.gamershub.core.GfxEngine
@@ -314,9 +316,24 @@ fun AxPanel(onClose: () -> Unit) {
             .navigationBarsPadding()
             .padding(bottom = 8.dp)
     ) {
+        // grabber: tap or pull down to close
+        var dragY by remember { mutableStateOf(0f) }
         Row(
-            Modifier.fillMaxWidth().padding(top = 6.dp),
-            horizontalArrangement = Arrangement.Center
+            Modifier
+                .fillMaxWidth()
+                .height(34.dp)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (dragY > 56f) onClose()
+                            dragY = 0f
+                        },
+                        onDragCancel = { dragY = 0f }
+                    ) { _, dy -> dragY = (dragY + dy).coerceAtLeast(0f) }
+                }
+                .clickable(onClick = onClose),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier
@@ -324,7 +341,6 @@ fun AxPanel(onClose: () -> Unit) {
                     .height(5.dp)
                     .clip(RoundedCornerShape(50))
                     .background(AX_RED)
-                    .clickable(onClick = onClose)
             )
         }
 

@@ -213,10 +213,21 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
     private fun openPanel() {
         if (panelView != null) return
         val params = overlayParams(WindowManager.LayoutParams.MATCH_PARENT)
+        // Taps anywhere outside the sheet come back as ACTION_OUTSIDE and close it —
+        // no need to hunt for the floating bubble again.
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         params.gravity = Gravity.BOTTOM or Gravity.START
         params.x = 0
         params.y = 0
-        val view = ComposeView(this).apply {
+        val view = object : ComposeView(this) {
+            override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+                if (event.action == android.view.MotionEvent.ACTION_OUTSIDE) {
+                    closePanel()
+                    return true
+                }
+                return super.dispatchTouchEvent(event)
+            }
+        }.apply {
             setContent {
                 GameCornerTheme {
                     AxPanel(onClose = { closePanel() })
