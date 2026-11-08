@@ -114,7 +114,7 @@ private const val PREFS = "gamershub"
 /* ------------------------------------------------------------------ */
 
 private enum class AxPage(val title: String) {
-    HOME("AX-MODE"),
+    HOME("GAMERSHUB"),
     MENU("ALL FEATURES"),
     GFX("GRAPHICS UNLOCK"),
     DISPLAY("DISPLAY"),
@@ -130,7 +130,7 @@ private enum class AxPage(val title: String) {
 
 private class AxState {
     var page by mutableStateOf(AxPage.HOME)
-    var status by mutableStateOf("AX-MODE ready")
+    var status by mutableStateOf("GAMERSHUB ready")
     var busy by mutableStateOf(false)
 
     var texture by mutableStateOf("HIGH")
@@ -402,11 +402,11 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 .padding(horizontal = 24.dp, vertical = 5.dp)
         ) {
             Text(
-                "AX-MODE",
+                "GAMERSHUB",
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 5.sp
+                letterSpacing = 3.4.sp
             )
         }
         Box(Modifier.weight(1f).height(2.dp).background(Color(0x55E25E20)))
@@ -453,9 +453,9 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
     ) {
         ChevronGauge("CPU", stats.cpu, flip = false)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("AXERON", color = AX_DIM, fontSize = 7.sp, letterSpacing = 3.sp)
+            Text("GAME BOOSTER", color = AX_DIM, fontSize = 7.sp, letterSpacing = 3.sp)
             Text(
-                "GAME CORNER",
+                "GAMERSHUB",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
@@ -731,7 +731,7 @@ private fun PageHeader(api: AxApi, title: String) {
                     modifier = Modifier.size(13.dp)
                 )
                 Spacer(Modifier.width(4.dp))
-                Text("AX-MODE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text("GAMERSHUB", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.width(8.dp))

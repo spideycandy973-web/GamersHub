@@ -136,7 +136,7 @@ fun ToolsScreen(
                     fontSize = 36.sp
                 )
                 Text(
-                    "Every AX-MODE feature · live",
+                    "Every GamersHub feature · live",
                     style = MaterialTheme.typography.labelMedium,
                     color = GC.TextDim,
                     fontSize = 13.sp
@@ -197,7 +197,7 @@ fun ToolsScreen(
         ToolRow(
             icon = Icons.Filled.Widgets,
             title = "Floating Panel",
-            subtitle = "AX-MODE pop-up panel + bubble",
+            subtitle = "GamersHub pop-up panel + bubble",
             active = on("panel"),
             accent = accent,
             onToggle = { if (on("panel")) FloatingPanelService.stop(context) else FloatingPanelService.start(context) },

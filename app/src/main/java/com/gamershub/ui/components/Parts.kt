@@ -339,34 +339,33 @@ fun Grabber(modifier: Modifier = Modifier) {
     )
 }
 
-/** Original angular hero emblem. */
+/** GamersHub mark — the same geometric G as the launcher icon. */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val ring = Path().apply {
-            moveTo(w * 0.55f, h * 0.06f)
-            lineTo(w * 0.97f, h * 0.32f)
-            lineTo(w * 0.84f, h * 0.90f)
-            lineTo(w * 0.26f, h * 0.94f)
-            lineTo(w * 0.05f, h * 0.42f)
-            close()
-        }
-        drawPath(
-            ring, GC.Beige.copy(alpha = 0.40f),
-            style = Stroke(width = h * 0.055f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val side = minOf(size.width, size.height)
+        val radius = side * 0.36f
+        val stroke = side * 0.115f
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        // ring with a notch on the right
+        drawArc(
+            color = GC.Orange,
+            startAngle = 16f,
+            sweepAngle = 328f,
+            useCenter = false,
+            topLeft = Offset(cx - radius, cy - radius),
+            size = Size(radius * 2f, radius * 2f),
+            style = Stroke(width = stroke, cap = StrokeCap.Round)
         )
-        val bolt = Path().apply {
-            moveTo(w * 0.58f, h * 0.18f)
-            lineTo(w * 0.34f, h * 0.55f)
-            lineTo(w * 0.50f, h * 0.55f)
-            lineTo(w * 0.40f, h * 0.82f)
-            lineTo(w * 0.70f, h * 0.44f)
-            lineTo(w * 0.53f, h * 0.44f)
-            close()
-        }
-        drawPath(bolt, GC.Beige.copy(alpha = 0.55f))
+        // the G arm, reaching into the counter
+        drawLine(
+            color = GC.Orange,
+            start = Offset(cx, cy),
+            end = Offset(cx + radius + stroke / 2f, cy),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
+        )
     }
 }
 
