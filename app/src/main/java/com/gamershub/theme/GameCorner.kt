@@ -104,33 +104,30 @@ object GC {
     )
 
     /**
-     * Display face — Sora (variable). Geometric grotesk with a single-storey g,
-     * tall x-height and squared shoulders: the closest match to the reference
-     * console lettering, and nothing like a stock Android face.
+     * One family, everywhere: Archivo (variable, wght + wdth).
+     * Display runs expanded and heavy, body runs normal width — same voice, two registers.
      */
-    val Display = FontFamily(
-        Font(R.font.sora, weight = FontWeight.Normal,
-            variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-        Font(R.font.sora, weight = FontWeight.Medium,
-            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-        Font(R.font.sora, weight = FontWeight.SemiBold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-        Font(R.font.sora, weight = FontWeight.Bold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-        Font(R.font.sora, weight = FontWeight.Black,
-            variationSettings = FontVariation.Settings(FontVariation.weight(800)))
+    private fun archivo(weight: Int, widthPct: Float, w: FontWeight) = Font(
+        R.font.archivo,
+        weight = w,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(weight),
+            FontVariation.width(widthPct)
+        )
     )
 
-    /** Body face — Plus Jakarta Sans (variable): humanist-geometric, crisp at 9–13sp. */
+    val Display = FontFamily(
+        archivo(500, 112f, FontWeight.Medium),
+        archivo(600, 112f, FontWeight.SemiBold),
+        archivo(700, 112f, FontWeight.Bold),
+        archivo(800, 112f, FontWeight.Black)
+    )
+
     val Body = FontFamily(
-        Font(R.font.jakarta, weight = FontWeight.Normal,
-            variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-        Font(R.font.jakarta, weight = FontWeight.Medium,
-            variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-        Font(R.font.jakarta, weight = FontWeight.SemiBold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-        Font(R.font.jakarta, weight = FontWeight.Bold,
-            variationSettings = FontVariation.Settings(FontVariation.weight(700)))
+        archivo(400, 100f, FontWeight.Normal),
+        archivo(500, 100f, FontWeight.Medium),
+        archivo(600, 100f, FontWeight.SemiBold),
+        archivo(700, 100f, FontWeight.Bold)
     )
 }
 

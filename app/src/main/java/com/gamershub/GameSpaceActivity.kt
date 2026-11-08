@@ -102,6 +102,15 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.ShaderBrush
 import com.gamershub.data.AppRepo
 import com.gamershub.data.InstalledApp
 import com.gamershub.data.DeviceStats
@@ -245,10 +254,6 @@ private fun GameSpaceScreen(
             delay(5000)
         }
     }
-    var clock by remember { mutableStateOf(currentTime()) }
-    LaunchedEffect(Unit) {
-        while (true) { clock = currentTime(); delay(1000) }
-    }
 
     val freeMb = (mem.totalMb - mem.usedMb).coerceAtLeast(0)
     val level = envLevelOf(context)
@@ -325,14 +330,29 @@ private fun GameSpaceScreen(
                 else -> 0
             }
             tabs.forEachIndexed { i, icon ->
+                val tabBg by animateColorAsState(
+                    if (i == activeTab) GC.Signal else Color(0xFF150E0F),
+                    tween(220), label = "tabBg$i"
+                )
+                val tabTint by animateColorAsState(
+                    if (i == activeTab) Color.White else GC.InkSoft,
+                    tween(220), label = "tabTint$i"
+                )
+                val tabInteraction = remember { MutableInteractionSource() }
+                val tabPressed by tabInteraction.collectIsPressedAsState()
+                val tabScale by animateFloatAsState(
+                    if (tabPressed) 0.90f else 1f,
+                    spring(dampingRatio = 0.45f, stiffness = 900f), label = "tabScale$i"
+                )
                 Box(
                     Modifier
                         .offset(x = tabX + (tabW + w * 0.003f) * i, y = tabY)
                         .width(tabW)
                         .height(tabH)
+                        .graphicsLayer { scaleX = tabScale; scaleY = tabScale }
                         .clip(ChevShape)
-                        .background(if (i == activeTab) GC.Signal else Color(0xFF150E0F))
-                        .clickable {
+                        .background(tabBg)
+                        .clickable(tabInteraction, indication = null) {
                             when (i) {
                                 1 -> { showControl = true; showTexture = false; showApps = false }
                                 2 -> { showTexture = true; showControl = false; showApps = false }
@@ -345,7 +365,7 @@ private fun GameSpaceScreen(
                     AIcon(
                         icon,
                         contentDescription = null,
-                        tint = if (i == activeTab) Color.White else GC.InkSoft,
+                        tint = tabTint,
                         modifier = Modifier.size(h * 0.036f)
                     )
                 }
@@ -386,12 +406,7 @@ private fun GameSpaceScreen(
                     )
                 }
                 Spacer(Modifier.height(h * 0.012f))
-                Text(
-                    clock,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = GC.InkSoft,
-                    fontSize = (h.value * 0.026f).sp
-                )
+                LiveClock(fontSize = (h.value * 0.026f).sp)
             }
 
             // power
@@ -567,7 +582,11 @@ private fun GameSpaceScreen(
     }
 
     // ---- panels ----
-    if (showControl) {
+    AnimatedVisibility(
+        visible = showControl,
+        enter = fadeIn(tween(200)) + slideInVertically(tween(300)) { it / 5 },
+        exit = fadeOut(tween(160)) + slideOutVertically(tween(220)) { it / 6 }
+    ) {
         ControlCenter(
             onDismiss = { showControl = false },
             onTouchSettings = { showControl = false; showTouch = true },
@@ -637,16 +656,17 @@ private fun GameSpaceScreen(
 /** The reference screen is tinted by the selected app's own artwork. */
 @Composable
 private fun GsBackdrop(icon: ImageBitmap?, modifier: Modifier) {
+    // Pre-blurred once per icon: a 4x-scaled full-screen RenderEffect blur was re-rasterising
+    // on every stats tick, which is what made the hub feel heavy.
+    val blurred = remember(icon) { icon?.let { blurBitmap(it, 0.75f) } }
+    val dots = remember { dotPattern() }
     Box(modifier) {
-        if (icon != null) {
+        if (blurred != null) {
             Image(
-                painter = androidx.compose.ui.graphics.painter.BitmapPainter(icon),
+                painter = androidx.compose.ui.graphics.painter.BitmapPainter(blurred),
                 contentDescription = null,
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(scaleX = 4f, scaleY = 4f, alpha = 0.75f)
-                    .then(if (android.os.Build.VERSION.SDK_INT >= 31) Modifier.blur(60.dp) else Modifier)
+                modifier = Modifier.fillMaxSize()
             )
         }
         Box(
@@ -662,28 +682,53 @@ private fun GsBackdrop(icon: ImageBitmap?, modifier: Modifier) {
                     )
                 )
         )
-        Canvas(Modifier.fillMaxSize()) {
-            val step = size.height * 0.075f
-            var y = 0f
-            var row = 0
-            while (y < size.height) {
-                var x = if (row % 2 == 0) 0f else step / 2f
-                var col = 0
-                while (x < size.width) {
-                    val lit = (row * 5 + col * 7) % 9 == 0
-                    drawCircle(
-                        if (lit) GC.Signal.copy(alpha = 0.45f) else Color(0x10FFFFFF),
-                        radius = if (lit) size.height * 0.004f else size.height * 0.0022f,
-                        center = Offset(x, y)
-                    )
-                    x += step
-                    col++
-                }
-                y += step * 0.78f
-                row++
-            }
+        Canvas(Modifier.fillMaxSize()) { drawRect(dots) }
+    }
+}
+
+/** Cheap software blur: downscale hard, upscale back with bilinear filtering. */
+private fun blurBitmap(src: ImageBitmap, alpha: Float): ImageBitmap = runCatching {
+    val bmp = src.asAndroidBitmap()
+    val w = 40
+    val h = (40f * bmp.height / bmp.width).coerceAtLeast(1f).toInt()
+    val small = android.graphics.Bitmap.createScaledBitmap(bmp, w, h, true)
+    val big = android.graphics.Bitmap.createScaledBitmap(small, 900, (900f * bmp.height / bmp.width).coerceAtLeast(1f).toInt(), true)
+    big.asImageBitmap()
+}.getOrNull() ?: src
+
+/** One 128 px tile of the console dot matrix, repeated by a shader. */
+private fun dotPattern(): Brush {
+    val n = 128
+    val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bmp)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    paint.color = android.graphics.Color.argb(0x14, 255, 255, 255)
+    canvas.drawCircle(n * 0.12f, n * 0.18f, 1.5f, paint)
+    canvas.drawCircle(n * 0.62f, n * 0.56f, 1.3f, paint)
+    paint.color = android.graphics.Color.argb(0x44, 255, 0x17, 0x17)
+    canvas.drawCircle(n * 0.86f, n * 0.90f, 2.2f, paint)
+    paint.color = android.graphics.Color.argb(0x12, 255, 255, 255)
+    canvas.drawCircle(n * 0.34f, n * 0.86f, 1.2f, paint)
+    return ShaderBrush(
+        androidx.compose.ui.graphics.ImageShader(
+            bmp.asImageBitmap(),
+            androidx.compose.ui.graphics.TileMode.Repeated,
+            androidx.compose.ui.graphics.TileMode.Repeated
+        )
+    )
+}
+
+/** Clock lives in its own composable so the whole hub is not rebuilt every second. */
+@Composable
+private fun LiveClock(fontSize: androidx.compose.ui.unit.TextUnit) {
+    var clock by remember { mutableStateOf(currentTime()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            clock = currentTime()
+            delay(1000)
         }
     }
+    Text(clock, style = MaterialTheme.typography.labelLarge, color = GC.InkSoft, fontSize = fontSize)
 }
 
 /** Slanted tile used by the four navigation chevrons. */
@@ -1133,10 +1178,17 @@ private fun LaunchBar(
     textSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
+    val launchInter = remember { MutableInteractionSource() }
+    val launchPressed by launchInter.collectIsPressedAsState()
+    val launchScale by animateFloatAsState(
+        if (launchPressed) 0.955f else 1f,
+        spring(dampingRatio = 0.5f, stiffness = 900f), label = "launchScale"
+    )
     Row(
         modifier
             .width(width)
             .height(height)
+            .graphicsLayer { scaleX = launchScale; scaleY = launchScale }
             .clip(RoundedCornerShape(height * 0.16f))
             .background(
                 if (enabled) Brush.horizontalGradient(listOf(Color(0xFFFF2B2B), GC.SignalDeep))
@@ -1147,7 +1199,7 @@ private fun LaunchBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxHeight()
-                .clickable(enabled = enabled, onClick = onLaunch)
+                .clickable(launchInter, indication = null, enabled = enabled, onClick = onLaunch)
                 .padding(horizontal = height * 0.30f)
         ) {
             Text(
@@ -1191,13 +1243,20 @@ private fun GridButton(
     size: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
+    val gridInter = remember { MutableInteractionSource() }
+    val gridPressed by gridInter.collectIsPressedAsState()
+    val gridScale by animateFloatAsState(
+        if (gridPressed) 0.92f else 1f,
+        spring(dampingRatio = 0.5f, stiffness = 900f), label = "gridScale"
+    )
     Box(
         modifier
             .size(size)
+            .graphicsLayer { scaleX = gridScale; scaleY = gridScale }
             .clip(RoundedCornerShape(size * 0.16f))
             .background(Color(0xFF1B1113))
             .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(size * 0.16f))
-            .clickable(onClick = onClick),
+            .clickable(gridInter, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(size * 0.09f)) {

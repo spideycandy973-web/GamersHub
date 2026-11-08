@@ -77,6 +77,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.gamershub.GameSpaceActivity
 import com.gamershub.data.AppRepo
@@ -442,17 +447,30 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                 ) {
                     Tab.entries.forEach { t ->
                         val selected = t == tab
+                        val navBg by animateColorAsState(
+                            if (selected) GC.BrownPill else Color.Transparent, tween(220), label = "navBg"
+                        )
+                        val navTint by animateColorAsState(
+                            if (selected) accent else GC.TextDim, tween(220), label = "navTint"
+                        )
+                        val navInter = remember { MutableInteractionSource() }
+                        val navPressed by navInter.collectIsPressedAsState()
+                        val navScale by animateFloatAsState(
+                            if (navPressed) 0.93f else 1f,
+                            spring(dampingRatio = 0.5f, stiffness = 900f), label = "navScale"
+                        )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
+                                .graphicsLayer { scaleX = navScale; scaleY = navScale }
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (selected) GC.BrownPill else Color.Transparent)
-                                .clickable { tab = t }
+                                .background(navBg)
+                                .clickable(navInter, indication = null) { tab = t }
                                 .padding(horizontal = if (selected) 18.dp else 15.dp, vertical = 12.dp)
                         ) {
                             AIcon(
                                 t.icon, contentDescription = t.label,
-                                tint = if (selected) accent else GC.TextDim,
+                                tint = navTint,
                                 modifier = Modifier.size(23.dp)
                             )
                             if (selected) {
@@ -809,17 +827,6 @@ internal fun IntroAnimation(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
             )
         }
-        // build credit, replaces the old "by farhazon" line on the intro
-        Text(
-            com.gamershub.ui.components.Brand.BYLINE,
-            color = Color.White.copy(alpha = 0.72f),
-            fontSize = 13.sp,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-            letterSpacing = 2.5.sp,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 54.dp)
-        )
 
         Box(
             Modifier
