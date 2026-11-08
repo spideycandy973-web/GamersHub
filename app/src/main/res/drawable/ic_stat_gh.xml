@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: hex gem + play, 24dp. -->
+<!-- Notification small icon: the GH ligature, 24dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillType="evenOdd"
-        android:pathData="M12,2.6 L20,7.2 L20,16.8 L12,21.4 L4,16.8 L4,7.2 Z M9.7,8.1 L9.7,15.9 L15.6,12 Z"
-        android:fillColor="#FFFFFFFF" />
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <group
+        android:pivotX="512"
+        android:pivotY="512"
+        android:scaleX="0.72"
+        android:scaleY="0.72">
+        <path
+            android:pathData="M348,338 A174,174 0 1 1 348,686 A174,174 0 1 1 348,338"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M622,338 L622,686 M884,338 L884,686"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M384,512 L884,512"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+    </group>
 </vector>
