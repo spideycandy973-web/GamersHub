@@ -165,8 +165,10 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         fun start(context: Context) {
             if (isRunning) return
             val i = Intent(context, CrosshairOverlayService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(i)
-            else context.startService(i)
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(i)
+                else context.startService(i)
+            }
         }
 
         fun stop(context: Context) {

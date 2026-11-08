@@ -59,7 +59,6 @@ import com.gamershub.ui.components.StatusPill
 /** Profile — account, privilege service (real), live monitoring (real), support. */
 @Composable
 fun ProfileScreen(
-    uid: String,
     version: String,
     sessionTime: String,
     cpu: DeviceStats.Cpu,
@@ -111,7 +110,7 @@ fun ProfileScreen(
                 .padding(bottom = 120.dp)
         ) {
         Text(
-            "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · $version",
+            "GamersHub $version",
             Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.labelMedium,
             color = GC.TextDim,
@@ -187,11 +186,12 @@ fun ProfileScreen(
                 Text("FREE", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
             }
             Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(uid, style = MaterialTheme.typography.headlineLarge, color = GC.Text, fontSize = 28.sp)
-                Spacer(Modifier.width(10.dp))
-                AIcon(Icons.Filled.ContentCopy, contentDescription = "Copy ID", tint = GC.TextDim, modifier = Modifier.size(16.dp))
-            }
+            Text(
+                "GamersHub",
+                style = MaterialTheme.typography.headlineLarge,
+                color = GC.Text,
+                fontSize = 28.sp
+            )
             Spacer(Modifier.height(5.dp))
             Text("Local profile · no cloud sync", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
@@ -263,11 +263,7 @@ fun ProfileScreen(
                 AIcon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(5.dp))
                 Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "PID ${android.os.Process.myPid()} · UID ${android.os.Process.myUid()} · $version",
-                    style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp
-                )
+
             }
         }
 

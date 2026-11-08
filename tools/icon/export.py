@@ -60,7 +60,7 @@ for sfx in VARIANTS.keys():
         open(f'{RES}/mipmap-anydpi-v26/ic_launcher{sfx}{suffix}.xml','w').write(xml)
 
 # comparison sheet for docs
-sheet = Image.new('RGB',(3*270+40,320),(16,15,14))
+sheet = Image.new('RGB',(len(VARIANTS)*270+40,320),(16,15,14))
 for i,(sfx) in enumerate(VARIANTS.keys()):
     im = Image.open(f'{DOCS}/icon-512.png' if sfx=='' else f'{DOCS}/icon{sfx.replace("_","-")}-512.png')
     sheet.paste(im.resize((220,220),Image.LANCZOS),(20+i*270,16))

@@ -10,19 +10,20 @@ import android.content.pm.PackageManager
  * so the home screen shows the icon the user picked.
  */
 object AppIcon {
-    private val ALIASES = arrayOf("IconPad", "IconChevron", "IconGH")
+    private val ALIASES = arrayOf("IconBolt", "IconPad", "IconChevron", "IconGH")
     private const val PREFS = "gamershub"
     private const val KEY = "appIcon"
 
-    const val COUNT = 3
+    const val COUNT = 4
 
     fun current(ctx: Context): Int =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY, 0).coerceIn(0, COUNT - 1)
 
     fun label(index: Int): String = when (index) {
-        1 -> "Boost"
-        2 -> "Monogram"
-        else -> "Pad"
+        1 -> "Pad"
+        2 -> "Boost"
+        3 -> "Mono"
+        else -> "Bolt"
     }
 
     /** Enables [index] first, then disables the others, so the launcher never shows a gap. */

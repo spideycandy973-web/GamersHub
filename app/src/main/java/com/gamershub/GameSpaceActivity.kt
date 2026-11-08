@@ -534,16 +534,6 @@ private fun GameSpaceScreen(
                     .width(w * 0.124f)
             )
 
-            // ---------- watermark ----------
-            Text(
-                "${repo.userId()} · ${com.gamershub.ui.components.Brand.HANDLE}",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0x40FFFFFF),
-                fontSize = (h.value * 0.017f).sp,
-                letterSpacing = (h.value * 0.002f).sp,
-                modifier = Modifier.offset(x = w * 0.762f, y = h * 0.700f)
-            )
-
             // ---------- stat wall ----------
             StatBox(
                 title = "PING INTERVAL",
@@ -987,17 +977,29 @@ private fun AppStrip(
     ) {
         library.forEach { entry ->
             val active = entry.pkg == currentPkg
+            val stripBg by animateColorAsState(
+                if (active) GC.Signal.copy(alpha = 0.20f) else Color(0x14FFFFFF),
+                tween(200), label = "stripBg"
+            )
+            val stripBorder by animateColorAsState(
+                if (active) GC.Signal.copy(alpha = 0.80f) else Color(0x10FFFFFF),
+                tween(200), label = "stripBorder"
+            )
+            val stripInter = remember { MutableInteractionSource() }
+            val stripPressed by stripInter.collectIsPressedAsState()
+            val stripScale by animateFloatAsState(
+                if (stripPressed) 0.94f else 1f,
+                spring(dampingRatio = 0.5f, stiffness = 900f), label = "stripScale"
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .height(iconSize * 1.55f)
+                    .graphicsLayer { scaleX = stripScale; scaleY = stripScale }
                     .clip(RoundedCornerShape(iconSize * 0.42f))
-                    .background(if (active) GC.Signal.copy(alpha = 0.20f) else Color(0x14FFFFFF))
-                    .then(
-                        if (active) Modifier.border(1.dp, GC.Signal.copy(alpha = 0.8f), RoundedCornerShape(iconSize * 0.42f))
-                        else Modifier.border(1.dp, Color(0x10FFFFFF), RoundedCornerShape(iconSize * 0.42f))
-                    )
-                    .clickable { onSelect(entry.pkg) }
+                    .background(stripBg)
+                    .border(1.dp, stripBorder, RoundedCornerShape(iconSize * 0.42f))
+                    .clickable(stripInter, indication = null) { onSelect(entry.pkg) }
                     .padding(end = iconSize * 0.40f)
             ) {
                 Image(
@@ -1682,19 +1684,31 @@ private fun ToolTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val tileBg by animateColorAsState(
+        if (active) GC.Signal.copy(alpha = 0.16f) else GC.InkPanelHi, tween(200), label = "tileBg"
+    )
+    val tileEdge by animateColorAsState(
+        if (active) GC.Signal.copy(alpha = 0.70f) else Color(0x12FFFFFF), tween(200), label = "tileEdge"
+    )
+    val tileTint by animateColorAsState(
+        if (active) GC.Signal else GC.InkSoft, tween(200), label = "tileTint"
+    )
+    val tileInter = remember { MutableInteractionSource() }
+    val tilePressed by tileInter.collectIsPressedAsState()
+    val tileScale by animateFloatAsState(
+        if (tilePressed) 0.94f else 1f,
+        spring(dampingRatio = 0.5f, stiffness = 900f), label = "tileScale"
+    )
     Column(
         modifier
+            .graphicsLayer { scaleX = tileScale; scaleY = tileScale }
             .clip(RoundedCornerShape(14.dp))
-            .background(if (active) GC.Signal.copy(alpha = 0.16f) else GC.InkPanelHi)
-            .border(
-                1.dp,
-                if (active) GC.Signal.copy(alpha = 0.7f) else Color(0x12FFFFFF),
-                RoundedCornerShape(14.dp)
-            )
-            .clickable(onClick = onClick)
+            .background(tileBg)
+            .border(1.dp, tileEdge, RoundedCornerShape(14.dp))
+            .clickable(tileInter, indication = null, onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 12.dp)
     ) {
-        AIcon(icon, contentDescription = null, tint = if (active) GC.Signal else GC.InkSoft, modifier = Modifier.size(19.dp))
+        AIcon(icon, contentDescription = null, tint = tileTint, modifier = Modifier.size(19.dp))
         Spacer(Modifier.height(9.dp))
         Text(category, style = MaterialTheme.typography.labelMedium, color = GC.InkDim, fontSize = 8.sp, letterSpacing = 1.4.sp)
         Text(

@@ -22,7 +22,9 @@ class MainActivity : ComponentActivity() {
         openSheet = intent?.getStringExtra(EXTRA_OPEN)
         val repo = AppRepo(applicationContext)
         // Bind the Shizuku user service immediately when the grant already exists.
-        com.gamershub.core.shizuku.Shell.ensure(this)
+        runCatching { com.gamershub.core.shizuku.Shell.ensure(this) }
+        // Self-heal the launcher alias after an app update: exactly one must be enabled.
+        runCatching { com.gamershub.data.AppIcon.set(this, com.gamershub.data.AppIcon.current(this)) }
         setContent {
             RootShell(repo, openSheet)
         }
@@ -31,7 +33,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Re-bind after returning from the Shizuku prompt / app switch.
-        com.gamershub.core.shizuku.Shell.ensure(this)
+        runCatching { com.gamershub.core.shizuku.Shell.ensure(this) }
     }
 
     override fun onNewIntent(intent: Intent) {

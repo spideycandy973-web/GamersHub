@@ -148,7 +148,6 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
         val accent = LocalAccent.current
         var tab by remember { mutableStateOf(Tab.LOBBY) }
         var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
-        val uid = remember { repo.userId() }
 
         var pendingLaunch by remember { mutableStateOf<InstalledApp?>(null) }
         var showIntro by remember { mutableStateOf(true) }
@@ -386,8 +385,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             ) { tabTarget ->
             when (tabTarget) {
                 Tab.PROFILE -> ProfileScreen(
-                    uid = uid,
-                    version = "V6.0.0-32",
+                    version = "6.10.0",
                     sessionTime = sessionTime,
                     cpu = cpu, mem = mem, storage = storage, ping = ping,
                     envLevel = envLevel, envScore = envScore,
@@ -395,10 +393,9 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     onSettings = { sheet = SheetState.Settings }
                 )
                 Tab.LOBBY -> LobbyScreen(
-                    uid = uid,
                     cpuPct = cpu.pct,
                     library = library,
-                    version = "V6.0.0-32",
+                    version = "6.10.0",
                     playMinutes = { pkg -> repo.playMinutes(pkg) },
                     libraryCount = library.size,
                     onSelectApps = { sheet = SheetState.AppSelector },

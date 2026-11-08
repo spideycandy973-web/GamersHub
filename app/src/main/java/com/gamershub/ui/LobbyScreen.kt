@@ -50,7 +50,6 @@ import com.gamershub.ui.components.IconChip
 /** Lobby — hero card, game library, rows / empty state. Fit-safe on all screens. */
 @Composable
 fun LobbyScreen(
-    uid: String,
     cpuPct: Int,
     library: List<InstalledApp>,
     version: String,
@@ -87,13 +86,11 @@ fun LobbyScreen(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
                     .background(GC.SurfaceHi)
-                    .padding(start = 7.dp, end = 13.dp, top = 7.dp, bottom = 7.dp)
+                    .padding(horizontal = 13.dp, vertical = 8.dp)
             ) {
-                Box(Modifier.size(29.dp).clip(CircleShape).background(GC.TagBg), contentAlignment = Alignment.Center) {
-                    Text("ID", style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 11.sp)
-                }
+                Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text(uid, style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp)
+                Text("Local", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 14.sp)
             }
         }
 

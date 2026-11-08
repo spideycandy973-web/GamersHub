@@ -585,9 +585,13 @@ fun SettingsSheet(
             Text("Pick the icon on your home screen", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile("Pad", com.gamershub.R.mipmap.ic_launcher, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
-                IconTile("Boost", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 1, Modifier.weight(1f)) { onIcon(1) }
-                IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+                IconTile("Bolt", com.gamershub.R.mipmap.ic_launcher_bolt, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
+                IconTile("Pad", com.gamershub.R.mipmap.ic_launcher, iconIndex == 1, Modifier.weight(1f)) { onIcon(1) }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IconTile("Boost", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+                IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
             }
         }
     }

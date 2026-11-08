@@ -346,9 +346,10 @@ fun Grabber(modifier: Modifier = Modifier) {
 fun HeroMark(modifier: Modifier = Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val res = when (com.gamershub.data.AppIcon.current(ctx)) {
-        1 -> com.gamershub.R.mipmap.ic_launcher_chevron
-        2 -> com.gamershub.R.mipmap.ic_launcher_gh
-        else -> com.gamershub.R.mipmap.ic_launcher
+        1 -> com.gamershub.R.mipmap.ic_launcher
+        2 -> com.gamershub.R.mipmap.ic_launcher_chevron
+        3 -> com.gamershub.R.mipmap.ic_launcher_gh
+        else -> com.gamershub.R.mipmap.ic_launcher_bolt
     }
     Image(
         painter = androidx.compose.ui.res.painterResource(res),

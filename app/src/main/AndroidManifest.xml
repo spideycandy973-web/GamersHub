@@ -21,6 +21,7 @@
     <!-- Shizuku permission is handled at runtime through the Shizuku API -->
 
     <application
+        android:name=".GamersHubApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -41,8 +42,22 @@
 
         <!-- Launcher entries: one enabled at a time, chosen in Settings ▸ App Icon -->
         <activity-alias
-            android:name=".IconPad"
+            android:name=".IconBolt"
             android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_bolt"
+            android:roundIcon="@mipmap/ic_launcher_bolt_round"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconPad"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:roundIcon="@mipmap/ic_launcher_round"
