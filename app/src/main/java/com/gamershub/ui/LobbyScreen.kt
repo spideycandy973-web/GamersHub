@@ -44,6 +44,7 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.HeroMark
+import com.gamershub.ui.components.liquidGlass
 import com.gamershub.ui.components.IconChip
 
 /** Lobby — hero card, game library, rows / empty state. Fit-safe on all screens. */
@@ -73,7 +74,13 @@ fun LobbyScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Lobby", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
-                Text("By FahrezONE", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                Text(
+                    com.gamershub.ui.components.Brand.BYLINE,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = GC.TextDim,
+                    fontSize = 13.sp,
+                    letterSpacing = 0.6.sp
+                )
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -96,7 +103,7 @@ fun LobbyScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
+                .liquidGlass(shape = RoundedCornerShape(24.dp), accent = accent, strong = true)
                 .background(GC.HeroBrush)
         ) {
             Image(

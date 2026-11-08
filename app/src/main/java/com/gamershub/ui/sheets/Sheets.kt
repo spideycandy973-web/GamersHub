@@ -80,6 +80,7 @@ import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.Grabber
 import com.gamershub.ui.components.IconChip
+import com.gamershub.ui.components.liquidGlass
 import com.gamershub.ui.components.StatusPill
 import com.gamershub.ui.components.TagPill
 import com.gamershub.ui.components.Toggle
@@ -566,13 +567,13 @@ fun SettingsSheet(
             Text("Customize app accent color", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Orange", GC.Orange, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
-                ThemeColorTile("Ocean Blue", GC.OceanBlue, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
+                ThemeColorTile("Iris", GC.Iris, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
+                ThemeColorTile("Aqua", GC.Aqua, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Neon Tosca", GC.NeonTosca, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
-                ThemeColorTile("Crimson Red", GC.CrimsonRed, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
+                ThemeColorTile("Mint", GC.Mint, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
+                ThemeColorTile("Rose", GC.Rose, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
             }
         }
     }
@@ -583,8 +584,7 @@ private fun Card2(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(GC.SurfaceHi)
+            .liquidGlass(shape = RoundedCornerShape(20.dp), accent = LocalAccent.current)
             .padding(16.dp),
         content = content
     )

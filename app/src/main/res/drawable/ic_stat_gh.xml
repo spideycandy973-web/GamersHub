@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: white G, 24dp. -->
+<!-- Notification small icon: sphere + play, 24dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:pathData="M17.96,13.71 A6.2,6.2 0 1 1 17.96,10.29"
+        android:pathData="M12,5.6 A6.4,6.4 0 0 1 18.4,12 A6.4,6.4 0 0 1 12,18.4 A6.4,6.4 0 0 1 5.6,12 A6.4,6.4 0 0 1 12,5.6 Z"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.2"
-        android:strokeLineCap="round" />
+        android:strokeWidth="1.9" />
     <path
-        android:pathData="M12,12 L18.2,12"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.2"
-        android:strokeLineCap="round" />
+        android:pathData="M10.2,8.4 L10.2,15.6 L16.2,12 Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

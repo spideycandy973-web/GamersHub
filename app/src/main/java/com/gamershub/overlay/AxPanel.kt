@@ -88,6 +88,7 @@ import com.gamershub.core.shizuku.Shell
 import com.gamershub.data.DeviceStats
 import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.HeroMark
+import com.gamershub.ui.components.liquidGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -100,12 +101,13 @@ import java.util.Locale
 /* palette                                                             */
 /* ------------------------------------------------------------------ */
 
-private val AX_RED = Color(0xFFE25E20)
-private val AX_DEEP = Color(0xF7161412)
-private val AX_ARM = Color(0xFF2A2421)
-private val AX_EDGE = Color(0x66E25E20)
-private val AX_TXT = Color(0xFFF0EFED)
-private val AX_DIM = Color(0x99B5ACA6)
+/* Liquid-glass panel palette — iris accent, frosted ink surfaces. */
+private val AX_RED = Color(0xFF7C8CFF)
+private val AX_DEEP = Color(0xEE0A0E18)
+private val AX_ARM = Color(0x14FFFFFF)
+private val AX_EDGE = Color(0x3DFFFFFF)
+private val AX_TXT = Color(0xFFEDF1FA)
+private val AX_DIM = Color(0x99A7B0C4)
 
 private const val PREFS = "gamershub"
 
@@ -302,9 +304,12 @@ fun AxPanel(onClose: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight)
-            .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
+            .liquidGlass(
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
+                accent = AX_RED,
+                strong = true
+            )
             .background(AX_DEEP)
-            .border(1.dp, AX_EDGE, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
             .padding(bottom = 8.dp)
@@ -1609,6 +1614,7 @@ private fun InfoPage(api: AxApi, stats: PanelStats) {
         ReadRow("BATTERY", "${stats.batt}%")
         ReadRow("THERMAL", if (thermal < 0) "--" else "$thermal / 6")
         ReadRow("GAME", game)
+        ReadRow("AUTHOR", com.gamershub.ui.components.Brand.HANDLE)
         SwitchRow("SCREEN HUD", "Floating monitor strip", MonitorOverlayService.isRunning) {
             MonitorOverlayService.toggle(context)
             api.say(if (MonitorOverlayService.isRunning) "HUD hidden" else "HUD shown")
