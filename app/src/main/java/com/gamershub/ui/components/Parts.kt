@@ -340,41 +340,39 @@ fun Grabber(modifier: Modifier = Modifier) {
     )
 }
 
-/** GamersHub mark — the launcher gem, drawn as geometry: gold hex, punched play. */
+/**
+ * GamersHub mark — the launcher icon drawn as strokes: a custom GH ligature where the
+ * G's spur and the H's crossbar are one continuous bar, and the H's left stem squares
+ * off the right side of the G ring.
+ */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
-    val accent2 = GC.accentPairFor(idx)
+    val accent2 = GC.accentPairFor(com.gamershub.theme.LocalAccentIdx.current)
     Canvas(modifier) {
-        val side = minOf(size.width, size.height)
-        val c = Offset(size.width / 2f, size.height / 2f)
-        val r = side * 0.46f
-        val hex = Path().apply {
-            for (i in 0..5) {
-                val a = Math.toRadians(-90.0 + i * 60.0)
-                val x = c.x + r * kotlin.math.cos(a).toFloat()
-                val y = c.y + r * kotlin.math.sin(a).toFloat()
-                if (i == 0) moveTo(x, y) else lineTo(x, y)
-            }
-            close()
-        }
-        drawPath(
-            hex,
-            Brush.linearGradient(
-                colors = listOf(accent, accent2),
-                start = Offset(c.x - r, c.y - r),
-                end = Offset(c.x + r, c.y + r)
-            )
+        val k = minOf(size.width, size.height) / 1024f
+        fun p(x: Float, y: Float) = Offset(x * k, y * k)
+        val stroke = Stroke(width = 100f * k, cap = StrokeCap.Round)
+        val brush = Brush.linearGradient(
+            colors = listOf(accent, accent2),
+            start = p(74f, 238f),
+            end = p(956f, 786f)
         )
-        drawPath(hex, Color.White.copy(alpha = 0.55f), style = Stroke(width = side * 0.035f))
-        val play = Path().apply {
-            moveTo(c.x - r * 0.30f, c.y - r * 0.44f)
-            lineTo(c.x - r * 0.30f, c.y + r * 0.44f)
-            lineTo(c.x + r * 0.46f, c.y)
-            close()
-        }
-        drawPath(play, GC.Bg)
+        // G ring (centreline r = 174 so the band spans 124..224 in mark units)
+        drawArc(
+            brush = brush,
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = p(348f - 174f, 512f - 174f),
+            size = Size(348f * k, 348f * k),
+            style = stroke
+        )
+        // H stems
+        drawLine(brush, p(622f, 338f), p(622f, 686f), strokeWidth = 100f * k, cap = StrokeCap.Round)
+        drawLine(brush, p(884f, 338f), p(884f, 686f), strokeWidth = 100f * k, cap = StrokeCap.Round)
+        // shared bar: G spur -> H crossbar
+        drawLine(brush, p(384f, 512f), p(884f, 512f), strokeWidth = 100f * k, cap = StrokeCap.Round)
     }
 }
 

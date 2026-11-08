@@ -1,12 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon layer (Android 13+): the gold hex gem with the play knocked out. -->
+<!-- Themed-icon layer (Android 13+): the custom GH ligature, drawn as strokes. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillType="evenOdd"
-        android:pathData="M54,23 L80,38 L80,68 L54,83 L28,68 L28,38 Z M46.4,41 L46.4,67 L66.2,54 Z"
-        android:fillColor="#FFFFFFFF" />
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <group
+        android:pivotX="512"
+        android:pivotY="512"
+        android:scaleX="0.72"
+        android:scaleY="0.72">
+        <path
+            android:pathData="M348,338 A174,174 0 1 1 348,686 A174,174 0 1 1 348,338"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M622,338 L622,686 M884,338 L884,686"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M384,512 L884,512"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="100"
+            android:strokeLineCap="round" />
+    </group>
 </vector>
