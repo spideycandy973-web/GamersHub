@@ -41,7 +41,18 @@ class StreamService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(NOTIF_ID, buildNotification())
+        startForegroundSafely()
+    }
+
+    /** API 34 requires the media-projection type when the service goes foreground. */
+    private fun startForegroundSafely() {
+        val type = if (Build.VERSION.SDK_INT >= 29)
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
+        runCatching {
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        }.recoverCatching {
+            startForeground(NOTIF_ID, buildNotification())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -156,7 +167,7 @@ class StreamService : Service() {
         streaming = true
         Stream.isStreaming = true
         Stream.status = "Live"
-        startForeground(NOTIF_ID, buildNotification())
+        startForegroundSafely()
         startDrain()
     }
 
@@ -433,8 +444,10 @@ class StreamService : Service() {
                 putExtra(RecorderService.EXTRA_FPS, fps)
                 putExtra(RecorderService.EXTRA_BITRATE, bitrate)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-            else context.startService(intent)
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+                else context.startService(intent)
+            }
         }
 
         fun stop(context: Context) {

@@ -39,7 +39,21 @@ class RecorderService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(NOTIF_ID, buildNotification())
+        startForegroundSafely()
+    }
+
+    /**
+     * Android 14 kills any service that starts in the foreground without declaring the
+     * type it is running for — this is what made "record" crash instantly on 14.
+     */
+    private fun startForegroundSafely() {
+        val type = if (Build.VERSION.SDK_INT >= 29)
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0
+        runCatching {
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        }.recoverCatching {
+            startForeground(NOTIF_ID, buildNotification())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -87,6 +101,7 @@ class RecorderService : Service() {
         }
         projectionCallback = cb
         mp.registerCallback(cb, android.os.Handler(android.os.Looper.getMainLooper()))
+        startForegroundSafely()
 
         val dir = File(android.os.Environment.getExternalStoragePublicDirectory(
             android.os.Environment.DIRECTORY_MOVIES
@@ -266,8 +281,10 @@ class RecorderService : Service() {
                 putExtra(EXTRA_FPS, fps)
                 putExtra(EXTRA_BITRATE, bitrate)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
-            else context.startService(intent)
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+                else context.startService(intent)
+            }
         }
 
         fun stop(context: Context) {

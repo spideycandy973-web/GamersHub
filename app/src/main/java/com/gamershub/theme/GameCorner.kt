@@ -104,30 +104,28 @@ object GC {
     )
 
     /**
-     * One family, everywhere: Archivo (variable, wght + wdth).
-     * Display runs expanded and heavy, body runs normal width — same voice, two registers.
+     * One family everywhere: Outfit (variable, weight axis only).
+     * Tight geometric caps for display, calm normal width for body — close to the
+     * proportions the screens were laid out for, so nothing reflows.
      */
-    private fun archivo(weight: Int, widthPct: Float, w: FontWeight) = Font(
-        R.font.archivo,
+    private fun outfit(weight: Int, w: FontWeight) = Font(
+        R.font.outfit,
         weight = w,
-        variationSettings = FontVariation.Settings(
-            FontVariation.weight(weight),
-            FontVariation.width(widthPct)
-        )
+        variationSettings = FontVariation.Settings(FontVariation.weight(weight))
     )
 
     val Display = FontFamily(
-        archivo(500, 112f, FontWeight.Medium),
-        archivo(600, 112f, FontWeight.SemiBold),
-        archivo(700, 112f, FontWeight.Bold),
-        archivo(800, 112f, FontWeight.Black)
+        outfit(500, FontWeight.Medium),
+        outfit(600, FontWeight.SemiBold),
+        outfit(700, FontWeight.Bold),
+        outfit(800, FontWeight.Black)
     )
 
     val Body = FontFamily(
-        archivo(400, 100f, FontWeight.Normal),
-        archivo(500, 100f, FontWeight.Medium),
-        archivo(600, 100f, FontWeight.SemiBold),
-        archivo(700, 100f, FontWeight.Bold)
+        outfit(400, FontWeight.Normal),
+        outfit(500, FontWeight.Medium),
+        outfit(600, FontWeight.SemiBold),
+        outfit(700, FontWeight.Bold)
     )
 }
 

@@ -1,6 +1,8 @@
 import sys; sys.path.insert(0,'/tmp/ic5')
 from lib import *
 from PIL import ImageFont
+import os
+FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ArchivoBlack.ttf')
 
 GOLD  = [(0.0,hx('FFD98E')),(0.45,hx('FFB03A')),(1.0,hx('EF5F12'))]
 GOLD2 = [(0.0,hx('FFE7B4')),(0.40,hx('FFB03A')),(1.0,hx('D9450B'))]
@@ -26,7 +28,7 @@ def mask_chev():
     return m.filter(ImageFilter.GaussianBlur(C*0.0025)).point(lambda v: 255 if v>127 else 0)
 
 def mask_gh():
-    f = ImageFont.truetype('/tmp/fonts/ArchivoBlack.ttf', int(C*0.60))
+    f = ImageFont.truetype(FONT_PATH, int(C*0.60))
     tmp = Image.new('L',(C,C),0); d = ImageDraw.Draw(tmp)
     gb = d.textbbox((0,0),'G',font=f); hb = d.textbbox((0,0),'H',font=f)
     gw, hw = gb[2]-gb[0], hb[2]-hb[0]
@@ -60,3 +62,15 @@ def full_rgba(mask, stops, top_light):
     base = backdrop().convert('RGBA')
     base.alpha_composite(mark_rgba(mask, stops, top_light))
     return base
+
+def mask_bolt():
+    """Lightning bolt: flat, geometric, reads at 48 px."""
+    pts = [(0.575, 0.105), (0.285, 0.545), (0.470, 0.545), (0.395, 0.895),
+           (0.715, 0.435), (0.525, 0.435)]
+    m = Image.new('L', (C, C), 0)
+    ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)
+    m = m.filter(ImageFilter.GaussianBlur(C*0.0015))
+    return m
+
+VARIANTS['_bolt'] = (mask_bolt, GOLD, 0.24)
