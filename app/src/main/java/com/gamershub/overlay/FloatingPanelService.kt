@@ -192,8 +192,8 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             }
         }
         bubbleView = view
-        content.setViewTreeLifecycleOwner(this)
-        content.setViewTreeSavedStateRegistryOwner(this)
+        view.setViewTreeLifecycleOwner(this)
+        view.setViewTreeSavedStateRegistryOwner(this)
         val attached = runCatching { windowManager?.addView(view, params) }.isSuccess
         if (!attached) {
             android.widget.Toast.makeText(
