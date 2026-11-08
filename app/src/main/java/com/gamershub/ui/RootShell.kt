@@ -364,10 +364,9 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             }
         }
 
-        Box(
+        LiquidBackdrop(
             Modifier
                 .fillMaxSize()
-                .background(GC.Bg)
         ) {
             AnimatedContent(
                 targetState = tab,
@@ -798,6 +797,17 @@ internal fun IntroAnimation(onDone: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
             )
         }
+        // build credit, replaces the old "by farhazon" line on the intro
+        Text(
+            com.gamershub.ui.components.Brand.BYLINE,
+            color = Color.White.copy(alpha = 0.72f),
+            fontSize = 13.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+            letterSpacing = 2.5.sp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 54.dp)
+        )
 
         Box(
             Modifier

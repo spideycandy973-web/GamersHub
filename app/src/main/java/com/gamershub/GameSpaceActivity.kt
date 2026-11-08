@@ -521,7 +521,7 @@ private fun GameSpaceScreen(
 
             // ---------- watermark ----------
             Text(
-                "${repo.userId()} · ${android.os.Process.myPid()}",
+                "${repo.userId()} · ${com.gamershub.ui.components.Brand.HANDLE}",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0x40FFFFFF),
                 fontSize = (h.value * 0.017f).sp,

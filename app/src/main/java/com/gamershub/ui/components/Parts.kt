@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -339,33 +340,49 @@ fun Grabber(modifier: Modifier = Modifier) {
     )
 }
 
-/** GamersHub mark — the same geometric G as the launcher icon. */
+/** GamersHub mark — the launcher icon, drawn as geometry: sphere, orbit, play. */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
+    val accent = LocalAccent.current
     Canvas(modifier) {
         val side = minOf(size.width, size.height)
-        val radius = side * 0.36f
-        val stroke = side * 0.115f
         val cx = size.width / 2f
         val cy = size.height / 2f
-        // ring with a notch on the right
+        val radius = side * 0.30f
+        // glass sphere: soft accent fill + rim
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(accent.copy(alpha = 0.45f), Color(0x22FFFFFF)),
+                center = Offset(cx - radius * 0.35f, cy - radius * 0.45f),
+                radius = radius * 1.9f
+            ),
+            radius = radius,
+            center = Offset(cx, cy)
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.75f),
+            radius = radius,
+            center = Offset(cx, cy),
+            style = Stroke(width = side * 0.045f)
+        )
+        // orbit
         drawArc(
-            color = GC.Orange,
-            startAngle = 16f,
-            sweepAngle = 328f,
+            color = Color(0xFF4FD8FF).copy(alpha = 0.85f),
+            startAngle = 200f,
+            sweepAngle = 150f,
             useCenter = false,
-            topLeft = Offset(cx - radius, cy - radius),
-            size = Size(radius * 2f, radius * 2f),
-            style = Stroke(width = stroke, cap = StrokeCap.Round)
+            topLeft = Offset(cx - radius * 1.45f, cy - radius * 0.42f),
+            size = Size(radius * 2.9f, radius * 0.84f),
+            style = Stroke(width = side * 0.035f, cap = StrokeCap.Round)
         )
-        // the G arm, reaching into the counter
-        drawLine(
-            color = GC.Orange,
-            start = Offset(cx, cy),
-            end = Offset(cx + radius + stroke / 2f, cy),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round
-        )
+        // play triangle
+        val tri = Path().apply {
+            moveTo(cx - radius * 0.30f, cy - radius * 0.50f)
+            lineTo(cx - radius * 0.30f, cy + radius * 0.50f)
+            lineTo(cx + radius * 0.55f, cy)
+            close()
+        }
+        drawPath(tri, Color.White.copy(alpha = 0.95f))
     }
 }
 
@@ -375,8 +392,7 @@ fun Card(modifier: Modifier = Modifier, content: @Composable androidx.compose.fo
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(GC.Surface)
+            .liquidGlass(shape = RoundedCornerShape(22.dp), accent = LocalAccent.current)
             .padding(15.dp),
         content = content
     )

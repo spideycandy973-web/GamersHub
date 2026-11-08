@@ -18,15 +18,24 @@ import com.gamershub.R
 
 /** Game Corner design system — warm near-black, accent-driven, chunky display type. */
 object GC {
-    val Bg = Color(0xFF100F0D)
-    val Surface = Color(0xFF1C1917)
-    val SurfaceHi = Color(0xFF262220)
-    val BrownPill = Color(0xFF35291F)
-    val TagBg = Color(0xFF332012)
-    val Stroke = Color(0xFF332E2A)
-    val Text = Color(0xFFF0EFED)
-    val TextDim = Color(0xFF948B84)
-    val TextSoft = Color(0xFFB5ACA6)
+    /* ---- Liquid-glass base: deep ink, cool light, no warm browns ---- */
+    val Bg = Color(0xFF06070C)
+    /** Top of the ambient backdrop gradient. */
+    val BgTop = Color(0xFF0C1220)
+    val Surface = Color(0xC4111624)
+    val SurfaceHi = Color(0xD6161C2C)
+    val BrownPill = Color(0xFF161C2A)
+    val TagBg = Color(0xFF181F30)
+    val Stroke = Color(0xFF252B3A)
+    val Text = Color(0xFFEDF1FA)
+    val TextDim = Color(0xFF8A93A6)
+    val TextSoft = Color(0xFFB7BFD0)
+
+    /* ---- Glass layers: translucent whites, used by Modifier.liquidGlass ---- */
+    val GlassHi = Color(0x1FFFFFFF)
+    val GlassLo = Color(0x0AFFFFFF)
+    val GlassEdgeHi = Color(0x52FFFFFF)
+    val GlassEdgeLo = Color(0x0FFFFFFF)
 
     /* ---- Game Space (in-game hub) palette — sampled from the reference console ---- */
     val Void = Color(0xFF090607)
@@ -42,35 +51,50 @@ object GC {
     val SignalDeep = Color(0xFFC00B0B)
     val SignalGlow = Color(0xFFFF5C5C)
 
+    /* ---- Accents.  Index 0 is the default and is now "Iris": a liquid
+       violet that refracts into cyan, matching the launcher mark. ---- */
+    val Iris = Color(0xFF7C8CFF)
+    val Aqua = Color(0xFF4FD8FF)
+    val Mint = Color(0xFF6EE7B7)
+    val Rose = Color(0xFFFF7A9C)
+    /** Kept for legacy surfaces (Game Space console keeps its own red). */
     val Orange = Color(0xFFE25E20)
-    val OceanBlue = Color(0xFF2FA3E0)
-    val NeonTosca = Color(0xFF1FE0C0)
-    val CrimsonRed = Color(0xFFE23A20)
-    val Beige = Color(0xFFC9B8A8)
+    val OceanBlue = Color(0xFF4FD8FF)
+    val NeonTosca = Color(0xFF6EE7B7)
+    val CrimsonRed = Color(0xFFFF7A9C)
+    val Beige = Color(0xFFB7BFD0)
 
     fun accentFor(index: Int): Color = when (index) {
-        1 -> OceanBlue
-        2 -> NeonTosca
-        3 -> CrimsonRed
-        else -> Orange
+        1 -> Aqua
+        2 -> Mint
+        3 -> Rose
+        else -> Iris
+    }
+
+    /** Second stop of the accent gradient (used for glass rims and highlights). */
+    fun accentPairFor(index: Int): Color = when (index) {
+        1 -> Color(0xFF7C8CFF)
+        2 -> Color(0xFF4FD8FF)
+        3 -> Color(0xFFFFB27A)
+        else -> Color(0xFF4FD8FF)
     }
 
     fun tagBgFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF122A3A)
-        2 -> Color(0xFF0E322C)
-        3 -> Color(0xFF3A1216)
+        1 -> Color(0xFF0E2433)
+        2 -> Color(0xFF0E2C24)
+        3 -> Color(0xFF301626)
         else -> TagBg
     }
 
     fun brownFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF17303F)
-        2 -> Color(0xFF123A34)
-        3 -> Color(0xFF3A181D)
+        1 -> Color(0xFF152A3C)
+        2 -> Color(0xFF12332D)
+        3 -> Color(0xFF331A28)
         else -> BrownPill
     }
 
     val HeroBrush = Brush.horizontalGradient(
-        listOf(Color(0xFF3A2A1E), Color(0xFF2B1F17), Color(0xFF241A13))
+        listOf(Color(0x1F7C8CFF), Color(0x144FD8FF), Color(0x0AFFFFFF))
     )
 
     /**
@@ -105,7 +129,7 @@ object GC {
 }
 
 /** Live accent color (Settings ▸ Theme Color). */
-val LocalAccent = staticCompositionLocalOf { GC.Orange }
+val LocalAccent = staticCompositionLocalOf { GC.Iris }
 val LocalAccentIdx = staticCompositionLocalOf { 0 }
 
 @Composable

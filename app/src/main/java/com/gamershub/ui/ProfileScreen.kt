@@ -45,6 +45,7 @@ import android.content.Intent
 import android.net.Uri
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
+import com.gamershub.ui.components.liquidGlass
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.CircleIconButton
@@ -170,6 +171,7 @@ fun ProfileScreen(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
+                .liquidGlass(shape = RoundedCornerShape(24.dp), accent = accent, strong = true)
                 .background(GC.HeroBrush)
                 .padding(18.dp)
         ) {
@@ -192,6 +194,14 @@ fun ProfileScreen(
             }
             Spacer(Modifier.height(5.dp))
             Text("Local profile · no cloud sync", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                com.gamershub.ui.components.Brand.BYLINE,
+                style = MaterialTheme.typography.labelMedium,
+                color = accent,
+                fontSize = 12.sp,
+                letterSpacing = 1.sp
+            )
         }
 
         Spacer(Modifier.height(12.dp))
