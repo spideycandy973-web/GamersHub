@@ -594,6 +594,66 @@ fun SettingsSheet(
                 IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
             }
         }
+        Spacer(Modifier.height(12.dp))
+        DiagnosticsCard()
+    }
+}
+
+/** Last caught exception — so a crash can be reported instead of guessed at. */
+@Composable
+private fun DiagnosticsCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var log by remember {
+        androidx.compose.runtime.mutableStateOf(
+            runCatching {
+                java.io.File(context.filesDir, "crash.log").readText().takeLast(600)
+            }.getOrDefault("")
+        )
+    }
+    Card2 {
+        Text("Diagnostics", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+        Spacer(Modifier.height(3.dp))
+        Text(
+            if (log.isBlank()) "No crash recorded — every feature is running clean"
+            else "Last caught error",
+            style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp
+        )
+        if (log.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                log.trim(),
+                style = MaterialTheme.typography.labelSmall,
+                color = GC.TextSoft,
+                fontSize = 10.sp,
+                maxLines = 6
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BigButton(
+                text = "Copy log",
+                onClick = {
+                    runCatching {
+                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        cm.setPrimaryClip(
+                            android.content.ClipData.newPlainText("GamersHub crash log", log.ifBlank { "no crash" })
+                        )
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                primary = false
+            )
+            BigButton(
+                text = "Clear",
+                onClick = {
+                    runCatching { java.io.File(context.filesDir, "crash.log").delete() }
+                    log = ""
+                },
+                modifier = Modifier.weight(1f),
+                primary = false
+            )
+        }
     }
 }
 
