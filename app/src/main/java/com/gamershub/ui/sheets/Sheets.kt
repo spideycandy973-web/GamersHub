@@ -526,6 +526,8 @@ fun PermissionSheet(
 fun SettingsSheet(
     accentIndex: Int,
     onAccent: (Int) -> Unit,
+    iconIndex: Int,
+    onIcon: (Int) -> Unit,
     onLanguage: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -576,6 +578,40 @@ fun SettingsSheet(
                 ThemeColorTile("Jade", GC.Jade, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
             }
         }
+        Spacer(Modifier.height(12.dp))
+        Card2 {
+            Text("App Icon", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Spacer(Modifier.height(3.dp))
+            Text("Pick the icon on your home screen", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IconTile("Pad", com.gamershub.R.mipmap.ic_launcher, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
+                IconTile("Boost", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 1, Modifier.weight(1f)) { onIcon(1) }
+                IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconTile(name: String, res: Int, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val accent = LocalAccent.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) GC.BrownPill else GC.Surface)
+            .then(if (selected) Modifier.border(1.5.dp, accent, RoundedCornerShape(16.dp)) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(vertical = 11.dp)
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(res),
+            contentDescription = name,
+            modifier = Modifier.size(52.dp).clip(RoundedCornerShape(13.dp))
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(name, style = MaterialTheme.typography.labelLarge, color = if (selected) accent else GC.TextSoft, fontSize = 13.sp)
     }
 }
 
