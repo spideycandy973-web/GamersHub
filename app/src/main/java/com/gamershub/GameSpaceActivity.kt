@@ -2323,9 +2323,9 @@ private fun AppsPanel(
                         .clickable(onClick = onPickApps)
                         .padding(horizontal = 18.dp, vertical = 11.dp)
                 ) {
-                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    AIcon(Icons.Filled.Apps, contentDescription = null, tint = Color(0xFF17100A), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.sp)
+                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = Color(0xFF17100A), fontSize = 13.sp, letterSpacing = 1.sp)
                 }
             } else {
                 Column(

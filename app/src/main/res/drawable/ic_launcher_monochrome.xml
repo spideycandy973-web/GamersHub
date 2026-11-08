@@ -1,15 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon layer (Android 13+): sphere + play, alpha only. -->
+<!-- Themed-icon layer (Android 13+): the gold hex gem with the play knocked out. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M54,31 A23,23 0 0 1 77,54 A23,23 0 0 1 54,77 A23,23 0 0 1 31,54 A23,23 0 0 1 54,31 Z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="6.5" />
-    <path
-        android:pathData="M47.5,40.5 L47.5,67.5 L69.5,54 Z"
+        android:fillType="evenOdd"
+        android:pathData="M54,23 L80,38 L80,68 L54,83 L28,68 L28,38 Z M46.4,41 L46.4,67 L66.2,54 Z"
         android:fillColor="#FFFFFFFF" />
 </vector>

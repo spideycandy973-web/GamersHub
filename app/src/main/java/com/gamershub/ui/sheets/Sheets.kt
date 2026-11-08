@@ -567,13 +567,13 @@ fun SettingsSheet(
             Text("Customize app accent color", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Iris", GC.Iris, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
-                ThemeColorTile("Aqua", GC.Aqua, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
+                ThemeColorTile("Molten Gold", GC.Gold, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
+                ThemeColorTile("Ember", GC.Ember, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Mint", GC.Mint, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
-                ThemeColorTile("Rose", GC.Rose, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
+                ThemeColorTile("Signal Red", GC.Crimson, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
+                ThemeColorTile("Jade", GC.Jade, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
             }
         }
     }

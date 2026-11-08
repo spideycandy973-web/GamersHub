@@ -132,14 +132,14 @@ fun GameLabsScreen(
                                 LabsTab.CONFIGS -> Icons.Filled.Settings
                             },
                             contentDescription = null,
-                            tint = if (selected) Color.White else GC.TextSoft,
+                            tint = if (selected) GC.OnAccent else GC.TextSoft,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(7.dp))
                         Text(
                             t.label,
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (selected) Color.White else GC.TextSoft,
+                            color = if (selected) GC.OnAccent else GC.TextSoft,
                             fontSize = 15.sp
                         )
                     }

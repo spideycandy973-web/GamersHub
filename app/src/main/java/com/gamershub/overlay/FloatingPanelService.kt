@@ -19,6 +19,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -299,6 +300,7 @@ private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
             .size(58.dp)
             .clip(CircleShape)
             .background(accent)
+            .border(1.dp, Color(0x4DFFFFFF), CircleShape)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -312,7 +314,7 @@ private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
         AIcon(
             Icons.Filled.SportsEsports,
             contentDescription = "GamersHub panel",
-            tint = Color(0xFF120C0D),
+            tint = Color(0xFF17100A),
             modifier = Modifier.size(30.dp)
         )
     }

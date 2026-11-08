@@ -101,13 +101,13 @@ import java.util.Locale
 /* palette                                                             */
 /* ------------------------------------------------------------------ */
 
-/* Liquid-glass panel palette — iris accent, frosted ink surfaces. */
-private val AX_RED = Color(0xFF7C8CFF)
-private val AX_DEEP = Color(0xEE0A0E18)
-private val AX_ARM = Color(0x14FFFFFF)
-private val AX_EDGE = Color(0x3DFFFFFF)
-private val AX_TXT = Color(0xFFEDF1FA)
-private val AX_DIM = Color(0x99A7B0C4)
+/* Liquid-glass panel palette — molten gold accent, smoked ember surfaces. */
+private val AX_RED = Color(0xFFFFB03A)
+private val AX_DEEP = Color(0xEE0E0906)
+private val AX_ARM = Color(0x14FFD9B4)
+private val AX_EDGE = Color(0x3DFFDFAE)
+private val AX_TXT = Color(0xFFF7F1E9)
+private val AX_DIM = Color(0x99A2948A)
 
 private const val PREFS = "gamershub"
 
