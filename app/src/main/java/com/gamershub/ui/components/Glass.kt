@@ -20,15 +20,15 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 
 /**
- * Minimal liquid glass.
+ * Warm liquid glass.
  *
- * There is no real backdrop blur available to a normal Android window, so the glass is built
- * the way it actually works on this platform: a translucent vertical fill, a light-catching
- * top edge, a subtle inner specular line and a very low-alpha accent tint. The ambient colour
- * behind it comes from [LiquidBackdrop], so the panels genuinely pick up the background hue.
+ * Android gives no real backdrop blur to a normal window, so the glass is built the way it
+ * actually reads on the platform: smoked translucency over an ember-black backdrop, a lit top
+ * edge, a hairline specular line, a warm rim and a low-alpha accent wash that picks up the
+ * panel's own colour.
  */
 
-/** Frosted surface. [tint] adds accent colour, [radiusDp] the corner. */
+/** Frosted surface. [tint] adds accent colour, [shape] the corner. */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(24.dp),
     accent: Color = Color.Transparent,
@@ -38,14 +38,14 @@ fun Modifier.liquidGlass(
     .background(
         Brush.verticalGradient(
             listOf(
-                Color.White.copy(alpha = if (strong) 0.15f else 0.10f),
-                Color.White.copy(alpha = if (strong) 0.05f else 0.03f)
+                Color.White.copy(alpha = if (strong) 0.11f else 0.07f),
+                Color(0.36f, 0.27f, 0.21f, if (strong) 0.10f else 0.06f)
             )
         )
     )
     .background(
         Brush.verticalGradient(
-            listOf(accent.copy(alpha = if (strong) 0.20f else 0.12f), Color.Transparent)
+            listOf(accent.copy(alpha = if (strong) 0.17f else 0.10f), Color.Transparent)
         )
     )
     .border(
@@ -54,7 +54,7 @@ fun Modifier.liquidGlass(
         shape
     )
 
-/** A glass panel with the specular line drawn on top. */
+/** Glass panel with the specular line drawn on top — use where the surface needs a lift. */
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
@@ -68,13 +68,12 @@ fun GlassSurface(
             .liquidGlass(shape = shape, accent = accent, strong = strong)
             .drawWithContent {
                 drawContent()
-                // top specular: a hairline that fades out to the right, like light on glass
                 drawLine(
                     brush = Brush.horizontalGradient(
-                        listOf(Color.White.copy(alpha = 0.55f), Color.Transparent)
+                        listOf(Color(0xFFFFE8C6).copy(alpha = 0.55f), Color.Transparent)
                     ),
                     start = Offset(size.width * 0.06f, 1f),
-                    end = Offset(size.width * 0.62f, 1f),
+                    end = Offset(size.width * 0.60f, 1f),
                     strokeWidth = 2f
                 )
             },
@@ -82,7 +81,7 @@ fun GlassSurface(
     )
 }
 
-/** Deep ink backdrop with two slow ambient colour fields behind everything. */
+/** Ember-black backdrop with slow warm colour fields behind everything. */
 @Composable
 fun LiquidBackdrop(
     modifier: Modifier = Modifier,
@@ -93,35 +92,35 @@ fun LiquidBackdrop(
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val r1 = w.coerceAtLeast(h) * 0.75f
+            val r1 = w.coerceAtLeast(h) * 0.78f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(accent.copy(alpha = 0.22f), Color.Transparent),
-                    center = Offset(w * 0.16f, h * 0.06f),
+                    colors = listOf(accent.copy(alpha = 0.20f), Color.Transparent),
+                    center = Offset(w * 0.18f, h * 0.04f),
                     radius = r1
                 ),
                 radius = r1,
-                center = Offset(w * 0.16f, h * 0.06f)
+                center = Offset(w * 0.18f, h * 0.04f)
             )
-            val r2 = w.coerceAtLeast(h) * 0.65f
+            val r2 = w.coerceAtLeast(h) * 0.70f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF4FD8FF).copy(alpha = 0.16f), Color.Transparent),
-                    center = Offset(w * 0.92f, h * 0.72f),
+                    colors = listOf(Color(0xFFC2160A).copy(alpha = 0.20f), Color.Transparent),
+                    center = Offset(w * 0.95f, h * 0.62f),
                     radius = r2
                 ),
                 radius = r2,
-                center = Offset(w * 0.92f, h * 0.72f)
+                center = Offset(w * 0.95f, h * 0.62f)
             )
-            val r3 = w * 0.5f
+            val r3 = w * 0.55f
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFFFF9A6A).copy(alpha = 0.07f), Color.Transparent),
-                    center = Offset(w * 0.55f, h * 0.95f),
+                    colors = listOf(Color(0xFFFF8A3C).copy(alpha = 0.10f), Color.Transparent),
+                    center = Offset(w * 0.45f, h * 0.98f),
                     radius = r3
                 ),
                 radius = r3,
-                center = Offset(w * 0.55f, h * 0.95f)
+                center = Offset(w * 0.45f, h * 0.98f)
             )
         }
         content()

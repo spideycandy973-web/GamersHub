@@ -147,7 +147,7 @@ fun LobbyScreen(
                                 Text(
                                     "SELECT",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = Color.White,
+                                    color = GC.OnAccent,
                                     fontSize = 10.sp,
                                     letterSpacing = 1.sp
                                 )

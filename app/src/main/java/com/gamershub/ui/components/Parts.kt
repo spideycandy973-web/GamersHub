@@ -206,7 +206,7 @@ fun BigButton(
             if (leadingIcon != null) {
                 Icon(
                     leadingIcon, contentDescription = null,
-                    tint = textColor ?: if (primary) Color.White else accent,
+                    tint = textColor ?: if (primary) GC.OnAccent else accent,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(9.dp))
@@ -215,7 +215,7 @@ fun BigButton(
                 text,
                 style = MaterialTheme.typography.labelLarge,
                 fontSize = 16.sp,
-                color = textColor ?: if (primary) Color.White else GC.Text
+                color = textColor ?: if (primary) GC.OnAccent else GC.Text
             )
         }
     }
@@ -340,49 +340,41 @@ fun Grabber(modifier: Modifier = Modifier) {
     )
 }
 
-/** GamersHub mark — the launcher icon, drawn as geometry: sphere, orbit, play. */
+/** GamersHub mark — the launcher gem, drawn as geometry: gold hex, punched play. */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
+    val idx = com.gamershub.theme.LocalAccentIdx.current
+    val accent2 = GC.accentPairFor(idx)
     Canvas(modifier) {
         val side = minOf(size.width, size.height)
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val radius = side * 0.30f
-        // glass sphere: soft accent fill + rim
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = 0.45f), Color(0x22FFFFFF)),
-                center = Offset(cx - radius * 0.35f, cy - radius * 0.45f),
-                radius = radius * 1.9f
-            ),
-            radius = radius,
-            center = Offset(cx, cy)
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.75f),
-            radius = radius,
-            center = Offset(cx, cy),
-            style = Stroke(width = side * 0.045f)
-        )
-        // orbit
-        drawArc(
-            color = Color(0xFF4FD8FF).copy(alpha = 0.85f),
-            startAngle = 200f,
-            sweepAngle = 150f,
-            useCenter = false,
-            topLeft = Offset(cx - radius * 1.45f, cy - radius * 0.42f),
-            size = Size(radius * 2.9f, radius * 0.84f),
-            style = Stroke(width = side * 0.035f, cap = StrokeCap.Round)
-        )
-        // play triangle
-        val tri = Path().apply {
-            moveTo(cx - radius * 0.30f, cy - radius * 0.50f)
-            lineTo(cx - radius * 0.30f, cy + radius * 0.50f)
-            lineTo(cx + radius * 0.55f, cy)
+        val c = Offset(size.width / 2f, size.height / 2f)
+        val r = side * 0.46f
+        val hex = Path().apply {
+            for (i in 0..5) {
+                val a = Math.toRadians(-90.0 + i * 60.0)
+                val x = c.x + r * kotlin.math.cos(a).toFloat()
+                val y = c.y + r * kotlin.math.sin(a).toFloat()
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
             close()
         }
-        drawPath(tri, Color.White.copy(alpha = 0.95f))
+        drawPath(
+            hex,
+            Brush.linearGradient(
+                colors = listOf(accent, accent2),
+                start = Offset(c.x - r, c.y - r),
+                end = Offset(c.x + r, c.y + r)
+            )
+        )
+        drawPath(hex, Color.White.copy(alpha = 0.55f), style = Stroke(width = side * 0.035f))
+        val play = Path().apply {
+            moveTo(c.x - r * 0.30f, c.y - r * 0.44f)
+            lineTo(c.x - r * 0.30f, c.y + r * 0.44f)
+            lineTo(c.x + r * 0.46f, c.y)
+            close()
+        }
+        drawPath(play, GC.Bg)
     }
 }
 
