@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Resource-shrinker keep rules.
+
+  The intro clip and the preview clips are referenced from Kotlin through R.raw.*, and
+  R8 inlines those ints during a release build. A cold resource-shrinker pass then sees
+  them as unused and drops ~12 MB of media — which is exactly what happened to the
+  v6.7.0 build (19.4 MB -> 7.4 MB, intro video silently gone). Keeping them explicitly
+  here makes the shrinker deterministic.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/intro_1080_portrait_comp,@raw/game_space_intro,@raw/intro_gamepad,@raw/preview_color,@raw/preview_scale,@raw/preview_sharpen,@drawable/intro_gamepad,@mipmap/ic_launcher,@mipmap/ic_launcher_round,@drawable/ic_launcher_foreground,@drawable/ic_launcher_background,@drawable/ic_launcher_monochrome"
+    tools:discard="" />
