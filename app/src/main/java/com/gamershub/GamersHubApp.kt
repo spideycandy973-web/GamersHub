@@ -32,7 +32,7 @@ class GamersHubApp : Application() {
             if (thread === main) {
                 // Keep the process alive: unwind this one action, tell the user, carry on.
                 runCatching {
-                    Handler(main).post {
+                    Handler(Looper.getMainLooper()).post {
                         runCatching {
                             Toast.makeText(
                                 this,
