@@ -1736,9 +1736,10 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
     val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("gamershub", android.content.Context.MODE_PRIVATE) }
     val engine = remember { com.gamershub.core.RenderEngine }
-    var texture by remember { mutableStateOf(prefs.getString("ax_texture", "HIGH") ?: "HIGH") }
-    var shadow by remember { mutableStateOf(prefs.getString("ax_shadow", "HIGH") ?: "HIGH") }
-    var sharp by remember { mutableStateOf(prefs.getInt("ax_sharp", 60)) }
+    // signed offsets: 0 = the game's own setting, negative below it, positive above it
+    var texture by remember { mutableStateOf(prefs.getInt("ax_tex_off", 0)) }
+    var shadow by remember { mutableStateOf(prefs.getInt("ax_shd_off", 0)) }
+    var sharp by remember { mutableStateOf(prefs.getInt("ax_sharp", 0)) }
     var renderScale by remember { mutableStateOf(prefs.getInt("ax_res", 100)) }
     var lossless by remember { mutableStateOf(prefs.getInt("ax_lossless", 100)) }
     var fps by remember { mutableStateOf(prefs.getInt("ax_fps", 0)) }
@@ -1749,8 +1750,8 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
     var working by remember { mutableStateOf(false) }
 
     fun persist() = prefs.edit()
-        .putString("ax_texture", texture)
-        .putString("ax_shadow", shadow)
+        .putInt("ax_tex_off", texture)
+        .putInt("ax_shd_off", shadow)
         .putInt("ax_sharp", sharp)
         .putInt("ax_res", renderScale)
         .putInt("ax_lossless", lossless)
@@ -1765,14 +1766,16 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
         working = true
         scope.launch {
             val r = withContext(Dispatchers.IO) {
-                engine.apply(
+                engine.applyKnobs(
                     context = context,
                     pkg = pkg,
-                    texture = texture,
-                    shadow = shadow,
-                    sharpness = sharp,
-                    scalePct = renderScale,
-                    fps = fps,
+                    knobs = com.gamershub.core.GfxEngine.Knobs(
+                        sharpen = sharp,
+                        texture = texture,
+                        shadow = shadow,
+                        renderScale = renderScale,
+                        fps = fps
+                    ),
                     mode = mode,
                     angle = angle,
                     losslessPct = lossless
@@ -1890,29 +1893,29 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 )
                 Divider()
                 Stepper(
-                    "TEXTURE QUALITY", texture,
+                    "TEXTURE", signedOffset(texture),
                     onMinus = {
-                    texture = cycleLevel(texture, -1); apply()
+                    texture = (texture - 1).coerceAtLeast(-3); apply()
                     },
                     onPlus = {
-                    texture = cycleLevel(texture, 1); apply()
+                    texture = (texture + 1).coerceAtMost(3); apply()
                     }
                 )
                 Divider()
                 Stepper(
-                    "SHADOW QUALITY", shadow,
+                    "SHADOW", signedOffset(shadow),
                     onMinus = {
-                    shadow = cycleLevel(shadow, -1); apply()
+                    shadow = (shadow - 1).coerceAtLeast(-3); apply()
                     },
                     onPlus = {
-                    shadow = cycleLevel(shadow, 1); apply()
+                    shadow = (shadow + 1).coerceAtMost(3); apply()
                     }
                 )
                 Divider()
                 Stepper(
-                    "SHARPNESS", "$sharp%",
+                    "SHARPNESS", signedOffset(sharp),
                     onMinus = {
-                    sharp = (sharp - 10).coerceAtLeast(0); apply()
+                    sharp = (sharp - 10).coerceAtLeast(-100); apply()
                     },
                     onPlus = {
                     sharp = (sharp + 10).coerceAtMost(100); apply()
@@ -1942,6 +1945,44 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 }
             }
             Spacer(Modifier.height(10.dp))
+            // Explicit RUN and STOP — both always visible.
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GC.Signal)
+                        .clickable {
+                            com.gamershub.core.upscale.UpscaleMirror.sharpen = sharp / 100f
+                            apply()
+                            runCatching { com.gamershub.core.upscale.UpscaleMirror.start(context) }
+                        }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("RUN ENGINE", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                }
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x1AFFFFFF))
+                        .clickable {
+                            runCatching { com.gamershub.core.upscale.UpscaleMirror.stop(context) }
+                            scope.launch {
+                                val r = withContext(Dispatchers.IO) { engine.restore(context, pkg) }
+                                report = r.details()
+                                deviceNow = r.verified
+                                lossless = 100
+                            }
+                        }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("STOP ENGINE", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                }
+            }
+            Spacer(Modifier.height(9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 Box(
                     Modifier
@@ -1974,6 +2015,13 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
             }
         }
     }
+}
+
+/** 0 renders as DEFAULT; anything else shows its sign — offsets, not absolute levels. */
+private fun signedOffset(value: Int): String = when {
+    value == 0 -> "DEFAULT"
+    value > 0 -> "+$value"
+    else -> "$value"
 }
 
 /** Small +/- stepper used by the GPU pipeline panel. */

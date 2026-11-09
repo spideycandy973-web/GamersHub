@@ -352,6 +352,111 @@ object GfxEngine {
         }
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Bipolar knobs — 0 means "leave the game's own setting alone"        */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Signed graphics knobs.
+     *
+     * Every value is an offset **around the game's own setting**, so 0 does nothing,
+     * a negative number takes quality *below* what the game chose, and a positive
+     * number pushes it *above* the game's own menu cap (UE tops out at 3/Epic; the
+     * CVar accepts 4/Cinematic).
+     */
+    data class Knobs(
+        val sharpen: Int = 0,       // -100..100
+        val texture: Int = 0,       // -3..3
+        val shadow: Int = 0,        // -3..3
+        val effects: Int = 0,       // -3..3
+        val aa: Int = 0,            // -3..3
+        val post: Int = 0,          // -3..3
+        val renderScale: Int = 100, // 50..100
+        val fps: Int = 0            // 0 = leave alone
+    ) {
+        val neutral: Boolean
+            get() = sharpen == 0 && texture == 0 && shadow == 0 && effects == 0 &&
+                aa == 0 && post == 0 && renderScale >= 100 && fps == 0
+    }
+
+    /** Epic (3) is the reference point; a positive offset can reach 4 = Cinematic. */
+    private fun level(offset: Int): Int = (3 + offset).coerceIn(0, 4)
+
+    private fun cvarBlockKnobs(k: Knobs): String {
+        val sharpen = (k.sharpen / 100f * 1.5f).coerceIn(-1.5f, 1.5f)
+        return buildString {
+            appendLine("; >>> GamersHub graphics (managed block) >>>")
+            if (k.texture != 0) {
+                val lv = level(k.texture)
+                appendLine("sg.TextureQuality=$lv")
+                appendLine("r.Streaming.PoolSize=${when { lv >= 4 -> 3000; lv >= 3 -> 2000; lv >= 2 -> 1500; else -> 800 }}")
+                appendLine("r.MipMapLODBias=${if (k.texture > 0) -1 * k.texture.coerceAtMost(3) else 0}")
+            }
+            if (k.shadow != 0) {
+                val lv = level(k.shadow)
+                appendLine("sg.ShadowQuality=$lv")
+                appendLine("r.ShadowQuality=$lv")
+                appendLine("r.Shadow.MaxResolution=${if (lv >= 3) 4096 else if (lv >= 2) 2048 else 1024}")
+                appendLine("r.Shadow.CSM.MaxCascades=${if (lv >= 3) 4 else 2}")
+            }
+            if (k.effects != 0) {
+                appendLine("sg.EffectsQuality=${level(k.effects)}")
+                appendLine("sg.FoliageQuality=${level(k.effects)}")
+            }
+            if (k.aa != 0) {
+                val lv = level(k.aa)
+                appendLine("sg.AntiAliasingQuality=$lv")
+                appendLine("r.AntiAliasingMethod=${if (lv >= 3) 4 else if (lv >= 2) 2 else 1}")
+                appendLine("r.PostProcessAAQuality=$lv")
+            }
+            if (k.post != 0) appendLine("sg.PostProcessQuality=${level(k.post)}")
+            if (k.sharpen != 0) {
+                appendLine("r.Tonemapper.Sharpen=${String.format(java.util.Locale.US, "%.2f", sharpen)}")
+                appendLine("r.Tonemapper.Quality=${if (sharpen > 0f) 4 else 1}")
+                appendLine("r.Upscale.Quality=${if (sharpen > 0f) 4 else 1}")
+            }
+            if (k.renderScale in 1..99) {
+                appendLine("sg.ResolutionQuality=${k.renderScale.coerceIn(50, 100)}")
+                appendLine("r.ScreenPercentage=${k.renderScale.coerceIn(50, 100)}")
+            }
+            if (k.fps > 0) {
+                appendLine("FrameRateLimit=${k.fps}")
+                appendLine("bUseVSync=False")
+            }
+            appendLine("; <<< GamersHub graphics <<<")
+        }
+    }
+
+    /** Writes the signed knob block into the game's config, or removes it when neutral. */
+    fun applyKnobs(pkg: String, knobs: Knobs): ApplyResult {
+        if (!Shell.available()) return ApplyResult(emptyList(), emptyList(), true)
+        val files = configFiles(pkg)
+        if (files.isEmpty()) return ApplyResult(emptyList(), emptyList(), false)
+        val temp = "/data/local/tmp/gh_knobs_${System.currentTimeMillis()}.txt"
+        if (!knobs.neutral) {
+            val encoded = android.util.Base64.encodeToString(cvarBlockKnobs(knobs).toByteArray(), android.util.Base64.NO_WRAP)
+            Shell.exec("echo '$encoded' | base64 -d > $temp")
+        }
+        val written = ArrayList<String>()
+        val failed = ArrayList<String>()
+        for (path in files) {
+            if (!path.endsWith("GameUserSettings.ini") &&
+                !path.endsWith("UserCustom.ini") &&
+                !path.endsWith("Engine.ini")
+            ) continue
+            Shell.exec("cp -n '$path' '$path.ghbak'")
+            Shell.exec("sed -i '/>>> GamersHub graphics (managed block) >>>/,/<<< GamersHub graphics <<</d' '$path'")
+            if (knobs.neutral) {
+                written.add(path)
+                continue
+            }
+            val appended = Shell.ok("cat $temp >> '$path'")
+            if (appended) written.add(path) else failed.add(path)
+        }
+        Shell.exec("rm -f $temp")
+        return ApplyResult(written, failed, false)
+    }
+
     /** Candidate config files for the package, discovered through shell. */
     fun configFiles(pkg: String): List<String> {
         val roots = listOf(

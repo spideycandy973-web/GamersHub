@@ -1209,25 +1209,25 @@ private fun UpscalePage(api: AxApi) {
         }
         SectionLabel("UPSCALE MIRROR")
         ReadRow("STATE", mirrorState)
-        ActionRow(
-            title = "UPSCALE MIRROR",
+        RunStopRow(
+            title = "GRAPHICS ENGINE",
             subtitle = if (UpscaleMirror.supported())
-                "pick the GAME in the dialog · opaque overlay · touches still reach the game"
+                "GL upscale + sharpening on your game's frames · pick the game in the dialog"
             else UpscaleMirror.whyNot(),
-            button = if (UpscaleMirror.isRunning) "STOP" else "START"
-        ) {
-            if (UpscaleMirror.isRunning) {
-                UpscaleMirror.stop(context)
-                api.say("Mirror stopped")
-            } else {
+            running = UpscaleMirror.isRunning,
+            onRun = {
                 UpscaleMirror.quality = quality
                 UpscaleMirror.sharpen = sharpen / 100f
                 UpscaleMirror.integer = integer
                 UpscaleMirror.frameGen = frameGen
                 UpscaleMirror.start(context)
                 api.say(if (UpscaleMirror.supported()) "Choose the game in the capture dialog" else UpscaleMirror.whyNot())
+            },
+            onStop = {
+                UpscaleMirror.stop(context)
+                api.say("Engine stopped")
             }
-        }
+        )
         SectionLabel("PROFILES")
         ActionRow(
             title = "MAX ULTRA",
@@ -1466,19 +1466,27 @@ private fun RecPage(api: AxApi) {
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
         ReadRow("RECORDER", if (Recorder.isRecording) "RECORDING" else "idle")
-        ActionRow(
-            if (Recorder.isRecording) "STOP RECORDING" else "START RECORDING",
-            "${st.bitrateMbps} Mbps · ${FpsMeter.refreshRate(context)} fps",
-            if (Recorder.isRecording) "STOP" else "START"
-        ) {
-            if (Recorder.isRecording) {
-                RecorderService.stop(context)
-                api.say("Recording saved")
-            } else {
-                ProjectionActivity.launch(context, ProjectionActivity.MODE_RECORD)
-                api.say("Accept the capture prompt")
+        RunStopRow(
+            title = "RECORDER",
+            subtitle = "${st.bitrateMbps} Mbps · ${FpsMeter.refreshRate(context)} fps",
+            running = Recorder.isRecording,
+            onRun = {
+                if (Recorder.isRecording) {
+                    api.say("Already recording")
+                } else {
+                    ProjectionActivity.launch(context, ProjectionActivity.MODE_RECORD)
+                    api.say("Accept the capture prompt")
+                }
+            },
+            onStop = {
+                if (Recorder.isRecording) {
+                    RecorderService.stop(context)
+                    api.say("Recording saved")
+                } else {
+                    api.say("Not recording")
+                }
             }
-        }
+        )
         StepRow(
             label = "BITRATE",
             value = "${st.bitrateMbps} Mbps",
@@ -1494,21 +1502,29 @@ private fun RecPage(api: AxApi) {
         SectionLabel("GO LIVE")
         ReadRow("STREAM", if (Stream.isStreaming) "LIVE" else "offline")
         ReadRow("RTMP URL", url.ifBlank { "not set in app" })
-        ActionRow(
-            if (Stream.isStreaming) "STOP STREAM" else "GO LIVE",
-            "Uses the RTMP URL saved in the app",
-            if (Stream.isStreaming) "STOP" else "LIVE"
-        ) {
-            if (Stream.isStreaming) {
-                StreamService.stop(context)
-                api.say("Stream stopped")
-            } else if (url.isBlank()) {
-                api.say("Set the RTMP URL in the app's Live sheet first")
-            } else {
-                ProjectionActivity.launch(context, ProjectionActivity.MODE_LIVE, url)
-                api.say("Accept the capture prompt to go live")
+        RunStopRow(
+            title = "STREAM",
+            subtitle = "Uses the RTMP URL saved in the app",
+            running = Stream.isStreaming,
+            onRun = {
+                if (Stream.isStreaming) {
+                    api.say("Already live")
+                } else if (url.isBlank()) {
+                    api.say("Set the RTMP URL in the app's Live sheet first")
+                } else {
+                    ProjectionActivity.launch(context, ProjectionActivity.MODE_LIVE, url)
+                    api.say("Accept the capture prompt to go live")
+                }
+            },
+            onStop = {
+                if (Stream.isStreaming) {
+                    StreamService.stop(context)
+                    api.say("Stream stopped")
+                } else {
+                    api.say("Not live")
+                }
             }
-        }
+        )
     }
 }
 
@@ -1741,6 +1757,56 @@ private fun ActionRow(title: String, subtitle: String, button: String, onClick: 
                 .padding(horizontal = 10.dp, vertical = 5.dp)
         ) {
             Text(button, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+/** Two explicit buttons — the engine can always be run or stopped, not toggled blind. */
+@Composable
+private fun RunStopRow(
+    title: String,
+    subtitle: String,
+    running: Boolean,
+    onRun: () -> Unit,
+    onStop: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x14FFFFFF))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title + if (running) "  · RUNNING" else "  · STOPPED",
+                color = if (running) AX_RED else AX_TXT,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(subtitle, color = AX_DIM, fontSize = 7.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(7.dp))
+                .background(if (running) Color(0x33FFFFFF) else AX_RED)
+                .clickable(onClick = onRun)
+                .padding(horizontal = 9.dp, vertical = 5.dp)
+        ) {
+            Text("RUN", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+        }
+        Spacer(Modifier.width(5.dp))
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(7.dp))
+                .background(if (running) AX_RED else Color(0x33FFFFFF))
+                .clickable(onClick = onStop)
+                .padding(horizontal = 9.dp, vertical = 5.dp)
+        ) {
+            Text("STOP", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
         }
     }
 }
