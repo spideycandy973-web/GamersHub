@@ -327,12 +327,23 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
 @Composable
 private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
     val accent = LocalAccent.current
+    // A slow, shallow breath of light behind the emblem — not a strobe.
+    val glow by androidx.compose.animation.core.rememberInfiniteTransition(label = "bubble")
+        .animateFloat(
+            initialValue = 0.16f,
+            targetValue = 0.46f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                animation = androidx.compose.animation.core.tween(
+                    durationMillis = 2100,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                ),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            ),
+            label = "glow"
+        )
     Box(
         Modifier
-            .size(58.dp)
-            .clip(CircleShape)
-            .background(accent)
-            .border(1.dp, Color(0x4DFFFFFF), CircleShape)
+            .size(62.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
@@ -342,12 +353,40 @@ private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
             .clickable(onClick = onTap),
         contentAlignment = Alignment.Center
     ) {
-        // Gamepad bubble (the reference uses a controller mark, not a logo).
-        AIcon(
-            Icons.Filled.SportsEsports,
+        Canvas(Modifier.fillMaxSize()) {
+            val radius = size.minDimension / 2f
+            val middle = center
+            // Thin dark bed so the emblem still reads over a bright game.
+            drawCircle(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    colors = listOf(Color(0x66000000), Color(0x22000000), Color.Transparent),
+                    center = middle,
+                    radius = radius
+                ),
+                radius = radius,
+                center = middle
+            )
+            // The breathing light itself, kept to the rim of the emblem.
+            drawCircle(
+                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = glow * 0.30f),
+                        accent.copy(alpha = glow),
+                        accent.copy(alpha = glow * 0.35f),
+                        Color.Transparent
+                    ),
+                    center = middle,
+                    radius = radius * 0.94f
+                ),
+                radius = radius * 0.94f,
+                center = middle
+            )
+        }
+        // The main app mark, one size smaller than the old bubble.
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.ic_float_emblem),
             contentDescription = "GamersHub panel",
-            tint = Color(0xFF17100A),
-            modifier = Modifier.size(30.dp)
+            modifier = Modifier.size(44.dp)
         )
     }
 }
