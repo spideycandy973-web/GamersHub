@@ -62,6 +62,9 @@ import java.util.Locale
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
 
+/** Counts the supplied booleans without short-circuiting. */
+private fun list0(vararg flags: Boolean): List<Boolean> = flags.toList()
+
 private enum class LabsTab(val label: String) { ALL("All"), VISUAL("Visual"), CONFIGS("Configs") }
 
 @Composable
@@ -160,8 +163,20 @@ fun GameLabsScreen(
             }
             Spacer(Modifier.height(14.dp))
 
-            // ---- Stop All Features (All tab) ----
-            if (tab == LabsTab.ALL) {
+            // ---- Stop All Features: only while something is actually running ----
+            val stopKeys = listOf("game_ready", "dns", "session", "magic_mapper", "hw_touch", "show_taps", "show_coords")
+            val runningServices = list0(
+                com.gamershub.overlay.FloatingPanelService.isRunning,
+                com.gamershub.overlay.MonitorOverlayService.isRunning,
+                com.gamershub.overlay.CrosshairOverlayService.isRunning,
+                com.gamershub.overlay.MappingOverlayService.isRunning,
+                com.gamershub.overlay.MouseCursorService.isRunning,
+                com.gamershub.core.capture.Recorder.isRecording,
+                com.gamershub.core.capture.Stream.isStreaming,
+                com.gamershub.core.upscale.UpscaleMirror.isRunning
+            ).count { it }
+            val activeCount = runningServices + stopKeys.count { toggleState(it) }
+            if (tab == LabsTab.ALL && activeCount > 0) {
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.Dialpad, size = 46)
@@ -169,7 +184,8 @@ fun GameLabsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Stop All Features", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                             Text(
-                                "All active features will be closed immediately",
+                                if (runningServices > 0) "$activeCount active now · $runningServices service(s) running"
+                                else "$activeCount feature(s) active — turn everything off",
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
                             )
                         }
@@ -178,8 +194,15 @@ fun GameLabsScreen(
                                 .clip(RoundedCornerShape(50))
                                 .background(Color(0xFF5A1618))
                                 .clickable {
-                                    listOf("game_ready", "dns", "session", "magic_mapper", "hw_touch", "show_taps", "show_coords")
-                                        .forEach { k -> if (toggleState(k)) onToggle(k, false) }
+                                    stopKeys.forEach { k -> if (toggleState(k)) onToggle(k, false) }
+                                    runCatching { com.gamershub.overlay.FloatingPanelService.stop(context) }
+                                    runCatching { com.gamershub.overlay.MonitorOverlayService.stop(context) }
+                                    runCatching { com.gamershub.overlay.CrosshairOverlayService.stop(context) }
+                                    runCatching { com.gamershub.overlay.MappingOverlayService.stop(context) }
+                                    runCatching { com.gamershub.overlay.MouseCursorService.stop(context) }
+                                    runCatching { com.gamershub.core.capture.RecorderService.stop(context) }
+                                    runCatching { com.gamershub.core.capture.StreamService.stop(context) }
+                                    runCatching { com.gamershub.core.upscale.UpscaleMirror.stop(context) }
                                 }
                                 .padding(horizontal = 22.dp, vertical = 11.dp)
                         ) {

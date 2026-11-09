@@ -43,7 +43,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -462,6 +464,7 @@ private fun GameSpaceScreen(
                 modifier = Modifier
                     .offset(x = w * 0.045f, y = h * 0.340f)
                     .size(width = w * 0.356f, height = h * 0.348f)
+                    .swipeToSwitchApp(library, currentPkg) { currentPkg = it }
             )
 
             // ---------- live app facts, 2x2 ----------
@@ -2014,6 +2017,35 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 }
             }
         }
+    }
+}
+
+/**
+ * Swipe left / right anywhere on the featured card to move the selection through the
+ * library. The strip stays scrollable; this is the gesture you asked for.
+ */
+private fun Modifier.swipeToSwitchApp(
+    library: List<com.gamershub.data.InstalledApp>,
+    currentPkg: String,
+    onSwitch: (String) -> Unit
+): Modifier = this.pointerInput(currentPkg, library) {
+    if (library.size < 2) return@pointerInput
+    var travelled = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { travelled = 0f },
+        onDragEnd = {
+            val index = library.indexOfFirst { it.pkg == currentPkg }
+            if (index >= 0 && kotlin.math.abs(travelled) > 55f) {
+                val step = if (travelled < 0) 1 else -1
+                val next = ((index + step) % library.size + library.size) % library.size
+                onSwitch(library[next].pkg)
+            }
+            travelled = 0f
+        },
+        onDragCancel = { travelled = 0f }
+    ) { change, dragAmount ->
+        travelled += dragAmount
+        change.consume()
     }
 }
 

@@ -238,14 +238,38 @@ object RenderEngine {
                         result.written.joinToString(" ") { it.substringAfterLast('/') }
                     )
                 )
-                else -> steps.add(
-                    Step(
-                        "engine CVars",
-                        "GameUserSettings.ini",
-                        ok = false,
-                        output = "no UE config for this game — render scale, GPU mode and driver still applied"
-                    )
-                )
+                else -> {
+                    // No engine config: the picture is still changed through the GL engine,
+                    // which filters and sharpens the real frames of any app.
+                    val supported = com.gamershub.core.upscale.UpscaleMirror.supported()
+                    if (supported) {
+                        val q = when {
+                            knobs.texture >= 2 -> com.gamershub.core.upscale.UpscaleEngine.Quality.ULTRA
+                            knobs.texture <= -2 -> com.gamershub.core.upscale.UpscaleEngine.Quality.PERFORMANCE
+                            else -> com.gamershub.core.upscale.UpscaleEngine.Quality.QUALITY
+                        }
+                        com.gamershub.core.upscale.UpscaleMirror.quality = q
+                        com.gamershub.core.upscale.UpscaleMirror.integer = knobs.texture >= 3
+                        com.gamershub.core.upscale.UpscaleMirror.sharpen = knobs.sharpen / 100f
+                        steps.add(
+                            Step(
+                                "engine path · filtering ${q.label.lowercase()} + sharpen ${knobs.sharpen}",
+                                "upscale mirror",
+                                true,
+                                "game has no engine config, so the frames are filtered by the GL engine instead"
+                            )
+                        )
+                    } else {
+                        steps.add(
+                            Step(
+                                "engine path",
+                                "upscale mirror",
+                                false,
+                                com.gamershub.core.upscale.UpscaleMirror.whyNot()
+                            )
+                        )
+                    }
+                }
             }
         }
         return Report(pkg, steps, verify(pkg))

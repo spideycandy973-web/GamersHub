@@ -597,10 +597,9 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "Above 0 pushes past the game's own cap (Epic → Cinematic) and, with the engine running, " +
-                "past it on the display too. Below 0 drops under the game's setting. Texture/shadow/effects/AA " +
-                "are the game's own CVars, so they need a UE4/UE5 config; display scale, GPU mode and the GL " +
-                "engine work on any app.",
+            "Above 0 goes past the game's own cap (Epic → Cinematic), below 0 drops under its setting, " +
+                "0 leaves it untouched. Two paths run together: the game's own CVars when it ships a config, " +
+                "and the GL engine — which filters and sharpens the real frames of ANY app, UE or not.",
             color = GC.TextDim, fontSize = 10.sp
         )
     }
