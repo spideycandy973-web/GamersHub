@@ -826,13 +826,19 @@ private fun AppCard(
             .clickable(onClick = onSelect)
     ) {
         if (art != null) {
-            // A real frame captured from the app itself — exactly what the reference shows.
-            Image(
-                painter = androidx.compose.ui.graphics.painter.BitmapPainter(art),
-                contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            // A real frame captured from the app itself — cross-faded so switching apps is smooth.
+            androidx.compose.animation.Crossfade(
+                targetState = art,
+                animationSpec = tween(320),
+                label = "art"
+            ) { frame ->
+                Image(
+                    painter = androidx.compose.ui.graphics.painter.BitmapPainter(frame),
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         } else if (entry != null) {
             Image(
                 painter = androidx.compose.ui.graphics.painter.BitmapPainter(entry.icon),

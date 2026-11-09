@@ -104,12 +104,11 @@ object GC {
     )
 
     /**
-     * One family everywhere: Outfit (variable, weight axis only).
-     * Tight geometric caps for display, calm normal width for body — close to the
-     * proportions the screens were laid out for, so nothing reflows.
+     * One family everywhere: Oxanium (variable). Squared, technical, game-console
+     * letterforms — deliberately not the neutral grotesque the UI used before.
      */
     private fun outfit(weight: Int, w: FontWeight) = Font(
-        R.font.outfit,
+        R.font.oxanium,
         weight = w,
         variationSettings = FontVariation.Settings(FontVariation.weight(weight))
     )

@@ -1,6 +1,8 @@
 package com.gamershub
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -19,6 +21,12 @@ import java.util.Locale
  */
 class GamersHubApp : Application() {
 
+    companion object {
+        /** Last trace caught in this process — the Settings card reads the file, the UI reads this. */
+        @Volatile
+        var lastCrash: String = ""
+    }
+
     override fun onCreate() {
         super.onCreate()
         installCrashGuard()
@@ -36,7 +44,7 @@ class GamersHubApp : Application() {
                         runCatching {
                             Toast.makeText(
                                 this,
-                                "That action hit a system limit — GamersHub kept running",
+                                "Action failed — details copied to clipboard",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -48,16 +56,25 @@ class GamersHubApp : Application() {
         }
     }
 
+    /** Copies the trace to the clipboard as well, so it can be pasted into a report. */
+    private fun copyToClipboard(text: String) {
+        runCatching {
+            val cm = getSystemService(ClipboardManager::class.java) ?: return
+            cm.setPrimaryClip(ClipData.newPlainText("GamersHub crash", text))
+        }
+    }
+
     private fun log(thread: Thread, error: Throwable) {
         val file = File(filesDir, "crash.log")
         if (file.exists() && file.length() > 512 * 1024) file.delete()
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
-        file.appendText(
-            buildString {
-                append("\n=== ").append(stamp).append(" · ").append(thread.name).append(" ===\n")
-                append(error.toString()).append('\n')
-                error.stackTrace.take(40).forEach { append("    at ").append(it).append('\n') }
-            }
-        )
+        val trace = buildString {
+            append("\n=== ").append(stamp).append(" · ").append(thread.name).append(" ===\n")
+            append(error.toString()).append('\n')
+            error.stackTrace.take(40).forEach { append("    at ").append(it).append('\n') }
+        }
+        file.appendText(trace)
+        copyToClipboard(trace)
+        lastCrash = trace
     }
 }

@@ -341,21 +341,36 @@ fun Grabber(modifier: Modifier = Modifier) {
     )
 }
 
-/** GamersHub mark — shows whichever launcher icon the user picked. */
+/**
+ * GamersHub mark — restored to the v6.8.2 hero: a custom GH ligature drawn as strokes,
+ * where the G's spur and the H's crossbar are one continuous bar.
+ */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    val res = when (com.gamershub.data.AppIcon.current(ctx)) {
-        1 -> com.gamershub.R.mipmap.ic_launcher
-        2 -> com.gamershub.R.mipmap.ic_launcher_chevron
-        3 -> com.gamershub.R.mipmap.ic_launcher_gh
-        else -> com.gamershub.R.mipmap.ic_launcher_bolt
+    val accent = LocalAccent.current
+    val accent2 = GC.accentPairFor(com.gamershub.theme.LocalAccentIdx.current)
+    Canvas(modifier) {
+        val k = minOf(size.width, size.height) / 1024f
+        fun p(x: Float, y: Float) = Offset(x * k, y * k)
+        val stroke = Stroke(width = 100f * k, cap = StrokeCap.Round)
+        val brush = Brush.linearGradient(
+            colors = listOf(accent, accent2),
+            start = p(74f, 238f),
+            end = p(956f, 786f)
+        )
+        drawArc(
+            brush = brush,
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = p(348f - 174f, 512f - 174f),
+            size = Size(348f * k, 348f * k),
+            style = stroke
+        )
+        drawLine(brush, p(622f, 338f), p(622f, 686f), strokeWidth = 100f * k, cap = StrokeCap.Round)
+        drawLine(brush, p(884f, 338f), p(884f, 686f), strokeWidth = 100f * k, cap = StrokeCap.Round)
+        drawLine(brush, p(384f, 512f), p(884f, 512f), strokeWidth = 100f * k, cap = StrokeCap.Round)
     }
-    Image(
-        painter = androidx.compose.ui.res.painterResource(res),
-        contentDescription = null,
-        modifier = modifier.clip(RoundedCornerShape(14.dp))
-    )
 }
 
 /** Section card used across screens — compact, wrap-friendly. */

@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0,'/tmp/ic5')
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 from PIL import ImageFont
 import os
@@ -64,9 +64,12 @@ def full_rgba(mask, stops, top_light):
     return base
 
 def mask_bolt():
-    """Lightning bolt: flat, geometric, reads at 48 px."""
-    pts = [(0.575, 0.105), (0.285, 0.545), (0.470, 0.545), (0.395, 0.895),
-           (0.715, 0.435), (0.525, 0.435)]
+    """Level arrow: bold upward arrowhead with chamfered apex and stem base."""
+    raw = [(0.440, 0.095), (0.560, 0.095), (0.875, 0.455), (0.625, 0.455),
+           (0.625, 0.805), (0.545, 0.885), (0.455, 0.885), (0.375, 0.805),
+           (0.375, 0.455), (0.125, 0.455)]
+    k = 1.00
+    pts = [(0.5 + (x - 0.5) * k, 0.5 + (y - 0.5) * k) for x, y in raw]
     m = Image.new('L', (C, C), 0)
     ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
     m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)

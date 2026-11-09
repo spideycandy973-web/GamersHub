@@ -23,7 +23,7 @@ object AppIcon {
         1 -> "Pad"
         2 -> "Boost"
         3 -> "Mono"
-        else -> "Bolt"
+        else -> "Level"
     }
 
     /** Enables [index] first, then disables the others, so the launcher never shows a gap. */
