@@ -133,6 +133,6 @@ def mask_bolt():
     return mask_gh_type(GH_FG_SIZE)
 
 
-VARIANTS['_bolt'] = (mask_bolt, GOLD, 0.24)
-# marks rendered as a gold tile with the artwork knocked out
-INVERTED = {'_bolt'}
+VARIANTS['_bolt'] = (lambda: mask_gh_type(0.56), GOLD, 0.24)
+# no variant uses the inverted tile any more
+INVERTED = set()

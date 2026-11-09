@@ -191,6 +191,66 @@ object RenderEngine {
         return Report(pkg, steps, verify(pkg))
     }
 
+    /**
+     * Applies the signed knob set: game config CVars around the game's own setting,
+     * per-app GameManager scale/mode, ANGE driver and the global screen scale.
+     */
+    fun applyKnobs(
+        context: Context,
+        pkg: String,
+        knobs: GfxEngine.Knobs,
+        mode: String = "standard",
+        angle: Boolean = false,
+        losslessPct: Int = 100
+    ): Report {
+        val steps = ArrayList<Step>()
+        if (!Shell.available()) {
+            steps.add(Step("Shell", "shizuku", false, Shell.reason()))
+            return Report(pkg, steps, verify())
+        }
+        if (pkg.isNotBlank() && hasGameManager()) {
+            val ratio = (knobs.renderScale.coerceIn(50, 100) / 100f)
+            val down = "cmd game set --downscale " + String.format(Locale.US, "%.2f", ratio) + " $pkg"
+            steps.add(Step("render scale ${knobs.renderScale}% (per app)", down, Shell.ok(down)))
+            if (knobs.fps > 0) {
+                val fpsCmd = "cmd game set --fps ${knobs.fps} $pkg"
+                steps.add(Step("fps cap ${knobs.fps}", fpsCmd, Shell.ok(fpsCmd)))
+            }
+            val modeCmd = "cmd game set --mode $mode $pkg"
+            steps.add(Step("gpu mode $mode", modeCmd, Shell.ok(modeCmd)))
+        }
+        steps.addAll(applyLossless(context, losslessPct))
+        if (pkg.isNotBlank()) {
+            val pkgs = if (angle) pkg else ""
+            val pCmd = "settings put global angle_gl_driver_selection_pkgs '$pkgs'"
+            val vCmd = "settings put global angle_gl_driver_selection_values '${if (angle) "angle" else "native"}'"
+            steps.add(Step(if (angle) "ANGLE driver" else "native driver", pCmd, Shell.ok(pCmd)))
+            steps.add(Step("driver value", vCmd, Shell.ok(vCmd)))
+            val result = GfxEngine.applyKnobs(pkg, knobs)
+            when {
+                result.needsShell -> steps.add(Step("engine CVars", "config", false, "shell unavailable"))
+                result.written.isNotEmpty() -> steps.add(
+                    Step(
+                        if (knobs.neutral) "engine CVars cleared — game defaults restored"
+                        else "engine CVars written (sharpen ${knobs.sharpen}, tex ${knobs.texture}, shadow ${knobs.shadow})",
+                        "GameUserSettings.ini",
+                        true,
+                        result.written.joinToString(" ") { it.substringAfterLast('/') }
+                    )
+                )
+                else -> steps.add(
+                    Step(
+                        "engine CVars",
+                        "GameUserSettings.ini",
+                        ok = false,
+                        output = "no UE config for this game — render scale, GPU mode and driver still applied"
+                    )
+                )
+            }
+        }
+        return Report(pkg, steps, verify(pkg))
+    }
+
     /** Undo everything this engine can undo. */
     fun restore(context: Context, pkg: String): Report {
         val steps = ArrayList<Step>()
