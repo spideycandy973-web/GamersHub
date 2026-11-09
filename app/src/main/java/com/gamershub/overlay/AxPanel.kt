@@ -90,7 +90,6 @@ import com.gamershub.core.shizuku.Shell
 import com.gamershub.data.DeviceStats
 import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.HeroMark
-import com.gamershub.ui.components.liquidGlass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -306,12 +305,9 @@ fun AxPanel(onClose: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight)
-            .liquidGlass(
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
-                accent = AX_RED,
-                strong = true
-            )
+            .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
             .background(AX_DEEP)
+            .border(1.dp, AX_EDGE, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
             .padding(bottom = 8.dp)

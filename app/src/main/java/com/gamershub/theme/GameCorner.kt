@@ -18,20 +18,20 @@ import com.gamershub.R
 
 /** Game Corner design system — warm near-black, accent-driven, chunky display type. */
 object GC {
-    /* ---- Liquid-glass base: deep ink, cool light, no warm browns ---- */
-    val Bg = Color(0xFF0B0806)
-    /** Top of the ambient backdrop gradient. */
-    val BgTop = Color(0xFF1A1108)
-    val Surface = Color(0xC41B1511)
-    val SurfaceHi = Color(0xD6241C16)
-    val BrownPill = Color(0xFF241C16)
-    val TagBg = Color(0xFF2B211A)
-    val Stroke = Color(0xFF3A2E25)
-    val Text = Color(0xFFF7F1E9)
-    val TextDim = Color(0xFFA2948A)
-    val TextSoft = Color(0xFFC9BCB0)
+    /* ---- Pre-glass base restored: warm near-black charcoal, solid surfaces ---- */
+    val Bg = Color(0xFF100F0D)
+    /** Kept for the retired glass backdrop. */
+    val BgTop = Color(0xFF171512)
+    val Surface = Color(0xFF1C1917)
+    val SurfaceHi = Color(0xFF262220)
+    val BrownPill = Color(0xFF35291F)
+    val TagBg = Color(0xFF332012)
+    val Stroke = Color(0xFF332E2A)
+    val Text = Color(0xFFF0EFED)
+    val TextDim = Color(0xFF948B84)
+    val TextSoft = Color(0xFFB5ACA6)
 
-    /* ---- Glass layers: warm smoke, used by Modifier.liquidGlass ---- */
+    /* ---- Glass layer tokens (retired, kept so old references compile) ---- */
     val GlassHi = Color(0x1FFFF0DC)
     val GlassLo = Color(0x09FFF0DC)
     val GlassEdgeHi = Color(0x5CFFE7CE)
@@ -71,10 +71,10 @@ object GC {
     val Beige = Color(0xFFC9BCB0)
 
     fun accentFor(index: Int): Color = when (index) {
-        1 -> Ember
-        2 -> Crimson
-        3 -> Jade
-        else -> Gold
+        1 -> OceanBlue
+        2 -> NeonTosca
+        3 -> CrimsonRed
+        else -> Orange
     }
 
     /** Second stop of the accent gradient (used for glass rims and highlights). */
@@ -86,21 +86,21 @@ object GC {
     }
 
     fun tagBgFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF3A2413)
-        2 -> Color(0xFF3A1511)
-        3 -> Color(0xFF10382B)
+        1 -> Color(0xFF122A3A)
+        2 -> Color(0xFF0E322C)
+        3 -> Color(0xFF3A1216)
         else -> TagBg
     }
 
     fun brownFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF3D2713)
-        2 -> Color(0xFF3D1713)
-        3 -> Color(0xFF123B2D)
+        1 -> Color(0xFF17303F)
+        2 -> Color(0xFF123A34)
+        3 -> Color(0xFF3A181D)
         else -> BrownPill
     }
 
     val HeroBrush = Brush.horizontalGradient(
-        listOf(Color(0x38FF9A3C), Color(0x20C2160A), Color(0x0AFFF0DC))
+        listOf(Color(0xFF3A2A1E), Color(0xFF2B1F17), Color(0xFF241A13))
     )
 
     /**

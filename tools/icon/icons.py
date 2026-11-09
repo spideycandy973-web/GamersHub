@@ -64,12 +64,11 @@ def full_rgba(mask, stops, top_light):
     return base
 
 def mask_bolt():
-    """Level arrow: bold upward arrowhead with chamfered apex and stem base."""
-    raw = [(0.440, 0.095), (0.560, 0.095), (0.875, 0.455), (0.625, 0.455),
-           (0.625, 0.805), (0.545, 0.885), (0.455, 0.885), (0.375, 0.805),
-           (0.375, 0.455), (0.125, 0.455)]
-    k = 1.00
-    pts = [(0.5 + (x - 0.5) * k, 0.5 + (y - 0.5) * k) for x, y in raw]
+    """Ember flame — angular, two-crest, reads at 48 px (default launcher mark)."""
+    pts = [(0.500, 0.090), (0.660, 0.300), (0.720, 0.220), (0.790, 0.440),
+           (0.830, 0.620), (0.740, 0.820), (0.580, 0.905), (0.420, 0.905),
+           (0.260, 0.820), (0.170, 0.620), (0.220, 0.440), (0.330, 0.330),
+           (0.380, 0.500), (0.460, 0.340), (0.400, 0.220)]
     m = Image.new('L', (C, C), 0)
     ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
     m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)

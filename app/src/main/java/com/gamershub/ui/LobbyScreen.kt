@@ -44,7 +44,6 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.HeroMark
-import com.gamershub.ui.components.liquidGlass
 import com.gamershub.ui.components.IconChip
 
 /** Lobby — hero card, game library, rows / empty state. Fit-safe on all screens. */
@@ -100,7 +99,7 @@ fun LobbyScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .liquidGlass(shape = RoundedCornerShape(24.dp), accent = accent, strong = true)
+                .clip(RoundedCornerShape(22.dp))
                 .background(GC.HeroBrush)
         ) {
             Image(
