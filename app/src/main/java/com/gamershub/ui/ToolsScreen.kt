@@ -377,13 +377,15 @@ fun ToolsScreen(
             accent = accent,
             onToggle = null,
             onConfig = {
-                val shot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ScreenshotEngine.capture() }
-                Toast.makeText(
-                    context,
-                    if (shot != null) "Saved ${shot.name}" else "Grant Shizuku to capture",
-                    Toast.LENGTH_SHORT
-                ).show()
-                onOpenSheet("screenshot")
+                scope.launch {
+                    val shot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ScreenshotEngine.capture() }
+                    Toast.makeText(
+                        context,
+                        if (shot != null) "Saved ${shot.name}" else "Grant Shizuku to capture",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    onOpenSheet("screenshot")
+                }
             },
             configLabel = "CAPTURE"
         )
