@@ -64,35 +64,75 @@ def full_rgba(mask, stops, top_light):
     base.alpha_composite(mark_rgba(mask, stops, top_light))
     return base
 
+# ---------------------------------------------------------------- GH lockup
+# The default icon is inverted: a gold gradient tile with the monogram knocked
+# out of it in near-black. The letters are typeset (Archivo Black, optically
+# kerned) so curves and terminals stay clean at every density.
+GH_DARK = hx('150B05')
+GH_SIZE = 0.54
+GH_FG_SIZE = 0.47      # smaller inside the adaptive safe zone
+GH_RADIUS = 0.22
+
+
+def _tile_gradient(angle=118):
+    """Warm gold ramp: light top-left, ember bottom-right."""
+    stops = [(0.0, hx('FFD98E')), (0.40, hx('FFA62B')), (1.0, hx('D84A08'))]
+    yy, xx = np.mgrid[0:C, 0:C].astype(np.float32)
+    a = math.radians(angle)
+    t = xx * np.cos(a) + yy * np.sin(a)
+    t = (t - t.min()) / (t.max() - t.min())
+    out = np.zeros((C, C, 3), np.float32)
+    for i in range(len(stops) - 1):
+        t0, c0 = stops[i]
+        t1, c1 = stops[i + 1]
+        m = (t >= t0) & (t <= t1)
+        k = np.clip((t[m] - t0) / max(t1 - t0, 1e-6), 0, 1)[:, None]
+        out[m] = np.array(c0)[None, :] * (1 - k) + np.array(c1)[None, :] * k
+    out[t < stops[0][0]] = stops[0][1]
+    out[t > stops[-1][0]] = stops[-1][1]
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), 'RGB')
+
+
+GOLD_TILE = _tile_gradient().convert('RGBA')
+
+
+def mask_gh_type(size=GH_SIZE, tracking=-0.02):
+    """Knock-out mask for the GH monogram, optically centred in the tile."""
+    f = ImageFont.truetype(FONT_PATH, int(C * size))
+    probe = ImageDraw.Draw(Image.new('L', (8, 8), 0))
+    boxes = [probe.textbbox((0, 0), ch, font=f) for ch in 'GH']
+    track = tracking * C
+    total = sum(b[2] - b[0] for b in boxes) + track
+    x = (C - total) / 2
+    asc, desc = f.getmetrics()
+    y = (C - (asc + desc)) / 2
+    m = Image.new('L', (C, C), 0)
+    d = ImageDraw.Draw(m)
+    for b, ch in zip(boxes, 'GH'):
+        d.text((x - b[0], y), ch, font=f, fill=255)
+        x += b[2] - b[0] + track
+    return m
+
+
+def inverted_foreground(size=GH_FG_SIZE):
+    """Full-bleed gold with the monogram in near-black (adaptive foreground)."""
+    dark = Image.new('RGBA', (C, C), GH_DARK + (255,))
+    return Image.composite(dark, GOLD_TILE.copy(), mask_gh_type(size))
+
+
+def inverted_tile(size=GH_SIZE, radius=GH_RADIUS):
+    """Legacy/static art: gold squircle, monogram knocked out, transparent outside."""
+    tile = mask_rr((0.0, 0.0, 1.0, 1.0), radius)
+    out = Image.new('RGBA', (C, C), (0, 0, 0, 0))
+    out.paste(inverted_foreground(size), (0, 0), tile)
+    return out
+
+
 def mask_bolt():
-    """GH monogram — octagonal G (custom aperture + spur) locked up with a bold H.
+    """Silhouette of the monogram — used by the monochrome adaptive layer."""
+    return mask_gh_type(GH_FG_SIZE)
 
-    Deliberately not a typeset monogram: both letters are built from the same
-    geometry (eight-sided ring, flat 1.09:1 stems) so they read as one mark at 48 px.
-    """
-    def new(): return Image.new('L', (C, C), 0)
-
-    def rect(x0, y0, x1, y1):
-        m = new()
-        ImageDraw.Draw(m).rectangle([x0*C, y0*C, x1*C, y1*C], fill=255)
-        return m
-
-    def ngon(cx, cy, r, n, rot=-67.5):
-        return [(cx + r*math.cos(math.radians(rot + i*360/n)),
-                 cy + r*math.sin(math.radians(rot + i*360/n))) for i in range(n)]
-
-    def poly(pts):
-        m = new()
-        ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
-        return m
-
-    g = ImageChops.subtract(poly(ngon(0.300, 0.500, 0.255, 8)), poly(ngon(0.300, 0.500, 0.168, 8)))
-    # mouth of the G: a wedge opened to the right
-    g = ImageChops.subtract(g, poly([(0.300, 0.500), (0.620, 0.330), (0.620, 0.770)]))
-    g = ImageChops.lighter(g, rect(0.300, 0.545, 0.585, 0.660))      # spur
-    h = ImageChops.lighter(rect(0.650, 0.205, 0.768, 0.795), rect(0.845, 0.205, 0.963, 0.795))
-    m = ImageChops.lighter(ImageChops.lighter(g, h), rect(0.650, 0.545, 0.963, 0.660))
-    m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)
-    return m.filter(ImageFilter.GaussianBlur(C*0.0015))
 
 VARIANTS['_bolt'] = (mask_bolt, GOLD, 0.24)
+# marks rendered as a gold tile with the artwork knocked out
+INVERTED = {'_bolt'}

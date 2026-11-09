@@ -13,6 +13,8 @@ def circle_mask(size):
 backdrop().convert('RGB').resize((432,432), Image.LANCZOS).save(f'{RES}/drawable-nodpi/ic_launcher_background.png')
 
 for sfx,(mk,stops,tl) in VARIANTS.items():
+    if sfx in INVERTED:
+        continue
     mask = mk()
     full = full_rgba(mask, stops, tl).convert('RGB')
     mark = mark_rgba(mask, stops, tl)
@@ -39,6 +41,40 @@ for sfx,(mk,stops,tl) in VARIANTS.items():
     name = 'icon-512.png' if sfx=='' else f'icon{sfx.replace("_","-")}-512.png'
     full.resize((512,512), Image.LANCZOS).save(f'{DOCS}/{name}')
 
+
+# ---- inverted variant: gold tile, monogram knocked out -------------------
+for sfx in INVERTED:
+    fg_full = inverted_foreground()
+    tile_art = inverted_tile()
+
+    # full-bleed gold background for the adaptive icon
+    GOLD_TILE.convert('RGB').resize((432, 432), Image.LANCZOS).save(
+        f'{RES}/drawable-nodpi/ic_launcher{sfx}_background.png'
+    )
+
+    # foreground: gold with the dark monogram (letters sit inside the safe zone)
+    fg_full.resize((432, 432), Image.LANCZOS).save(f'{RES}/drawable-nodpi/ic_launcher{sfx}_foreground.png')
+
+    # monochrome layer: the letters alone
+    arr = np.array(fg_full.convert('RGB')).astype(int)
+    dark = (np.abs(arr - np.array(GH_DARK)).sum(axis=2) < 30)
+    mono = Image.fromarray((dark * 255).astype('uint8'))
+    mono_rgba = Image.new('RGBA', (C, C), (255, 255, 255, 0))
+    mono_rgba.putalpha(mono)
+    mono_rgba.resize((432, 432), Image.LANCZOS).save(f'{RES}/drawable-nodpi/ic_launcher{sfx}_mono.png')
+
+    for d, px in DENS:
+        sq = Image.new('RGBA', (px, px), (0, 0, 0, 0))
+        sq.alpha_composite(tile_art.resize((px, px), Image.LANCZOS))
+        sq.save(f'{RES}/mipmap-{d}/ic_launcher{sfx}.png')
+        rd = sq.copy()
+        rd.putalpha(circle_mask(px))
+        rd.save(f'{RES}/mipmap-{d}/ic_launcher{sfx}_round.png')
+
+    doc = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
+    doc.alpha_composite(tile_art.resize((512, 512), Image.LANCZOS))
+    doc.save(f'{DOCS}/icon{sfx.replace("_", "-")}-512.png')
+
 # notification icon: white pad silhouette
 mask = mask_pad()
 mono = Image.new('L',(C,C),0); s=int(C*0.80)
@@ -49,10 +85,11 @@ notif.save(f'{RES}/drawable-nodpi/ic_stat_gh.png')
 
 # adaptive xml per variant
 for sfx in VARIANTS.keys():
+    bg = '@drawable/ic_launcher{0}_background'.format(sfx) if sfx in INVERTED else '@drawable/ic_launcher_background'
     for suffix in ('', '_round'):
         xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background" />
+    <background android:drawable="{bg}" />
     <foreground android:drawable="@drawable/ic_launcher{sfx}_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher{sfx}_mono" />
 </adaptive-icon>
