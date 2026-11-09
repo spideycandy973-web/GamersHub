@@ -148,9 +148,9 @@ object GfxEngine {
     /** What the panel is doing right now, for the UI. */
     fun refreshSummary(context: Context): String {
         // dumpsys display is expensive; the panel asks for this every few seconds.
-        cached("refresh", 4000) {
+        return cached("refresh", 4000) {
             val current = FpsMeter.refreshRate(context)
-        val requested = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
+            val requested = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
             val rates = panelRates()
             val max = rates.maxOrNull()
             val req = requested.toDoubleOrNull()?.toInt()

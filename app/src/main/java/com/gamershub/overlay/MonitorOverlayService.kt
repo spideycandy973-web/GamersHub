@@ -132,6 +132,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                         var lastFrames: Long? = null
                         var lastStamp = 0L
                         while (true) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             runCatching {
                                 val ctx = this@MonitorOverlayService
                                 val cpu = DeviceStats.cpu()
@@ -173,6 +174,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                                         .format(java.util.Date())
                                 )
                                 scale = MonitorPrefs.scale(ctx)
+                            }
                             }
                             delay(1000)
                         }

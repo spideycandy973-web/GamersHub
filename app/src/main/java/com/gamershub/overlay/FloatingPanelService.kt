@@ -86,7 +86,6 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.HeroMark
-import com.gamershub.ui.components.SafeContent
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -190,11 +189,11 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
     private fun addBubble() {
         val params = overlayParams()
         bubbleParams = params
+        val themeIndex = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
         val view = ComposeView(this).apply {
             setContent {
-                GameCornerTheme {
-                    SafeContent("floating icon") {
-                        Bubble(
+                GameCornerTheme(themeIndex) {
+                    Bubble(
                             onTap = { togglePanel() },
                             onDrag = { dx, dy ->
                                 params.x += dx.toInt()
@@ -202,7 +201,6 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
                                 runCatching { windowManager?.updateViewLayout(this, params) }
                             }
                         )
-                    }
                 }
             }
         }
@@ -234,12 +232,11 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         params.gravity = Gravity.BOTTOM or Gravity.START
         params.x = 0
         params.y = 0
+        val panelTheme = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
         val content = ComposeView(this).apply {
             setContent {
-                GameCornerTheme {
-                    SafeContent("floating window") {
-                        AxPanel(onClose = { closePanel() })
-                    }
+                GameCornerTheme(panelTheme) {
+                    AxPanel(onClose = { closePanel() })
                 }
             }
         }

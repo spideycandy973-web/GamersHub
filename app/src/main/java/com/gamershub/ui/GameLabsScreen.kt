@@ -335,7 +335,9 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
     val names = listOf("Google", "Cloudflare", "OpenDNS", "Custom")
     val latency by produceState(initialValue = -1) {
         while (true) {
-            value = DeviceStats.pingMs(hosts[provider])
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                DeviceStats.pingMs(hosts[provider])
+            }
             kotlinx.coroutines.delay(3000)
         }
     }
@@ -420,14 +422,13 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
     var expanded by remember { mutableStateOf(false) }
     val live by produceState(initialValue = Triple("0", "0", "--")) {
         while (true) {
-            val cpu = DeviceStats.cpu()
-            val mem = DeviceStats.mem(context)
-            val batt = DeviceStats.battery(context)
-            value = Triple(
-                cpu.pct.toString(),
-                mem.pct.toString(),
-                batt.first.toString()
-            )
+            val measured = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val cpu = DeviceStats.cpu()
+                val mem = DeviceStats.mem(context)
+                val batt = DeviceStats.battery(context)
+                Triple(cpu.pct.toString(), mem.pct.toString(), batt.first.toString())
+            }
+            value = measured
             kotlinx.coroutines.delay(1500)
         }
     }

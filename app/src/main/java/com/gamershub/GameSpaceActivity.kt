@@ -242,13 +242,13 @@ private fun GameSpaceScreen(
 
     // ---- live device numbers (all real) ----
     val mem by produceState(initialValue = DeviceStats.mem(context)) {
-        while (true) { value = DeviceStats.mem(context); delay(2000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.mem(context) }; delay(2000) }
     }
     val cpu by produceState(initialValue = DeviceStats.cpu()) {
-        while (true) { value = DeviceStats.cpu(); delay(2000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.cpu() }; delay(2000) }
     }
     val battery by produceState(initialValue = DeviceStats.battery(context)) {
-        while (true) { value = DeviceStats.battery(context); delay(5000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.battery(context) }; delay(5000) }
     }
     val ping by produceState(initialValue = -1.0) {
         while (true) {

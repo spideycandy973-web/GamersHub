@@ -196,6 +196,7 @@ private fun rememberPanelStats(): PanelStats {
         var lastFrames: Long? = null
         var lastStamp = 0L
         while (true) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 val cpu = DeviceStats.cpu()
                 val mem = DeviceStats.mem(context)
@@ -232,6 +233,7 @@ private fun rememberPanelStats(): PanelStats {
                     clock = SimpleDateFormat("hh:mm", Locale.US).format(Date())
                 )
             }
+            }
             tick++
             kotlinx.coroutines.delay(900)
         }
@@ -244,7 +246,9 @@ private fun rememberPanelStats(): PanelStats {
 private fun <T> rememberLive(initial: T, periodMs: Long = 3000, block: () -> T): T {
     val state by produceState(initialValue = initial) {
         while (true) {
-            value = runCatching { block() }.getOrDefault(value)
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { block() }.getOrDefault(value)
+            }
             kotlinx.coroutines.delay(periodMs)
         }
     }
