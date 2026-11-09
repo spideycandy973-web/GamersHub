@@ -174,9 +174,12 @@ object Shell {
             }
             reader.start()
             err.start()
-            reader.join(4000)
-            err.join(4000)
-            process.waitFor()
+            // Hard cap: a wedged shell must never freeze the caller (or trigger an ANR).
+            reader.join(1500)
+            err.join(1500)
+            val finished = runCatching { process.waitFor(1500, java.util.concurrent.TimeUnit.MILLISECONDS) }
+                .getOrDefault(true)
+            if (!finished) runCatching { process.destroy() }
             out.toString()
         } catch (t: Throwable) {
             lastError = t.message ?: "exec failed"
@@ -217,7 +220,9 @@ object Shell {
         val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
         val out = process.inputStream.bufferedReader().readText() +
             process.errorStream.bufferedReader().readText()
-        process.waitFor()
+        val finished = runCatching { process.waitFor(1500, java.util.concurrent.TimeUnit.MILLISECONDS) }
+            .getOrDefault(true)
+        if (!finished) runCatching { process.destroy() }
         out
     } catch (t: Throwable) {
         t.message ?: ""

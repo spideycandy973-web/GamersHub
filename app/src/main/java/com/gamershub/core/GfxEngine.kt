@@ -33,6 +33,22 @@ object GfxEngine {
     /** Does this ROM ship `cmd game` (GameManager, Android 12+)? */
     fun hasGameManager(): Boolean = RenderEngine.hasGameManager()
 
+
+    /* Small memo so composition-time reads (which happen on the UI thread) cannot
+       stack several `dumpsys`/`wm` calls back to back. */
+    private val memo = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Any>>()
+    private fun <T : Any> cached(key: String, ttlMs: Long, block: () -> T): T {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val hit = memo[key]
+        if (hit != null && now - hit.first < ttlMs) {
+            @Suppress("UNCHECKED_CAST")
+            return hit.second as T
+        }
+        val value = block()
+        memo[key] = now to value
+        return value
+    }
+
     fun displayState(context: Context): DisplayState {
         val metrics = context.resources.displayMetrics
         return DisplayState(
@@ -44,19 +60,22 @@ object GfxEngine {
     }
 
     /** Real `wm size` override currently active, empty when stock. */
-    fun currentOverride(): String = try {
-        val out = Shell.exec("wm size") ?: ""
-        val override = Regex("Override size:\\s*(\\d+x\\d+)").find(out)?.groupValues?.getOrNull(1)
-        override ?: ""
-    } catch (_: Throwable) {
-        ""
+    fun currentOverride(): String = cached("wm_size", 2000) {
+        try {
+            val out = Shell.exec("wm size") ?: ""
+            Regex("Override size:\\s*(\\d+x\\d+)").find(out)?.groupValues?.getOrNull(1) ?: ""
+        } catch (_: Throwable) {
+            ""
+        }
     }
 
-    fun currentDensityOverride(): String = try {
-        val out = Shell.exec("wm density") ?: ""
-        Regex("Override density:\\s*(\\d+)").find(out)?.groupValues?.getOrNull(1) ?: ""
-    } catch (_: Throwable) {
-        ""
+    fun currentDensityOverride(): String = cached("wm_density", 2000) {
+        try {
+            val out = Shell.exec("wm density") ?: ""
+            Regex("Override density:\\s*(\\d+)").find(out)?.groupValues?.getOrNull(1) ?: ""
+        } catch (_: Throwable) {
+            ""
+        }
     }
 
     /**
@@ -153,11 +172,13 @@ object GfxEngine {
         return true
     }
 
-    fun rendererStatus(): String = try {
-        val out = Shell.exec("getprop debug.hwui.renderer") ?: ""
-        out.trim().ifBlank { "default" }
-    } catch (_: Throwable) {
-        "default"
+    fun rendererStatus(): String = cached("renderer", 4000) {
+        try {
+            val out = Shell.exec("getprop debug.hwui.renderer") ?: ""
+            out.trim().ifBlank { "default" }
+        } catch (_: Throwable) {
+            "default"
+        }
     }
 
     /** Sustained-performance + GameMode override: real frame pacing, no thermal spikes. */
@@ -184,8 +205,8 @@ object GfxEngine {
     }
 
     /** Thermal headroom the platform reports right now (0 none … 6 shutdown). */
-    fun thermalStatus(): Int {
-        return try {
+    fun thermalStatus(): Int = cached("thermal", 5000) {
+        try {
             val out = Shell.exec("dumpsys thermalservice | grep -m1 'Thermal Status'") ?: ""
             Regex("Thermal Status:\\s*(\\d+)").find(out)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: -1
         } catch (_: Throwable) {

@@ -65,8 +65,10 @@ def full_rgba(mask, stops, top_light):
 
 def mask_bolt():
     """Lightning bolt: flat, geometric, reads at 48 px."""
-    pts = [(0.575, 0.105), (0.285, 0.545), (0.470, 0.545), (0.395, 0.895),
+    raw = [(0.575, 0.105), (0.285, 0.545), (0.470, 0.545), (0.395, 0.895),
            (0.715, 0.435), (0.525, 0.435)]
+    # optical size bump around the centre so the mark fills the tile
+    pts = [(0.5 + (x - 0.5) * 1.12, 0.5 + (y - 0.5) * 1.12) for x, y in raw]
     m = Image.new('L', (C, C), 0)
     ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
     m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)

@@ -306,7 +306,7 @@ fun ToolsScreen(
             onToggle = null,
             onConfig = {
                 scope.launch {
-                    val report = MemoryCleaner.clean(context)
+                    val report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { MemoryCleaner.clean(context) }
                     lastClean = "${report.freedMb} MB free"
                     Toast.makeText(context, "Clean — ${report.freedMb} MB freed", Toast.LENGTH_SHORT).show()
                 }
@@ -322,7 +322,7 @@ fun ToolsScreen(
             onToggle = null,
             onConfig = {
                 scope.launch {
-                    val report = MemoryCleaner.boost(context)
+                    val report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { MemoryCleaner.boost(context) }
                     lastClean = "${report.freedMb} MB free"
                     Toast.makeText(context, "Boost — ${report.freedMb} MB freed", Toast.LENGTH_SHORT).show()
                 }
@@ -338,7 +338,7 @@ fun ToolsScreen(
             onToggle = null,
             onConfig = {
                 scope.launch {
-                    val report = MemoryCleaner.deepClean(context)
+                    val report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { MemoryCleaner.deepClean(context) }
                     lastClean = "${report.freedMb} MB · ${report.appsStopped} apps"
                     Toast.makeText(
                         context,
@@ -377,7 +377,7 @@ fun ToolsScreen(
             accent = accent,
             onToggle = null,
             onConfig = {
-                val shot = ScreenshotEngine.capture()
+                val shot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ScreenshotEngine.capture() }
                 Toast.makeText(
                     context,
                     if (shot != null) "Saved ${shot.name}" else "Grant Shizuku to capture",
