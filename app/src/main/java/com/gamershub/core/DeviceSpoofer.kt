@@ -136,7 +136,7 @@ object DeviceSpoofer {
             return emptyList()
         }
         if (sizeOk) applied.add("Resolution → ${newWidth}x${newHeight} (aspect kept)")
-        if (densityOk) applied.add("Density → $newDensity dpi (same physical size)")
+        if (densityOk) applied.add("Tightness → $newDensity dpi (same physical size)")
         return applied
     }
 

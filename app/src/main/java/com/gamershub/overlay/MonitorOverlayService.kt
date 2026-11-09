@@ -50,7 +50,7 @@ import com.gamershub.theme.GameCornerTheme
 import kotlinx.coroutines.delay
 
 /**
- * Floating monitor — the real "Information Monitor".
+ * Floating monitor — the real "Information Tracker".
  *
  * Every field is read from the device: FPS from the game's gfxinfo frame
  * counter, CPU from cpufreq, RAM from ActivityManager, temperature and battery
@@ -132,6 +132,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                         var lastFrames: Long? = null
                         var lastStamp = 0L
                         while (true) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             runCatching {
                                 val ctx = this@MonitorOverlayService
                                 val cpu = DeviceStats.cpu()
@@ -173,6 +174,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                                         .format(java.util.Date())
                                 )
                                 scale = MonitorPrefs.scale(ctx)
+                            }
                             }
                             delay(1000)
                         }
@@ -263,7 +265,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val attached = runCatching { windowManager?.addView(cv, params) }.isSuccess
         if (!attached) {
             // No window = no monitor. Never leave the service "running" invisibly.
-            android.widget.Toast.makeText(this, "Monitor could not attach — check display-over-apps",
+            android.widget.Toast.makeText(this, "Tracker could not attach — check display-over-apps",
                 android.widget.Toast.LENGTH_LONG).show()
             isRunning = false
             stopSelf()
@@ -290,7 +292,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             android.app.Notification.Builder(this, "monitor")
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
-        return b.setContentTitle("Monitor active")
+        return b.setContentTitle("Tracker active")
             .setContentText("GamersHub live monitor")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
@@ -314,7 +316,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
             }.onFailure {
-                com.gamershub.GamersHubApp.toast("Monitor couldn't start — check overlay/notification permission")
+                com.gamershub.GamersHubApp.toast("Tracker couldn't start — check overlay/notification permission")
             }
         }
 

@@ -114,7 +114,7 @@ class StreamService : Service() {
         val manager = getSystemService(MediaProjectionManager::class.java)
         val mp = manager.getMediaProjection(resultCode, data)
         if (mp == null) {
-            Stream.lastError = "Screen capture permission denied"
+            Stream.lastError = "Display capture permission denied"
             stopSelf()
             return
         }
@@ -414,7 +414,7 @@ class StreamService : Service() {
             .setContentTitle("Live on RTMP")
             .setContentText(Stream.url.take(48))
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "End", stopIntent)
             .setOngoing(true)
             .build()
     }

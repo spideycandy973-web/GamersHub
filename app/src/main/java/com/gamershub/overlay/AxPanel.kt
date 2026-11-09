@@ -196,6 +196,7 @@ private fun rememberPanelStats(): PanelStats {
         var lastFrames: Long? = null
         var lastStamp = 0L
         while (true) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching {
                 val cpu = DeviceStats.cpu()
                 val mem = DeviceStats.mem(context)
@@ -232,6 +233,7 @@ private fun rememberPanelStats(): PanelStats {
                     clock = SimpleDateFormat("hh:mm", Locale.US).format(Date())
                 )
             }
+            }
             tick++
             kotlinx.coroutines.delay(900)
         }
@@ -244,7 +246,9 @@ private fun rememberPanelStats(): PanelStats {
 private fun <T> rememberLive(initial: T, periodMs: Long = 3000, block: () -> T): T {
     val state by produceState(initialValue = initial) {
         while (true) {
-            value = runCatching { block() }.getOrDefault(value)
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { block() }.getOrDefault(value)
+            }
             kotlinx.coroutines.delay(periodMs)
         }
     }
@@ -501,7 +505,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 else CrosshairOverlayService.start(context)
                 api.say(if (CrosshairOverlayService.isRunning) "Crosshair off" else "Crosshair on")
             }
-            Tile(Icons.Filled.ScreenLockPortrait, "Rotation\nLock", "AUTO") {
+            Tile(Icons.Filled.ScreenLockPortrait, "Turn\nLock", "AUTO") {
                 api.work {
                     val auto = withContext(Dispatchers.IO) {
                         Settings.System.getInt(
@@ -532,7 +536,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
             Tile(Icons.Filled.Bolt, "Quick\nBoost", "FREE") {
                 api.work {
                     val report = MemoryCleaner.boost(context)
-                    api.say(memoryText("Boost", report, context))
+                    api.say(memoryText("Speed", report, context))
                 }
             }
             Tile(Icons.Filled.NotificationsOff, "Do Not\nDisturb", "SILENT") {
@@ -550,7 +554,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 }
                 api.say(if (ok) "Do not disturb toggled" else "Grant DND access to GamersHub")
             }
-            Tile(Icons.Filled.Screenshot, "Screenshot", "SAVE") {
+            Tile(Icons.Filled.Screenshot, "Display Grab", "SAVE") {
                 api.work {
                     val shot = withContext(Dispatchers.IO) { ScreenshotEngine.capture() }
                     api.say(
@@ -619,19 +623,19 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         MemoryKey("CLEAN", Icons.Filled.CleaningServices) {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say(memoryText("Clean", report, context))
+                api.say(memoryText("Sweep", report, context))
             }
         }
         MemoryKey("BOOST", Icons.Filled.Bolt) {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say(memoryText("Boost", report, context))
+                api.say(memoryText("Speed", report, context))
             }
         }
         MemoryKey("DEEP CLEAN", Icons.Filled.Memory) {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say(memoryText("Deep clean", report, context))
+                api.say(memoryText("Full clean", report, context))
             }
         }
     }
@@ -694,7 +698,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
         FooterKey(if (Recorder.isRecording) "● REC" else "REC", Recorder.isRecording) {
             if (Recorder.isRecording) {
                 RecorderService.stop(context)
-                api.say("Recording saved")
+                api.say("Capture saved")
             } else {
                 ProjectionActivity.launch(context, ProjectionActivity.MODE_RECORD)
                 api.say("Accept the capture prompt to record")
@@ -771,10 +775,10 @@ private fun MenuPage(api: AxApi) {
         Triple(AxPage.GFX, Icons.Filled.Speed, "Graphics unlock · texture, shadows, AA, Vulkan"),
         Triple(AxPage.UPSCALE, Icons.Filled.Bolt, "Real upscaling · lossless scale · GLES shader"),
         Triple(AxPage.DISPLAY, Icons.Filled.Autorenew, "Refresh rate · render scale · resolution"),
-        Triple(AxPage.PERF, Icons.Filled.Memory, "Clean / boost / deep clean · thermal"),
+        Triple(AxPage.PERF, Icons.Filled.Memory, "Sweep / boost / deep clean · thermal"),
         Triple(AxPage.NET, Icons.Filled.Dns, "Ping, jitter, DNS and radio tuning"),
-        Triple(AxPage.SPOOF, Icons.Filled.Settings, "Device identity + display spoof"),
-        Triple(AxPage.REC, Icons.Filled.Screenshot, "Screen recording and Go Live"),
+        Triple(AxPage.SPOOF, Icons.Filled.Settings, "Phone identity + display spoof"),
+        Triple(AxPage.REC, Icons.Filled.Screenshot, "Display recording and Go Live"),
         Triple(AxPage.OVERLAY, Icons.Filled.GpsFixed, "Crosshair, HUD, touch mapping, pointer"),
         Triple(AxPage.GYRO, Icons.Filled.ScreenRotation, "Gyro bias calibration and sensitivity"),
         Triple(AxPage.INFO, Icons.Filled.Info, "Live CPU / RAM / FPS / thermal readout")
@@ -871,7 +875,7 @@ private fun GfxPage(api: AxApi) {
                     )
                 )
             }
-            api.say(log.firstOrNull() ?: "Applied")
+            api.say(log.firstOrNull() ?: "Done")
         }
     }
 
@@ -1221,7 +1225,7 @@ private fun UpscalePage(api: AxApi) {
                 UpscaleMirror.integer = integer
                 UpscaleMirror.frameGen = frameGen
                 UpscaleMirror.start(context)
-                api.say(if (UpscaleMirror.supported()) "Choose the game in the capture dialog" else UpscaleMirror.whyNot())
+                api.say(if (UpscaleMirror.supported()) "Pick the game in the capture dialog" else UpscaleMirror.whyNot())
             },
             onStop = {
                 UpscaleMirror.stop(context)
@@ -1319,19 +1323,19 @@ private fun PerfPage(api: AxApi, stats: PanelStats) {
         ActionRow("CLEAN MEMORY", "am kill-all + pm trim-caches", "CLEAN") {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say(memoryText("Clean", report, context))
+                api.say(memoryText("Sweep", report, context))
             }
         }
-        ActionRow("BOOST MEMORY", "Clean + page-cache drop", "BOOST") {
+        ActionRow("BOOST MEMORY", "Sweep + page-cache drop", "BOOST") {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say(memoryText("Boost", report, context))
+                api.say(memoryText("Speed", report, context))
             }
         }
         ActionRow("DEEP CLEAN", "Also force-stops background apps", "DEEP") {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say(memoryText("Deep clean", report, context))
+                api.say(memoryText("Full clean", report, context))
             }
         }
     }
@@ -1481,7 +1485,7 @@ private fun RecPage(api: AxApi) {
             onStop = {
                 if (Recorder.isRecording) {
                     RecorderService.stop(context)
-                    api.say("Recording saved")
+                    api.say("Capture saved")
                 } else {
                     api.say("Not recording")
                 }

@@ -857,11 +857,13 @@ private fun MonitorStrip(context: android.content.Context) {
     val accent = LocalAccent.current
     val stats by produceState(initialValue = Triple("0", "0", "--")) {
         while (true) {
-            val cpu = com.gamershub.data.DeviceStats.cpu()
-            val mem = com.gamershub.data.DeviceStats.mem(context)
-            val batt = com.gamershub.data.DeviceStats.battery(context)
-            value = Triple(cpu.pct.toString(), mem.pct.toString(), batt.second.toInt().toString() + "°C")
-            kotlinx.coroutines.delay(1200)
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val cpu = com.gamershub.data.DeviceStats.cpu()
+                val mem = com.gamershub.data.DeviceStats.mem(context)
+                val batt = com.gamershub.data.DeviceStats.battery(context)
+                Triple(cpu.pct.toString(), mem.pct.toString(), batt.second.toInt().toString() + "°C")
+            }
+            kotlinx.coroutines.delay(2500)
         }
     }
     var offX by remember { mutableStateOf(0f) }

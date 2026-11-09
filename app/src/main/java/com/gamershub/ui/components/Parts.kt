@@ -222,7 +222,7 @@ fun BigButton(
     }
 }
 
-/** Status pill (e.g. "● Not Activated", "Good", "Advanced"). */
+/** Status pill (e.g. "● Not Activated", "Good", "Expert"). */
 @Composable
 fun StatusPill(text: String, modifier: Modifier = Modifier, orange: Boolean = true) {
     val accent = LocalAccent.current

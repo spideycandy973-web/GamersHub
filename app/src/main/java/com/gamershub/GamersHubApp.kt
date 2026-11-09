@@ -32,6 +32,13 @@ class GamersHubApp : Application() {
         @Volatile
         private var lastRecovery: Long = 0L
 
+        /** Records a caught failure without letting it kill the process. */
+        fun note(error: Throwable, where: String) {
+            val ctx = instance ?: return
+            runCatching { ctx.log(Thread.currentThread(), error) }
+            runCatching { lastCrash = "$where\n" + error.stackTraceToString() }
+        }
+
         /** Safe toast from any thread — used so a failed action is never silent. */
         fun toast(message: String) {
             val ctx = instance ?: return
@@ -53,36 +60,40 @@ class GamersHubApp : Application() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             runCatching { log(thread, error) }
+            val now = System.currentTimeMillis()
             val main = Looper.getMainLooper().thread
             if (thread === main) {
-                // Keep the process alive and put a working screen back in front of the
-                // user instead of leaving a dead activity behind.
-                runCatching {
-                    Handler(Looper.getMainLooper()).post {
-                        runCatching {
-                            Toast.makeText(
-                                this,
-                                "That action failed — GamersHub recovered. Details are copied.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                        val now = System.currentTimeMillis()
-                        if (now - lastRecovery > 6000) {
-                            lastRecovery = now
-                            runCatching {
-                                startActivity(
-                                    android.content.Intent(this, MainActivity::class.java)
-                                        .addFlags(
-                                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                        )
-                                )
-                            }
-                        }
-                    }
+                // Too many failures in a row: this is not something we can paper over,
+                // let the system take it so we do not loop forever on a fresh start.
+                if (now - lastRecovery < 6000) {
+                    previous?.uncaughtException(thread, error)
+                    return@setDefaultUncaughtExceptionHandler
                 }
+                lastRecovery = now
+                // Put a usable screen back immediately, then leave the broken process.
+                runCatching {
+                    Toast.makeText(this, "That step failed — GamersHub reopened.", Toast.LENGTH_LONG).show()
+                }
+                runCatching {
+                    startActivity(
+                        android.content.Intent(this, MainActivity::class.java)
+                            .addFlags(
+                                android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            )
+                    )
+                }
+                android.os.Process.killProcess(android.os.Process.myPid())
+                kotlin.system.exitProcess(10)
             } else {
-                previous?.uncaughtException(thread, error)
+                // A background worker (shell read, binder callback, encoder thread) must
+                // not take the whole app down either — log it and keep running. If the
+                // same failure repeats endlessly, hand it back to the system.
+                if (now - lastRecovery < 4000) {
+                    previous?.uncaughtException(thread, error)
+                } else {
+                    lastRecovery = now
+                }
             }
         }
     }

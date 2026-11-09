@@ -84,7 +84,7 @@ fun ProfileScreen(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Profile", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp,
+                    "Account", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp,
                     maxLines = 1
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -209,8 +209,8 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconChip(Icons.Filled.Shield, size = 44)
                 Spacer(Modifier.width(12.dp))
-                Text("Privilege Service", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
-                StatusPill(if (envLevel >= 2) "Advanced Tier" else if (envLevel >= 1) "Basic Tier" else "Not Activated")
+                Text("Access Helper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                StatusPill(if (envLevel >= 2) "Expert Tier" else if (envLevel >= 1) "Basic Tier" else "Not Activated")
             }
             Spacer(Modifier.height(12.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(GC.Stroke))
@@ -422,7 +422,7 @@ private fun StorageCard(storage: DeviceStats.Storage, modifier: Modifier = Modif
     val accent = LocalAccent.current
     Card(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Storage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
             IconChip(Icons.Filled.Storage, size = 36, bg = GC.SurfaceHi)
         }
         Spacer(Modifier.height(8.dp))

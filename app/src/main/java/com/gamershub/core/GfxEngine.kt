@@ -147,15 +147,18 @@ object GfxEngine {
 
     /** What the panel is doing right now, for the UI. */
     fun refreshSummary(context: Context): String {
-        val current = FpsMeter.refreshRate(context)
-        val requested = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
-        val rates = panelRates()
-        val max = rates.maxOrNull()
-        val req = requested.toDoubleOrNull()?.toInt()
-        return buildString {
-            append(if (req != null && req > 0) "requested ${req}Hz" else "auto")
-            append(" · now ${current}Hz")
-            if (max != null) append(" · panel max ${max}Hz")
+        // dumpsys display is expensive; the panel asks for this every few seconds.
+        return cached("refresh", 4000) {
+            val current = FpsMeter.refreshRate(context)
+            val requested = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
+            val rates = panelRates()
+            val max = rates.maxOrNull()
+            val req = requested.toDoubleOrNull()?.toInt()
+            buildString {
+                append(if (req != null && req > 0) "requested ${req}Hz" else "auto")
+                append(" · now ${current}Hz")
+                if (max != null) append(" · panel max ${max}Hz")
+            }
         }
     }
 
@@ -207,8 +210,8 @@ object GfxEngine {
     /** Thermal headroom the platform reports right now (0 none … 6 shutdown). */
     fun thermalStatus(): Int = cached("thermal", 5000) {
         try {
-            val out = Shell.exec("dumpsys thermalservice | grep -m1 'Thermal Status'") ?: ""
-            Regex("Thermal Status:\\s*(\\d+)").find(out)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: -1
+            val out = Shell.exec("dumpsys thermalservice | grep -m1 'Heat Status'") ?: ""
+            Regex("Heat Status:\\s*(\\d+)").find(out)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: -1
         } catch (_: Throwable) {
             -1
         }

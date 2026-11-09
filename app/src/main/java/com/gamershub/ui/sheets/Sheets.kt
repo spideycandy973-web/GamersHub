@@ -167,11 +167,11 @@ fun LaunchModeSheet(
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Select Launch Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
+        Text("Pick Begin Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LaunchModeCard(
-                icon = Icons.Filled.Rocket, title = "Game Space", cost = "FREE · panel + boosters",
+                icon = Icons.Filled.Rocket, title = "Play Hub", cost = "FREE · panel + boosters",
                 selected = gameSpace, onSelect = { gameSpace = true }, modifier = Modifier.weight(1f)
             )
             LaunchModeCard(
@@ -324,7 +324,7 @@ fun AppSelectorSheet(
             AIcon(Icons.Filled.Search, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) Text("Search Apps", color = GC.TextDim, fontSize = 15.sp)
+                if (query.isEmpty()) Text("Find Apps", color = GC.TextDim, fontSize = 15.sp)
                 androidx.compose.foundation.text.BasicTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -426,7 +426,7 @@ val PERM_CONFIGS = listOf(
     ),
     PermConfig(
         PermKind.WRITE_SETTINGS, Icons.Filled.Tune, "REQUIRED · SYSTEM PREFERENCES",
-        "Modify System Settings",
+        "Modify System Preferences",
         "Required to adjust display and system preferences according to your saved profiles.",
         listOf("Manages screen brightness and display parameters", "Restores default device settings automatically when finished")
     ),
@@ -439,7 +439,7 @@ val PERM_CONFIGS = listOf(
     ),
     PermConfig(
         PermKind.SHIZUKU, Icons.Filled.Shield, "OPTIONAL · ADVANCED SERVICE",
-        "Shizuku Service Access",
+        "Shizuku Helper Access",
         "Allows the app to connect with the active Shizuku service on your device for system-level configuration management.",
         listOf("Connects to the privileged service automatically", "Enables advanced device & display configuration options")
     )
@@ -535,7 +535,7 @@ fun SettingsSheet(
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Settings, size = 50)
             Spacer(Modifier.width(12.dp))
-            Text("Settings", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 25.sp)
+            Text("Preferences", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 25.sp)
             Spacer(Modifier.weight(1f))
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -543,9 +543,9 @@ fun SettingsSheet(
         Card2 {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Language", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                    Text("Words", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                     Spacer(Modifier.height(3.dp))
-                    Text("Choose your preferred language", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+                    Text("Pick the words you like", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -563,9 +563,9 @@ fun SettingsSheet(
         }
         Spacer(Modifier.height(12.dp))
         Card2 {
-            Text("Theme Color", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Text("Colour Style", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
             Spacer(Modifier.height(3.dp))
-            Text("Customize app accent color", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Text("Change the app colour", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ThemeColorTile("Signal", GC.IconRed, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
@@ -579,9 +579,9 @@ fun SettingsSheet(
         }
         Spacer(Modifier.height(12.dp))
         Card2 {
-            Text("App Icon", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Text("Icon Style", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
             Spacer(Modifier.height(3.dp))
-            Text("Pick the icon on your home screen", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Text("Pick the icon on your home display", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 IconTile("GH", com.gamershub.R.mipmap.ic_launcher_bolt, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
@@ -589,7 +589,7 @@ fun SettingsSheet(
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile("Boost", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+                IconTile("Speed", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
                 IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
             }
         }
@@ -610,7 +610,7 @@ private fun DiagnosticsCard() {
         )
     }
     Card2 {
-        Text("Diagnostics", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+        Text("Health Check", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
         Spacer(Modifier.height(3.dp))
         Text(
             if (log.isBlank()) "No crash recorded — every feature is running clean"
@@ -733,7 +733,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Palette, size = 50)
             Spacer(Modifier.width(12.dp))
-            Text("Display Tuning", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
+            Text("Display Adjust", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
         Spacer(Modifier.height(14.dp))
@@ -770,7 +770,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         // Resolution Changer
         val physW = dm.widthPixels
         val physH = dm.heightPixels
-        TuningCard(icon = Icons.Filled.Apps, title = "Resolution Changer", desc = "Change screen resolution (Width x Height)") {
+        TuningCard(icon = Icons.Filled.Apps, title = "Detail Changer", desc = "Change screen resolution (Width x Height)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatPill("Res-Ratio: 1.00")
                 StatPill("W-Scale: 1.00")
@@ -792,7 +792,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                     .background(GC.SurfaceHi)
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Applied", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            ) { Text("Done", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -815,7 +815,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                     .background(GC.SurfaceHi)
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Applied", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            ) { Text("Done", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
         }
     }
 }
@@ -929,7 +929,7 @@ fun ActivationSheet(
                     .clickable { quickStart = true }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Quick Start", style = MaterialTheme.typography.labelLarge, color = if (quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
+            ) { Text("Fast Begin", style = MaterialTheme.typography.labelLarge, color = if (quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
             Box(
                 Modifier
                     .weight(1f)
@@ -953,7 +953,7 @@ fun ActivationSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconChip(Icons.Filled.Android, size = 44)
                     Spacer(Modifier.width(11.dp))
-                    Text("Shizuku Access", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                    Text("Shizuku Entry", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1062,7 +1062,7 @@ fun ActivationSheet(
                 Spacer(Modifier.height(10.dp))
                 listOf(
                     "Open Wireless Debugging in Developer Options",
-                    "Select 'Pair device with pairing code'",
+                    "Pick 'Pair device with pairing code'",
                     "Come back here and start discovery"
                 ).forEachIndexed { i, step ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
@@ -1091,7 +1091,7 @@ fun ActivationSheet(
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Settings", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp) }
+                    ) { Text("Preferences", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp) }
                     Box(
                         Modifier
                             .weight(1f)
@@ -1102,7 +1102,7 @@ fun ActivationSheet(
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Start", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                    ) { Text("Begin", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1140,7 +1140,7 @@ fun ActivationSheet(
                 }
                 Spacer(Modifier.height(10.dp))
                 listOf(
-                    "Enable USB Debugging on the Target device (Settings > Developer options > USB debugging)",
+                    "Turn on USB Debugging on the Target device (Preferences > Developer options > USB debugging)",
                     "Plug the OTG adapter into THIS device, then connect the Target via USB cable",
                     "Tap Scan — approve the USB permission dialog on THIS device",
                     "Tap Activate — approve the 'Allow USB debugging?' dialog on the Target"
@@ -1165,7 +1165,7 @@ fun ActivationSheet(
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
-                ) { Text("Scan USB Device", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                ) { Text("Scan USB Phone", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
             }
         }
     }

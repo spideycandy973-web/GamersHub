@@ -242,13 +242,13 @@ private fun GameSpaceScreen(
 
     // ---- live device numbers (all real) ----
     val mem by produceState(initialValue = DeviceStats.mem(context)) {
-        while (true) { value = DeviceStats.mem(context); delay(2000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.mem(context) }; delay(2000) }
     }
     val cpu by produceState(initialValue = DeviceStats.cpu()) {
-        while (true) { value = DeviceStats.cpu(); delay(2000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.cpu() }; delay(2000) }
     }
     val battery by produceState(initialValue = DeviceStats.battery(context)) {
-        while (true) { value = DeviceStats.battery(context); delay(5000) }
+        while (true) { value = withContext(Dispatchers.IO) { DeviceStats.battery(context) }; delay(5000) }
     }
     val ping by produceState(initialValue = -1.0) {
         while (true) {
@@ -421,7 +421,7 @@ private fun GameSpaceScreen(
             ) {
                 AIcon(
                     Icons.Filled.PowerSettingsNew,
-                    contentDescription = "Close Game Space",
+                    contentDescription = "Close Play Hub",
                     tint = GC.InkText,
                     modifier = Modifier.size(h * 0.048f)
                 )
@@ -916,7 +916,7 @@ private fun AppCard(
                     .clickable(onClick = onFilter),
                 contentAlignment = Alignment.Center
             ) {
-                AIcon(Icons.Filled.Tune, contentDescription = "Texture filtering", tint = GC.InkText, modifier = Modifier.size(artSize * 0.30f))
+                AIcon(Icons.Filled.Tune, contentDescription = "Surface filtering", tint = GC.InkText, modifier = Modifier.size(artSize * 0.30f))
             }
         }
 
@@ -1093,7 +1093,7 @@ private fun AppFacts(
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(titleSize.value.dp * 0.9f)) {
         Row(horizontalArrangement = Arrangement.spacedBy(titleSize.value.dp * 0.9f)) {
-            FactTile("SESSION", session, "played in Game Space", Modifier.weight(1f), titleSize, valueSize, noteSize)
+            FactTile("SESSION", session, "played in Play Hub", Modifier.weight(1f), titleSize, valueSize, noteSize)
             FactTile("VERSION", "v$version", "from package manager", Modifier.weight(1f), titleSize, valueSize, noteSize)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(titleSize.value.dp * 0.9f)) {
@@ -1235,7 +1235,7 @@ private fun LaunchBar(
                 .clickable(onClick = onBoost)
                 .padding(horizontal = height * 0.18f)
         ) {
-            AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(height * 0.34f))
+            AIcon(Icons.Filled.Bolt, contentDescription = "RAM boost", tint = Color.White, modifier = Modifier.size(height * 0.34f))
             Spacer(Modifier.width(width * 0.012f))
             Text(
                 "${(freeMb / 100).coerceAtLeast(0)}",
@@ -1586,7 +1586,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Videocam,
                     category = "CAPTURE",
-                    title = if (Recorder.isRecording) "Stop recording" else "Screen record",
+                    title = if (Recorder.isRecording) "End recording" else "Display record",
                     active = Recorder.isRecording,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1596,7 +1596,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Podcasts,
                     category = "LIVE",
-                    title = if (Stream.isStreaming) "Stop stream" else "Go Live (RTMP)",
+                    title = if (Stream.isStreaming) "End stream" else "Go Live (RTMP)",
                     active = Stream.isStreaming,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1628,7 +1628,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Memory,
                     category = "MEMORY",
-                    title = "Boost RAM",
+                    title = "Speed RAM",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1646,7 +1646,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.CleaningServices,
                     category = "MEMORY",
-                    title = "Deep clean",
+                    title = "Full clean",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1661,7 +1661,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Tune,
                     category = "GRAPHICS",
-                    title = "Texture · shadow",
+                    title = "Surface · shadow",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) { onTextureSettings() }
@@ -2219,7 +2219,7 @@ internal fun feedbackOnWrite(context: Context, ok: Boolean) {
     // to the real grant page for THIS app.
     android.widget.Toast.makeText(
         context,
-        "Grant 'Modify System Settings' to GamersHub — opening Settings…",
+        "Grant 'Modify System Preferences' to GamersHub — opening Preferences…",
         android.widget.Toast.LENGTH_LONG
     ).show()
     val opened = runCatching {
@@ -2250,8 +2250,8 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
     var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
     var coords by remember { mutableStateOf(repo.toggle("show_coords")) }
     var hw by remember { mutableStateOf(repo.toggle("hw_touch")) }
-    SidePanel(title = "Touch Settings", subtitle = "CONFIGS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
-        GfxRow("Magic Mapper Listener", "Enable Magic Mapper service", magic) {
+    SidePanel(title = "Touch Preferences", subtitle = "CONFIGS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
+        GfxRow("Magic Mapper Listener", "Turn on Magic Mapper service", magic) {
             magic = it; repo.setToggle("magic_mapper", it)
         }
         Divider()
@@ -2267,7 +2267,7 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
             feedbackOnWrite(context, ok)
         }
         Divider()
-        GfxRow("HW Touch Enhancer", "Boost touch response via Hardware Composer", hw) {
+        GfxRow("HW Touch Booster", "Speed touch response via Hardware Composer", hw) {
             hw = it; repo.setToggle("hw_touch", it)
         }
     }
@@ -2285,8 +2285,8 @@ private fun DisplayPanel(onDismiss: () -> Unit) {
             } catch (_: Throwable) { true }
         )
     }
-    SidePanel(title = "Display Settings", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
-        Text("Refresh Rate", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
+    SidePanel(title = "Display Preferences", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
+        Text("Display Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
@@ -2468,7 +2468,7 @@ private fun AppsPanel(
             Spacer(Modifier.height(12.dp))
             if (library.isEmpty()) {
                 Text(
-                    "No apps selected yet. Tap ADD APPS to choose the apps you want in this Game Space.",
+                    "No apps selected yet. Tap ADD APPS to choose the apps you want in this Play Hub.",
                     style = MaterialTheme.typography.labelLarge,
                     color = GC.TextSoft,
                     fontSize = 13.sp
