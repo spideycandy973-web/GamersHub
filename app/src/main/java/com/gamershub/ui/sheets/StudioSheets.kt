@@ -64,6 +64,7 @@ import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.StatusPill
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 
 /* ------------------------------------------------------------------ */
