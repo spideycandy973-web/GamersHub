@@ -104,9 +104,9 @@ fun RecordSheet(onDismiss: () -> Unit) {
                 .putBoolean("rec_mic", mic)
                 .apply()
             RecorderService.start(context, result.resultCode, data, mic, height, fps, bitrate)
-            Toast.makeText(context, "Recording started", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Capture started", Toast.LENGTH_SHORT).show()
         } else {
-            permissionError = "Screen capture permission was declined"
+            permissionError = "Display capture permission was declined"
         }
     }
 
@@ -115,7 +115,7 @@ fun RecordSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Screen Recorder", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Display Capture", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text("MP4 · H.264 · Movies/GamersHub", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
@@ -168,7 +168,7 @@ fun RecordSheet(onDismiss: () -> Unit) {
                 onClick = {
                     val intent = RecorderService.captureIntent(context)
                     if (intent == null) {
-                        permissionError = "Screen capture is not available on this device"
+                        permissionError = "Display capture is not available on this device"
                     } else {
                         launcher.launch(intent)
                     }
@@ -306,7 +306,7 @@ fun LiveSheet(onDismiss: () -> Unit) {
             StreamService.start(context, result.resultCode, data, url.trim(), height, 60, bitrate)
             message = "Connecting to the ingest server…"
         } else {
-            message = "Screen capture permission was declined"
+            message = "Display capture permission was declined"
         }
     }
 
@@ -370,7 +370,7 @@ fun LiveSheet(onDismiss: () -> Unit) {
                         message = "Enter a full rtmp:// URL including the stream key"
                     } else {
                         val intent = RecorderService.captureIntent(context)
-                        if (intent == null) message = "Screen capture is not available"
+                        if (intent == null) message = "Display capture is not available"
                         else launcher.launch(intent)
                     }
                 },
@@ -525,7 +525,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Graphics Enhancer", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Look Booster", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text(
                     if (engineOn) "Engine running · $engineState"
                     else if (shellReady) "Engine stopped · sliders are signed offsets"
@@ -566,7 +566,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         Spacer(Modifier.height(2.dp))
         Text(
             if (target != null) "Target: ${target.second}"
-            else "Open a game once from Game Space so it becomes the target",
+            else "Open a game once from Play Hub so it becomes the target",
             color = if (target != null) GC.TextSoft else GC.TextDim, fontSize = 11.sp
         )
         Spacer(Modifier.height(2.dp))
@@ -641,7 +641,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Device Spoofing", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Phone Swapping", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text("Display · name · identity", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
@@ -700,7 +700,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
                 log = buildString {
                     if (applied.isEmpty()) append("Needs Shizuku to change display/name.\n")
                     applied.forEach { append("✓ $it\n") }
-                    append("Device name is restored automatically when you leave the Game Space.\n")
+                    append("Phone name is restored automatically when you leave the Play Hub.\n")
                     append("Apps now see ${DeviceSpoofer.observed(context)}\n")
                     identity?.let { (ok, model) ->
                         if (ok) append("✓ Identity props → $model\n")
@@ -755,14 +755,14 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Floating Panel", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Floating Window", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text("GamersHub bubble + pop-up panel", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            StatusPill(if (panelOn) "● Panel live" else "● Panel off")
+            StatusPill(if (panelOn) "● Window live" else "● Window off")
             Spacer(Modifier.weight(1f))
             BigButton(
                 text = if (panelOn) "STOP" else "START",
@@ -775,9 +775,9 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Monitor inside the panel", color = GC.Text, fontSize = 14.sp)
+                Text("Tracker inside the panel", color = GC.Text, fontSize = 14.sp)
                 Text(
-                    if (monitorOn) "Fields: ${MonitorPrefs.fields(context).size} · live" else "Start the floating monitor",
+                    if (monitorOn) "Fields: ${MonitorPrefs.fields(context).size} · live" else "Begin the floating monitor",
                     color = GC.TextDim,
                     fontSize = 11.sp
                 )

@@ -9,7 +9,7 @@ import android.os.Bundle
  * Invisible consent proxy.
  *
  * MediaProjection always needs the system consent dialog, which only an Activity
- * can request. The overlay panel starts this activity, the user taps "Start now",
+ * can request. The overlay panel starts this activity, the user taps "Begin now",
  * the capture service is started and the activity disappears again — the running
  * game is never closed and never has to be relaunched.
  */

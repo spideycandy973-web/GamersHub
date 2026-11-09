@@ -71,7 +71,7 @@ fun LobbyScreen(
         // ---- Header ----
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Lobby", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+                Text("Home", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
                 Text(
                     com.gamershub.ui.components.Brand.BYLINE,
                     style = MaterialTheme.typography.labelMedium,

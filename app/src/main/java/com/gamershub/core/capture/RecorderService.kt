@@ -225,7 +225,7 @@ class RecorderService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Screen recorder", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL, "Display recorder", NotificationManager.IMPORTANCE_LOW)
             )
         }
         val stopIntent = PendingIntent.getService(
@@ -238,10 +238,10 @@ class RecorderService : Service() {
             android.app.Notification.Builder(this, CHANNEL)
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
         return builder
-            .setContentTitle("Recording the screen")
+            .setContentTitle("Capture the screen")
             .setContentText("GamersHub · tap stop to save the MP4")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "End", stopIntent)
             .setOngoing(true)
             .build()
     }
@@ -285,7 +285,7 @@ class RecorderService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
             }.onFailure {
-                com.gamershub.GamersHubApp.toast("Recorder couldn't start — screen-capture permission missing")
+                com.gamershub.GamersHubApp.toast("Capture couldn't start — screen-capture permission missing")
             }
         }
 

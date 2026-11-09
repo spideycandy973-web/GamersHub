@@ -157,7 +157,7 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
     LaunchedEffect(Unit) { refresh() }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Ping Optimizer", "Measured on this network, right now", onDismiss)
+        SheetTitle("Lag Fixer", "Measured on this network, right now", onDismiss)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (busy) "● Measuring" else "● ${PingEngine.currentPrivateDns().uppercase()} DNS")
@@ -346,7 +346,7 @@ fun GyroCalibrationSheet(onDismiss: () -> Unit) {
 
     SheetFrame(onDismiss) {
         SheetTitle(
-            "Gyro Calibration",
+            "Tilt Setup",
             if (sensor != null) "Live gyroscope · bias capture" else "No gyroscope detected",
             onDismiss
         )
@@ -398,7 +398,7 @@ fun GyroCalibrationSheet(onDismiss: () -> Unit) {
                     text = "SAVE",
                     onClick = {
                         GyroEngine.save(context, config)
-                        Toast.makeText(context, "Calibration saved", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Setup saved", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -471,7 +471,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
         SheetTitle("Mapping Editor", "${keys.size} keys · injected with shell identity", onDismiss)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            StatusPill(if (MappingOverlayService.isRunning) "● Overlay live" else "● Overlay off")
+            StatusPill(if (MappingOverlayService.isRunning) "● Popup live" else "● Popup off")
             Spacer(Modifier.weight(1f))
             Chip(if (editMode) "EDIT" else "PLAY", editMode) {
                 editMode = !editMode
@@ -634,7 +634,7 @@ fun MonitorConfigSheet(onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(MonitorPrefs.scale(context)) }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Information Monitor", "Choose what floats over your game", onDismiss)
+        SheetTitle("Information Tracker", "Pick what floats over your game", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (MonitorOverlayService.isRunning) "● Live" else "● Off")
             Spacer(Modifier.weight(1f))
@@ -846,7 +846,7 @@ fun ScreenshotSheet(onDismiss: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Screenshot", "screencap written to Pictures/GamersHub", onDismiss)
+        SheetTitle("Display Grab", "screencap written to Pictures/GamersHub", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (Shell.available()) "● Shell ready" else "● Needs Shizuku")
             Spacer(Modifier.weight(1f))

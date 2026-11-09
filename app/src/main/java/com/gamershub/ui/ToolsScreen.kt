@@ -102,7 +102,7 @@ fun ToolsScreen(
                 "recording" to com.gamershub.core.capture.Recorder.isRecording,
                 "live" to com.gamershub.core.capture.Stream.isStreaming
             )
-            delay(900)
+            delay(2500)
         }
     }
 
@@ -199,7 +199,7 @@ fun ToolsScreen(
         }
         ToolRow(
             icon = Icons.Filled.Widgets,
-            title = "Floating Panel",
+            title = "Floating Window",
             subtitle = "GamersHub pop-up panel + bubble",
             active = on("panel"),
             accent = accent,
@@ -208,7 +208,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Speed,
-            title = "Information Monitor",
+            title = "Information Tracker",
             subtitle = "FPS · CPU · GPU · RAM · TEMP · PING",
             active = on("monitor"),
             accent = accent,
@@ -246,7 +246,7 @@ fun ToolsScreen(
         SectionHead("STUDIO")
         ToolRow(
             icon = Icons.Filled.Videocam,
-            title = if (on("recording")) "Recording…" else "Screen Recorder",
+            title = if (on("recording")) "Capture…" else "Display Capture",
             subtitle = "MP4 · H.264 · up to 4K · mic optional",
             active = on("recording"),
             accent = accent,
@@ -266,7 +266,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.AutoAwesome,
-            title = "Graphics Enhancer",
+            title = "Look Booster",
             subtitle = "Render scale · Vulkan renderer · texture & shadow CVars",
             active = false,
             accent = accent,
@@ -275,7 +275,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Smartphone,
-            title = "Device Spoofing",
+            title = "Phone Swapping",
             subtitle = "Flagship presets · display, name, identity props",
             active = false,
             accent = accent,
@@ -286,7 +286,7 @@ fun ToolsScreen(
         SectionHead("NETWORK")
         ToolRow(
             icon = Icons.Filled.CenterFocusStrong,
-            title = "Ping Optimizer",
+            title = "Lag Fixer",
             subtitle = "TCP latency · jitter · private DNS",
             active = false,
             accent = accent,
@@ -299,7 +299,7 @@ fun ToolsScreen(
 
         ToolRow(
             icon = Icons.Filled.CleaningServices,
-            title = "Clean Memory",
+            title = "Free RAM",
             subtitle = "Reclaim cached processes · trim app caches",
             active = false,
             accent = accent,
@@ -315,8 +315,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Bolt,
-            title = "Boost Memory",
-            subtitle = "Clean + drop page cache · instant free RAM",
+            title = "Speed RAM",
+            subtitle = "Sweep + drop page cache · instant free RAM",
             active = false,
             accent = accent,
             onToggle = null,
@@ -331,7 +331,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.DeleteSweep,
-            title = "Deep Clean",
+            title = "Full Sweep",
             subtitle = "Force-stop background apps · trim caches · drop cache",
             active = false,
             accent = accent,
@@ -351,7 +351,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.ScreenRotation,
-            title = "Gyro Calibration",
+            title = "Tilt Setup",
             subtitle = "Bias capture · sensitivity · live readout",
             active = false,
             accent = accent,
@@ -360,8 +360,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Tune,
-            title = "Display Tuning",
-            subtitle = "Resolution · DPI · refresh rate",
+            title = "Display Adjust",
+            subtitle = "Detail · DPI · refresh rate",
             active = false,
             accent = accent,
             onToggle = null,
@@ -371,7 +371,7 @@ fun ToolsScreen(
         SectionHead("CAPTURE & SPACE")
         ToolRow(
             icon = Icons.Filled.Screenshot,
-            title = "Screenshot",
+            title = "Display Grab",
             subtitle = ScreenshotEngine.DIR,
             active = false,
             accent = accent,
@@ -391,7 +391,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Widgets,
-            title = "Game Space",
+            title = "Play Hub",
             subtitle = "Landscape in-game hub",
             active = false,
             accent = accent,
@@ -401,7 +401,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Tune,
-            title = "Presets",
+            title = "Setups",
             subtitle = "Imported display profiles",
             active = false,
             accent = accent,

@@ -86,6 +86,7 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.HeroMark
+import com.gamershub.ui.components.SafeContent
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -128,7 +129,19 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         val type = if (Build.VERSION.SDK_INT >= 34) {
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         } else 0
-        androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        val foregrounded = runCatching {
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(), type)
+        }.isSuccess
+        if (!foregrounded) {
+            android.widget.Toast.makeText(
+                this,
+                "Turn on notifications for GamersHub, then try again",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            isRunning = false
+            stopSelf()
+            return
+        }
         if (!android.provider.Settings.canDrawOverlays(this)) {
             android.widget.Toast.makeText(
                 this,
@@ -180,14 +193,16 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         val view = ComposeView(this).apply {
             setContent {
                 GameCornerTheme {
-                    Bubble(
-                        onTap = { togglePanel() },
-                        onDrag = { dx, dy ->
-                            params.x += dx.toInt()
-                            params.y += dy.toInt()
-                            runCatching { windowManager?.updateViewLayout(this, params) }
-                        }
-                    )
+                    SafeContent("floating icon") {
+                        Bubble(
+                            onTap = { togglePanel() },
+                            onDrag = { dx, dy ->
+                                params.x += dx.toInt()
+                                params.y += dy.toInt()
+                                runCatching { windowManager?.updateViewLayout(this, params) }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -198,7 +213,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         if (!attached) {
             android.widget.Toast.makeText(
                 this,
-                "Panel could not attach — check display-over-apps",
+                "Window could not attach — check display-over-apps",
                 android.widget.Toast.LENGTH_LONG
             ).show()
             isRunning = false
@@ -222,7 +237,9 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         val content = ComposeView(this).apply {
             setContent {
                 GameCornerTheme {
-                    AxPanel(onClose = { closePanel() })
+                    SafeContent("floating window") {
+                        AxPanel(onClose = { closePanel() })
+                    }
                 }
             }
         }
@@ -246,7 +263,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         if (!attached) {
             android.widget.Toast.makeText(
                 this,
-                "Panel could not attach — check display-over-apps",
+                "Window could not attach — check display-over-apps",
                 android.widget.Toast.LENGTH_LONG
             ).show()
             expanded = false
@@ -266,7 +283,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel("panel", "Pop-up Panel", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel("panel", "Pop-up Window", NotificationManager.IMPORTANCE_LOW)
             )
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -298,7 +315,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
             }.onFailure {
-                com.gamershub.GamersHubApp.toast("Panel couldn't start — check overlay/notification permission")
+                com.gamershub.GamersHubApp.toast("Window couldn't start — check overlay/notification permission")
             }
         }
 

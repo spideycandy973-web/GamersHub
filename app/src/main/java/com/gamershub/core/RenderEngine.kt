@@ -78,7 +78,13 @@ object RenderEngine {
     /* ---------------------------------------------------------------- */
 
     /** What the device is *actually* running right now, straight from the system. */
+    private var verifyAt: Long = 0L
+    private var verifyText: String = ""
+
     fun verify(pkg: String = ""): String {
+        val now = android.os.SystemClock.elapsedRealtime()
+        // Four shell reads — the panel polls this, so keep the last answer for a moment.
+        if (now - verifyAt < 4000L && verifyText.isNotBlank()) return verifyText
         if (!Shell.available()) return "no shell"
         val size = Shell.exec("wm size")?.let {
             Regex("Override size:\\s*(\\d+x\\d+)").find(it)?.groupValues?.getOrNull(1)
@@ -88,12 +94,15 @@ object RenderEngine {
         } ?: ""
         val angle = Shell.exec("settings get global angle_gl_driver_selection_pkgs")?.trim().orEmpty()
         val refresh = Shell.exec("settings get system peak_refresh_rate")?.trim().orEmpty()
-        return buildList {
+        val text = buildList {
             add(if (size.isBlank()) "native resolution" else "render $size")
             if (density.isNotBlank()) add("density $density")
             if (angle.isNotBlank() && angle != "null") add("ANGLE on $angle")
             if (refresh.isNotBlank() && refresh != "null") add("peak ${refresh}Hz")
         }.joinToString(" · ").ifBlank { "stock" }
+        verifyAt = now
+        verifyText = text
+        return text
     }
 
     /* ---------------------------------------------------------------- */

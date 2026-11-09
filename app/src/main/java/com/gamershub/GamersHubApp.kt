@@ -32,6 +32,13 @@ class GamersHubApp : Application() {
         @Volatile
         private var lastRecovery: Long = 0L
 
+        /** Records a caught failure without letting it kill the process. */
+        fun note(error: Throwable, where: String) {
+            val ctx = instance ?: return
+            runCatching { ctx.log(Thread.currentThread(), error) }
+            runCatching { lastCrash = "$where\n" + error.stackTraceToString() }
+        }
+
         /** Safe toast from any thread — used so a failed action is never silent. */
         fun toast(message: String) {
             val ctx = instance ?: return

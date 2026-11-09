@@ -148,7 +148,7 @@ class UpscaleMirrorService : Service() {
         @Suppress("DEPRECATION")
         val data = intent?.getParcelableExtra<Intent>(UpscaleMirror.EXTRA_DATA)
         if (resultCode == 0 || data == null) {
-            UpscaleMirror.lastError = "Screen capture consent missing"
+            UpscaleMirror.lastError = "Display capture consent missing"
             stopSelf()
             return START_NOT_STICKY
         }
@@ -227,7 +227,7 @@ class UpscaleMirrorService : Service() {
         }
         runCatching { windowManager?.addView(surfaceView, params) }
             .onFailure {
-                UpscaleMirror.lastError = "Overlay refused: " + (it.message ?: "unknown")
+                UpscaleMirror.lastError = "Popup refused: " + (it.message ?: "unknown")
                 stopSelf()
                 return
             }

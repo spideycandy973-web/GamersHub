@@ -92,7 +92,7 @@ fun GameLabsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
-            Text("Game-Labs", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+            Text("Play Lab", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
             Spacer(Modifier.weight(1f))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -107,7 +107,7 @@ fun GameLabsScreen(
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(5.dp))
-                Text("Advanced", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp)
+                Text("Expert", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp)
             }
         }
 
@@ -182,7 +182,7 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.Dialpad, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Stop All Features", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text("Turn Everything Off", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                             Text(
                                 if (runningServices > 0) "$activeCount active now · $runningServices service(s) running"
                                 else "$activeCount feature(s) active — turn everything off",
@@ -206,7 +206,7 @@ fun GameLabsScreen(
                                 }
                                 .padding(horizontal = 22.dp, vertical = 11.dp)
                         ) {
-                            Text("Stop", style = MaterialTheme.typography.labelLarge, color = Color(0xFFFF8A80), fontSize = 15.sp)
+                            Text("End", style = MaterialTheme.typography.labelLarge, color = Color(0xFFFF8A80), fontSize = 15.sp)
                         }
                     }
                 }
@@ -215,7 +215,7 @@ fun GameLabsScreen(
 
             // ---- Touch Settings ----
             if (tab != LabsTab.VISUAL) {
-                SectionLabel("Touch Settings")
+                SectionLabel("Touch Preferences")
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.TouchApp, size = 46)
@@ -223,7 +223,7 @@ fun GameLabsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Magic Mapper Listener", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
-                                if (toggleState("magic_mapper")) "Monitoring 1 device(s)" else "Enable Magic Mapper service",
+                                if (toggleState("magic_mapper")) "Monitoring 1 device(s)" else "Turn on Magic Mapper service",
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp
                             )
                         }
@@ -249,9 +249,9 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.TouchApp, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("HW Touch Enhancer", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("HW Touch Booster", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
-                                "Boost touch response via Hardware Composer",
+                                "Speed touch response via Hardware Composer",
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
                             )
                         }
@@ -263,27 +263,27 @@ fun GameLabsScreen(
 
             // ---- Display Settings ----
             if (tab != LabsTab.VISUAL) {
-                SectionLabel("Display Settings")
+                SectionLabel("Display Preferences")
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.Dns, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Preset Manager", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Setup Keeper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text("Save or load display configurations.", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
                         }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         SmallActionButton("Export", Modifier.weight(1f), onClick = onExportPresets)
-                        SmallActionButton("Manage", Modifier.weight(1f), primary = true, onClick = onManagePresets)
+                        SmallActionButton("Handle", Modifier.weight(1f), primary = true, onClick = onManagePresets)
                     }
                     Divider()
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.VideogameAsset, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Display Tuning", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Display Adjust", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(displayInfo, style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
                         }
                         SmallActionButton("Tune", Modifier.width(88.dp), primary = true, onClick = onTuneDisplay)
@@ -294,7 +294,7 @@ fun GameLabsScreen(
 
             // ---- Feature Settings ----
             if (tab != LabsTab.CONFIGS) {
-                SectionLabel("Feature Settings")
+                SectionLabel("Option Preferences")
                 Card {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +436,7 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
             IconChip(Icons.Filled.GraphicEq, size = 46)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Session Monitor", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                Text("Run Tracker", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                 Text(
                     "Track device performance while you play",
                     style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
@@ -468,8 +468,8 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
             val checks = listOf(
                 Triple("sm_cpu", "CPU Usage", Icons.Filled.Speed),
                 Triple("sm_gpu", "GPU Usage", Icons.Filled.Memory),
-                Triple("sm_batt", "Battery Level", Icons.Filled.Bolt),
-                Triple("sm_batt_temp", "Battery Temperature", Icons.Filled.Storage),
+                Triple("sm_batt", "Cell Level", Icons.Filled.Bolt),
+                Triple("sm_batt_temp", "Cell Heat", Icons.Filled.Storage),
                 Triple("sm_fps", "Frame Rate (FPS)", Icons.Filled.GraphicEq),
                 Triple("sm_clock", "Clock", Icons.Filled.Dns)
             )
