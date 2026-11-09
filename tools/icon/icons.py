@@ -1,7 +1,8 @@
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 from PIL import ImageFont
-import os
+from PIL import ImageChops
+import math
 FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ArchivoBlack.ttf')
 
 GOLD  = [(0.0,hx('FFD98E')),(0.45,hx('FFB03A')),(1.0,hx('EF5F12'))]
@@ -64,15 +65,34 @@ def full_rgba(mask, stops, top_light):
     return base
 
 def mask_bolt():
-    """Ember flame — angular, two-crest, reads at 48 px (default launcher mark)."""
-    pts = [(0.500, 0.090), (0.660, 0.300), (0.720, 0.220), (0.790, 0.440),
-           (0.830, 0.620), (0.740, 0.820), (0.580, 0.905), (0.420, 0.905),
-           (0.260, 0.820), (0.170, 0.620), (0.220, 0.440), (0.330, 0.330),
-           (0.380, 0.500), (0.460, 0.340), (0.400, 0.220)]
-    m = Image.new('L', (C, C), 0)
-    ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
+    """GH monogram — octagonal G (custom aperture + spur) locked up with a bold H.
+
+    Deliberately not a typeset monogram: both letters are built from the same
+    geometry (eight-sided ring, flat 1.09:1 stems) so they read as one mark at 48 px.
+    """
+    def new(): return Image.new('L', (C, C), 0)
+
+    def rect(x0, y0, x1, y1):
+        m = new()
+        ImageDraw.Draw(m).rectangle([x0*C, y0*C, x1*C, y1*C], fill=255)
+        return m
+
+    def ngon(cx, cy, r, n, rot=-67.5):
+        return [(cx + r*math.cos(math.radians(rot + i*360/n)),
+                 cy + r*math.sin(math.radians(rot + i*360/n))) for i in range(n)]
+
+    def poly(pts):
+        m = new()
+        ImageDraw.Draw(m).polygon([(x*C, y*C) for x, y in pts], fill=255)
+        return m
+
+    g = ImageChops.subtract(poly(ngon(0.300, 0.500, 0.255, 8)), poly(ngon(0.300, 0.500, 0.168, 8)))
+    # mouth of the G: a wedge opened to the right
+    g = ImageChops.subtract(g, poly([(0.300, 0.500), (0.620, 0.330), (0.620, 0.770)]))
+    g = ImageChops.lighter(g, rect(0.300, 0.545, 0.585, 0.660))      # spur
+    h = ImageChops.lighter(rect(0.650, 0.205, 0.768, 0.795), rect(0.845, 0.205, 0.963, 0.795))
+    m = ImageChops.lighter(ImageChops.lighter(g, h), rect(0.650, 0.545, 0.963, 0.660))
     m = m.filter(ImageFilter.GaussianBlur(C*0.006)).point(lambda v: 255 if v > 127 else 0)
-    m = m.filter(ImageFilter.GaussianBlur(C*0.0015))
-    return m
+    return m.filter(ImageFilter.GaussianBlur(C*0.0015))
 
 VARIANTS['_bolt'] = (mask_bolt, GOLD, 0.24)
