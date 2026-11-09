@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.gamershub.core.DeviceSpoofer
 import com.gamershub.core.GfxEngine
+import com.gamershub.core.RenderEngine
 import com.gamershub.core.MonitorPrefs
 import com.gamershub.core.capture.Recorder
 import com.gamershub.core.capture.RecorderService
@@ -401,13 +402,20 @@ fun LiveSheet(onDismiss: () -> Unit) {
 fun GraphicsSheet(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val accent = LocalAccent.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("gamershub", Context.MODE_PRIVATE) }
 
-    var scale by remember { mutableIntStateOf(prefs.getInt("gfx_scale", 100)) }
-    var rendererVk by remember { mutableStateOf(prefs.getBoolean("gfx_vulkan", false)) }
-    var frameBoost by remember { mutableStateOf(prefs.getBoolean("gfx_frame_boost", false)) }
-    var texture by remember { mutableStateOf(prefs.getString("gfx_texture", "HIGH") ?: "HIGH") }
-    var shadow by remember { mutableStateOf(prefs.getString("gfx_shadow", "HIGH") ?: "HIGH") }
+    // values
+    var screenScale by remember { mutableIntStateOf(prefs.getInt("gfx_screen", 100)) }
+    var gameScale by remember { mutableIntStateOf(prefs.getInt("gfx_scale", 100)) }
+    var fps by remember { mutableIntStateOf(prefs.getInt("gfx_fps", 0)) }
+    var sharpen by remember { mutableIntStateOf(prefs.getInt("gfx_sharpen", 60)) }
+    var tex by remember { mutableIntStateOf(prefs.getInt("gfx_tex", 3)) }
+    var shd by remember { mutableIntStateOf(prefs.getInt("gfx_shd", 3)) }
+    var mode by remember { mutableStateOf(prefs.getString("gfx_mode", "performance") ?: "performance") }
+    var angle by remember { mutableStateOf(prefs.getBoolean("gfx_angle", false)) }
+
+    var busy by remember { mutableStateOf(false) }
     var log by remember { mutableStateOf("") }
     var tick by remember { mutableIntStateOf(0) }
 
@@ -418,159 +426,167 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         }
     }
 
-    val state = remember(tick) { GfxEngine.displayState(context) }
-    val override = remember(tick) { GfxEngine.currentOverride() }
-    val overrideDensity = remember(tick) { GfxEngine.currentDensityOverride() }
-    val renderer = remember(tick) { GfxEngine.rendererStatus() }
-    val thermal = remember(tick) { GfxEngine.thermalStatus() }
+    val target = remember(tick) { lastGame(context) }
+    val shellReady = remember(tick) { runCatching { Shell.available() }.getOrDefault(false) }
+    val lossless = remember(tick) { runCatching { RenderEngine.losslessState(context) }.getOrNull() }
+    val verified = remember(tick) { if (shellReady) runCatching { RenderEngine.verify(target?.first ?: "") }.getOrDefault("") else "" }
+
+    val quality = listOf("LOW", "MEDIUM", "HIGH", "ULTRA")
+
+    fun persist() {
+        prefs.edit()
+            .putInt("gfx_screen", screenScale)
+            .putInt("gfx_scale", gameScale)
+            .putInt("gfx_fps", fps)
+            .putInt("gfx_sharpen", sharpen)
+            .putInt("gfx_tex", tex)
+            .putInt("gfx_shd", shd)
+            .putString("gfx_mode", mode)
+            .putBoolean("gfx_angle", angle)
+            .apply()
+    }
+
+    fun applyAll() {
+        if (busy) return
+        busy = true
+        log = "Applying…"
+        scope.launch {
+            val report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    RenderEngine.apply(
+                        context,
+                        target?.first ?: "",
+                        texture = quality[tex],
+                        shadow = quality[shd],
+                        sharpness = sharpen,
+                        scalePct = gameScale,
+                        fps = fps,
+                        mode = mode,
+                        angle = angle,
+                        losslessPct = screenScale
+                    )
+                }.getOrNull()
+            }
+            busy = false
+            log = report?.details() ?: "Shizuku didn't answer — grant it, then apply again."
+            persist()
+            Toast.makeText(context, if (report != null) report.summary() else "Needs Shizuku", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun restoreAll() {
+        if (busy) return
+        busy = true
+        log = "Restoring…"
+        scope.launch {
+            val report = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { RenderEngine.restore(context, target?.first ?: "") }.getOrNull()
+            }
+            busy = false
+            screenScale = 100
+            gameScale = 100
+            fps = 0
+            log = report?.details() ?: "Couldn't reach the shell."
+            persist()
+        }
+    }
 
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text("Graphics Enhancer", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("System-wide pipeline + per-game CVars", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text(
+                    if (shellReady) "Real pipeline · every change is read back from the system"
+                    else "Shizuku needed — grant it to apply anything",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (shellReady) GC.TextDim else accent,
+                    fontSize = 12.sp
+                )
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
-        Spacer(Modifier.height(10.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            StatusPill("● ${state.width}x${state.height} · ${state.density}dpi")
-            Spacer(Modifier.width(6.dp))
-            StatusPill("● ${renderer.uppercase()}", orange = rendererVk)
-            Spacer(Modifier.weight(1f))
-            Text(
-                if (thermal >= 0) "thermal $thermal" else "thermal --",
-                color = GC.TextDim,
-                fontSize = 11.sp
-            )
+        Spacer(Modifier.height(10.dp))
+        if (lossless != null) {
+            Text(lossless.summary(), color = GC.TextSoft, fontSize = 11.sp)
         }
-        if (override.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text("Active override: $override · $overrideDensity dpi", color = accent, fontSize = 11.sp)
+        if (verified.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text("device now: $verified", color = accent, fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(14.dp))
-        Text("RENDER PIPELINE · ALL APPS", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
-        Spacer(Modifier.height(6.dp))
-        SliderRow("RENDER SCALE", scale.toFloat(), 40f..100f, "$scale%") { value ->
-            scale = value.toInt()
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.weight(1f)) {
-                BigButton(
-                    text = "APPLY $scale%",
-                    onClick = {
-                        val ok = GfxEngine.setRenderScale(context, scale)
-                        log = if (ok) "Render scale ${scale}% applied — GPU renders fewer pixels, compositor upscales."
-                        else "Needs Shizuku to change the display surface."
-                        prefs.edit().putInt("gfx_scale", scale).apply()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Box(Modifier.weight(1f)) {
-                BigButton(
-                    text = "RESET",
-                    onClick = {
-                        val ok = GfxEngine.resetRenderScale()
-                        log = if (ok) "Display surface restored to stock." else "Needs Shizuku."
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    primary = false
-                )
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Repair rendering", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(
-                    com.gamershub.core.GfxSafe.status() +
-                        " — clears leftover graphics overrides that can corrupt other apps",
-                    color = if (rendererVk) GC.TextDim else GC.TextDim,
-                    fontSize = 11.sp
-                )
-            }
-            Chip("REPAIR", false) {
-                rendererVk = false
-                prefs.edit().putBoolean("gfx_vulkan", false).apply()
-                log = com.gamershub.core.GfxSafe.repair(context).joinToString(" · ")
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Frame boost", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text("Fixed-performance mode + GameMode sustain (real frame pacing)", color = GC.TextDim, fontSize = 11.sp)
-            }
-            Chip(if (frameBoost) "ON" else "OFF", frameBoost) {
-                frameBoost = !frameBoost
-                GfxEngine.setFrameBoost(frameBoost)
-                prefs.edit().putBoolean("gfx_frame_boost", frameBoost).apply()
-                log = if (frameBoost) "Sustained performance requested." else "Performance mode released."
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-        Text("GAME TEXTURE & SHADOW · CVARS", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
-        Spacer(Modifier.height(6.dp))
+        Text("SCREEN · EVERY APP", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(4.dp))
         Text(
-            "Writes the game's own quality CVars (sg.TextureQuality, sg.ShadowQuality, streaming pool, " +
-                "mip bias) into its config with a .ghbak backup. This is the only way any non-root tool can " +
-                "raise texture and shadow quality inside a game.",
-            color = GC.TextDim,
-            fontSize = 11.sp
+            "Lowers the pixels the GPU fills and lets the compositor stretch the frame to the panel. " +
+                "Layout and density stay identical — only sharpness vs. frame rate moves.",
+            color = GC.TextDim, fontSize = 11.sp
         )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("LOW", "MEDIUM", "HIGH", "ULTRA").forEach { option ->
-                Chip("TEX $option", texture == option) { texture = option }
+        SliderRow("SCREEN SCALE", screenScale.toFloat(), 50f..100f, "$screenScale%") { screenScale = it.toInt() }
+
+        Spacer(Modifier.height(12.dp))
+        Text("THIS GAME", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            if (target != null) "Target: ${target.second}"
+            else "Open a game from Game Space once and it becomes the target",
+            color = if (target != null) GC.TextSoft else GC.TextDim, fontSize = 11.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        SliderRow("RENDER SCALE", gameScale.toFloat(), 50f..100f, "$gameScale%") { gameScale = it.toInt() }
+        SliderRow("FPS CAP", fps.toFloat(), 0f..144f, if (fps == 0) "MAX" else "$fps") { fps = it.toInt() }
+        SliderRow("SHARPEN", sharpen.toFloat(), 0f..100f, "$sharpen%") { sharpen = it.toInt() }
+        SliderRow("TEXTURE", tex.toFloat(), 0f..3f, quality[tex]) { tex = it.toInt().coerceIn(0, 3) }
+        SliderRow("SHADOW", shd.toFloat(), 0f..3f, quality[shd]) { shd = it.toInt().coerceIn(0, 3) }
+
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("GPU mode", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("GameManager scheduling for the target app", color = GC.TextDim, fontSize = 11.sp)
             }
         }
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("LOW", "MEDIUM", "HIGH", "ULTRA").forEach { option ->
-                Chip("SHD $option", shadow == option) { shadow = option }
+            listOf("performance", "standard", "battery").forEach { option ->
+                Chip(option.uppercase(), mode == option) { mode = option }
             }
         }
-        Spacer(Modifier.height(10.dp))
-        val target = remember(tick) { lastGame(context) }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("ANGLE driver", color = GC.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Swaps the GL driver for the target app (real driver string)", color = GC.TextDim, fontSize = 11.sp)
+            }
+            Chip(if (angle) "ANGLE" else "NATIVE", angle) { angle = !angle }
+        }
+
+        Spacer(Modifier.height(14.dp))
         BigButton(
-            text = if (target != null) "APPLY TO ${target.second.uppercase()}" else "OPEN A GAME FIRST",
-            onClick = {
-                if (target != null) {
-                    val result = GfxEngine.applyGameGfx(
-                        target.first,
-                        GfxEngine.GfxOptions(texture = texture, shadow = shadow)
-                    )
-                    log = when {
-                        result.needsShell -> "Grant Shizuku so GamersHub can write the game config."
-                        result.written.isNotEmpty() -> "Updated ${result.written.size} config file(s):\n" +
-                            result.written.joinToString("\n") { it.substringAfterLast('/') }
-                        else -> "No Unreal config found for ${target.first} — texture CVars apply to UE4/UE5 titles."
-                    }
-                    prefs.edit().putString("gfx_texture", texture).putString("gfx_shadow", shadow).apply()
-                }
-            },
+            text = if (busy) "WORKING…" else if (target != null) "APPLY TO ${target.second.uppercase()}" else "APPLY SYSTEM-WIDE",
+            onClick = { applyAll() },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         BigButton(
-            text = "RESTORE GAME CONFIGS",
-            onClick = {
-                if (target != null) {
-                    val restored = GfxEngine.restoreGameGfx(target.first)
-                    log = if (restored > 0) "Restored $restored config file(s) from backup." else "No backups found."
-                }
-            },
+            text = "RESTORE EVERYTHING",
+            onClick = { restoreAll() },
             modifier = Modifier.fillMaxWidth(),
             primary = false
         )
+
         if (log.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
             Text(log, color = GC.TextSoft, fontSize = 11.sp)
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Texture, shadow and sharpen are written into the game's own config (UE4/UE5 GameUserSettings.ini) " +
+                "with a .ghbak backup; games without an engine config still get the render scale, GPU mode and " +
+                "driver swap, which are the platform's own per-app controls.",
+            color = GC.TextDim, fontSize = 10.sp
+        )
     }
 }
 
