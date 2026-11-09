@@ -462,13 +462,19 @@ object GfxEngine {
         val roots = listOf(
             "/sdcard/Android/data/$pkg/files/UE4Game",
             "/sdcard/Android/data/$pkg/files/UnrealGame",
-            "/storage/emulated/0/Android/data/$pkg/files/UE4Game"
+            "/sdcard/Android/data/$pkg/files",
+            "/storage/emulated/0/Android/data/$pkg/files",
+            "/sdcard/UE4Game",
+            "/sdcard/UnrealGame",
+            "/storage/emulated/0/UE4Game"
         )
+        val names = listOf("GameUserSettings.ini", "Engine.ini", "UserCustom.ini", "Game.ini", "Input.ini")
         val found = LinkedHashSet<String>()
         for (root in roots) {
-            val out = Shell.exec("find $root -name GameUserSettings.ini -o -name Engine.ini -o -name UserCustom.ini 2>/dev/null") ?: continue
+            val expr = names.joinToString(" -o ") { "-name $it" }
+            val out = Shell.exec("find $root -maxdepth 6 \\( $expr \\) 2>/dev/null") ?: continue
             out.lines().map { it.trim() }.filter { it.endsWith(".ini") }.forEach { found.add(it) }
-            if (found.size >= 6) break
+            if (found.size >= 8) break
         }
         return found.toList()
     }

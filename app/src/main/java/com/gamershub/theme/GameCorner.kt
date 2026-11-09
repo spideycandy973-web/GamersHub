@@ -70,33 +70,38 @@ object GC {
     val CrimsonRed = Crimson
     val Beige = Color(0xFFC9BCB0)
 
+    /** Sampled from the launcher emblem: ember red core, orange edge, violet circuitry. */
+    val IconRed = Color(0xFFF6231C)
+    val IconAmber = Color(0xFFFF7A18)
+    val IconViolet = Color(0xFF8A5CFF)
+
     fun accentFor(index: Int): Color = when (index) {
-        1 -> OceanBlue
-        2 -> NeonTosca
-        3 -> CrimsonRed
-        else -> Orange
+        1 -> IconAmber
+        2 -> IconViolet
+        3 -> Jade
+        else -> IconRed
     }
 
     /** Second stop of the accent gradient (used for glass rims and highlights). */
     fun accentPairFor(index: Int): Color = when (index) {
-        1 -> Gold
-        2 -> Ember
+        1 -> IconRed
+        2 -> Color(0xFF4F2BD6)
         3 -> Color(0xFF7CFFC9)
-        else -> Ember
+        else -> IconAmber
     }
 
     fun tagBgFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF122A3A)
-        2 -> Color(0xFF0E322C)
-        3 -> Color(0xFF3A1216)
-        else -> TagBg
+        1 -> Color(0xFF3A2410)
+        2 -> Color(0xFF241A44)
+        3 -> Color(0xFF10382B)
+        else -> Color(0xFF3A1210)
     }
 
     fun brownFor(index: Int): Color = when (index) {
-        1 -> Color(0xFF17303F)
-        2 -> Color(0xFF123A34)
-        3 -> Color(0xFF3A181D)
-        else -> BrownPill
+        1 -> Color(0xFF3D2612)
+        2 -> Color(0xFF291C4A)
+        3 -> Color(0xFF123B2D)
+        else -> Color(0xFF3B1613)
     }
 
     val HeroBrush = Brush.horizontalGradient(
@@ -129,7 +134,7 @@ object GC {
 }
 
 /** Live accent color (Settings ▸ Theme Color). */
-val LocalAccent = staticCompositionLocalOf { GC.Gold }
+val LocalAccent = staticCompositionLocalOf { GC.IconRed }
 val LocalAccentIdx = staticCompositionLocalOf { 0 }
 
 @Composable
