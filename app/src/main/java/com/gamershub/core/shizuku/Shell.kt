@@ -4,7 +4,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.widget.Toast
 import rikka.shizuku.Shizuku
 
 /**
@@ -140,11 +143,37 @@ object Shell {
     fun exec(command: String): String? {
         directExec(command)?.let { return it }
         if (binder == null) autoBind()
-        return try {
+        val out = try {
             binder?.exec(command)
         } catch (t: Throwable) {
             lastError = t.message ?: "exec failed"
             null
+        }
+        if (out == null) notifyNeeded()
+        return out
+    }
+
+    /**
+     * Explains a silent failure. Every privileged button in the app routes through
+     * [exec]/[ok]; when those cannot run we say so instead of doing nothing, which is
+     * what made features look broken.
+     */
+    private var lastNotice = 0L
+
+    fun notifyNeeded() {
+        val ctx = appContext ?: return
+        if (granted()) return
+        val now = System.currentTimeMillis()
+        if (now - lastNotice < 3000) return
+        lastNotice = now
+        val msg = if (!running())
+            "Shizuku isn't running — start it to use this"
+        else
+            "Grant Shizuku access to GamersHub to use this"
+        runCatching {
+            Handler(Looper.getMainLooper()).post {
+                runCatching { Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
+            }
         }
     }
 
@@ -218,12 +247,18 @@ object Shell {
     /** Last resort: plain app-side exec (no privileges). */
     fun appExec(command: String): String = try {
         val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
-        val out = process.inputStream.bufferedReader().readText() +
-            process.errorStream.bufferedReader().readText()
+        val out = StringBuilder()
+        // readText() on a wedged process blocks forever — drain on threads with a cap.
+        val reader = Thread { runCatching { process.inputStream.bufferedReader().forEachLine { out.appendLine(it) } } }
+        val err = Thread { runCatching { process.errorStream.bufferedReader().forEachLine { out.appendLine(it) } } }
+        reader.start()
+        err.start()
+        reader.join(1500)
+        err.join(1500)
         val finished = runCatching { process.waitFor(1500, java.util.concurrent.TimeUnit.MILLISECONDS) }
             .getOrDefault(true)
         if (!finished) runCatching { process.destroy() }
-        out
+        out.toString()
     } catch (t: Throwable) {
         t.message ?: ""
     }

@@ -467,6 +467,8 @@ class UpscaleMirrorService : Service() {
                 .putExtra(UpscaleMirror.EXTRA_DATA, data)
             runCatching {
                 androidx.core.content.ContextCompat.startForegroundService(context, intent)
+            }.onFailure {
+                com.gamershub.GamersHubApp.toast("Upscaler couldn't start — screen-capture permission missing")
             }
         }
     }

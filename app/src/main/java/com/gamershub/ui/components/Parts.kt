@@ -379,7 +379,8 @@ fun Card(modifier: Modifier = Modifier, content: @Composable androidx.compose.fo
     Column(
         modifier
             .fillMaxWidth()
-            .liquidGlass(shape = RoundedCornerShape(22.dp), accent = LocalAccent.current)
+            .clip(RoundedCornerShape(18.dp))
+            .background(GC.Surface)
             .padding(15.dp),
         content = content
     )

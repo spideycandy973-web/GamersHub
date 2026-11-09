@@ -25,10 +25,27 @@ class GamersHubApp : Application() {
         /** Last trace caught in this process — the Settings card reads the file, the UI reads this. */
         @Volatile
         var lastCrash: String = ""
+
+        @Volatile
+        private var instance: GamersHubApp? = null
+
+        @Volatile
+        private var lastRecovery: Long = 0L
+
+        /** Safe toast from any thread — used so a failed action is never silent. */
+        fun toast(message: String) {
+            val ctx = instance ?: return
+            runCatching {
+                Handler(Looper.getMainLooper()).post {
+                    runCatching { Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show() }
+                }
+            }
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         installCrashGuard()
     }
 
@@ -38,15 +55,29 @@ class GamersHubApp : Application() {
             runCatching { log(thread, error) }
             val main = Looper.getMainLooper().thread
             if (thread === main) {
-                // Keep the process alive: unwind this one action, tell the user, carry on.
+                // Keep the process alive and put a working screen back in front of the
+                // user instead of leaving a dead activity behind.
                 runCatching {
                     Handler(Looper.getMainLooper()).post {
                         runCatching {
                             Toast.makeText(
                                 this,
-                                "Action failed — details copied to clipboard",
+                                "That action failed — GamersHub recovered. Details are copied.",
                                 Toast.LENGTH_LONG
                             ).show()
+                        }
+                        val now = System.currentTimeMillis()
+                        if (now - lastRecovery > 6000) {
+                            lastRecovery = now
+                            runCatching {
+                                startActivity(
+                                    android.content.Intent(this, MainActivity::class.java)
+                                        .addFlags(
+                                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        )
+                                )
+                            }
                         }
                     }
                 }

@@ -45,7 +45,6 @@ import android.content.Intent
 import android.net.Uri
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
-import com.gamershub.ui.components.liquidGlass
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.CircleIconButton
@@ -60,7 +59,7 @@ import com.gamershub.ui.components.StatusPill
 @Composable
 fun ProfileScreen(
     version: String,
-    sessionTime: String,
+    sessionTime: () -> String,
     cpu: DeviceStats.Cpu,
     mem: DeviceStats.Mem,
     storage: DeviceStats.Storage,
@@ -91,7 +90,7 @@ fun ProfileScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AIcon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 13.sp, maxLines = 1)
+                    Text(sessionTime(), style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 13.sp, maxLines = 1)
                 }
             }
             Spacer(Modifier.width(8.dp))
@@ -170,7 +169,6 @@ fun ProfileScreen(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .liquidGlass(shape = RoundedCornerShape(24.dp), accent = accent, strong = true)
                 .background(GC.HeroBrush)
                 .padding(18.dp)
         ) {
@@ -262,7 +260,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AIcon(Icons.Filled.AccessTime, contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
                 Spacer(Modifier.width(5.dp))
-                Text(sessionTime, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
+                Text(sessionTime(), style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
 
             }
         }

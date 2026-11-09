@@ -313,6 +313,8 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
             runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
                 else context.startService(intent)
+            }.onFailure {
+                com.gamershub.GamersHubApp.toast("Monitor couldn't start — check overlay/notification permission")
             }
         }
 

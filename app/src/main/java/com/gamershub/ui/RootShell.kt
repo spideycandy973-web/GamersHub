@@ -93,7 +93,6 @@ import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.Grabber
-import com.gamershub.ui.components.LiquidBackdrop
 import com.gamershub.ui.sheets.AppSelectorSheet
 import com.gamershub.ui.sheets.LaunchModeSheet
 import com.gamershub.ui.sheets.PERM_CONFIGS
@@ -171,33 +170,40 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
         var storage by remember { mutableStateOf(DeviceStats.storage()) }
         var ping by remember { mutableStateOf(-1) }
         LaunchedEffect(Unit) {
+            // Only the Lobby and Profile show live numbers — sampling while the user is
+            // on Tools/Labs/Game Space was pure jank for nothing.
             while (true) {
-                runCatching {
-                    cpu = withContext(Dispatchers.IO) { DeviceStats.cpu() }
-                    mem = withContext(Dispatchers.IO) { DeviceStats.mem(context) }
+                if (tab == Tab.LOBBY || tab == Tab.PROFILE) {
+                    runCatching {
+                        cpu = withContext(Dispatchers.IO) { DeviceStats.cpu() }
+                        mem = withContext(Dispatchers.IO) { DeviceStats.mem(context) }
+                    }
                 }
-                delay(1500)
+                delay(3000)
             }
         }
         LaunchedEffect(Unit) {
             while (true) {
                 runCatching { storage = withContext(Dispatchers.IO) { DeviceStats.storage() } }
-                delay(4000)
+                delay(30000)
             }
         }
         LaunchedEffect(Unit) {
             while (true) {
                 runCatching { ping = withContext(Dispatchers.IO) { DeviceStats.pingMs() } }
-                delay(4000)
+                delay(20000)
             }
         }
 
-        // Session timer
-        var sessionSeconds by remember { mutableIntStateOf(0) }
+        // Session timer — handed to Profile as a lambda so the tick never recomposes the shell.
+        val sessionSeconds = remember { mutableIntStateOf(0) }
         LaunchedEffect(Unit) {
-            while (true) { delay(1000); sessionSeconds++ }
+            while (true) { delay(1000); sessionSeconds.intValue++ }
         }
-        val sessionTime = String.format("%02d:%02d:%02d", sessionSeconds / 3600, (sessionSeconds % 3600) / 60, sessionSeconds % 60)
+        val sessionTime = {
+            val s = sessionSeconds.intValue
+            String.format("%02d:%02d:%02d", s / 3600, (s % 3600) / 60, s % 60)
+        }
 
         // Permission status — refreshed every time the app resumes (this is
         // what makes "grant in Settings → come back" actually update the UI).
@@ -370,9 +376,10 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             }
         }
 
-        LiquidBackdrop(
+        Box(
             Modifier
                 .fillMaxSize()
+                .background(GC.Bg)
         ) {
             AnimatedContent(
                 targetState = tab,
@@ -385,7 +392,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             ) { tabTarget ->
             when (tabTarget) {
                 Tab.PROFILE -> ProfileScreen(
-                    version = "6.10.0",
+                    version = "6.10.2",
                     sessionTime = sessionTime,
                     cpu = cpu, mem = mem, storage = storage, ping = ping,
                     envLevel = envLevel, envScore = envScore,
@@ -395,7 +402,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                 Tab.LOBBY -> LobbyScreen(
                     cpuPct = cpu.pct,
                     library = library,
-                    version = "6.10.0",
+                    version = "6.10.2",
                     playMinutes = { pkg -> repo.playMinutes(pkg) },
                     libraryCount = library.size,
                     onSelectApps = { sheet = SheetState.AppSelector },

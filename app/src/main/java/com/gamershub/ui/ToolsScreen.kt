@@ -453,6 +453,8 @@ private fun ToolRow(
             .padding(bottom = 8.dp)
             .clip(RoundedCornerShape(15.dp))
             .background(GC.Surface)
+            // whole row is the button — tapping the title/icon/anywhere used to do nothing
+            .clickable { onConfig() }
             .padding(horizontal = 12.dp, vertical = 11.dp)
     ) {
         Box(
