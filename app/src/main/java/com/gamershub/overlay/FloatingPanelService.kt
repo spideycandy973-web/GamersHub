@@ -16,7 +16,13 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -328,19 +334,16 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
 private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
     val accent = LocalAccent.current
     // A slow, shallow breath of light behind the emblem — not a strobe.
-    val glow by androidx.compose.animation.core.rememberInfiniteTransition(label = "bubble")
-        .animateFloat(
-            initialValue = 0.16f,
-            targetValue = 0.46f,
-            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                animation = androidx.compose.animation.core.tween(
-                    durationMillis = 2100,
-                    easing = androidx.compose.animation.core.FastOutSlowInEasing
-                ),
-                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-            ),
-            label = "glow"
-        )
+    val breath = rememberInfiniteTransition(label = "bubble")
+    val glow by breath.animateFloat(
+        initialValue = 0.16f,
+        targetValue = 0.46f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
     Box(
         Modifier
             .size(62.dp)
