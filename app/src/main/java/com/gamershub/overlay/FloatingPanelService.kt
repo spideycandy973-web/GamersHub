@@ -245,29 +245,38 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         params.y = 0
         val panelTheme = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
         val content = ComposeView(this)
-        // The panel gets its own recomposer with an error sink. Anything that fails
-        // while the panel is being built is logged and the window is closed, instead
-        // of the exception reaching the thread's default handler and killing the app.
+        // The panel gets its own recomposer with an error sink, so a failure inside the
+        // panel closes the window instead of killing the process. A recomposer can only
+        // run on a context that carries a frame clock, so we ask for one first and fall
+        // back to Compose's own window recomposer when this thread does not provide it.
         runCatching {
-            val sink = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
-                com.gamershub.GamersHubApp.note(error, "panel compose")
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    runCatching {
-                        android.widget.Toast.makeText(
-                            this,
-                            "The pop-up hit a snag — details were saved",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
+            val threadContext = androidx.compose.ui.platform.AndroidUiDispatcher.CurrentThread
+            val clock = threadContext[androidx.compose.runtime.MonotonicFrameClock]
+            if (clock != null) {
+                val sink = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+                    com.gamershub.GamersHubApp.note(error, "panel compose")
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        runCatching {
+                            android.widget.Toast.makeText(
+                                this,
+                                "The pop-up hit a snag — details were saved",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        closePanel()
                     }
-                    closePanel()
+                }
+                // Frame clock + sink, and the runner launched on that exact context:
+                // Recomposer reads the clock from the caller's context, not its own.
+                val runnerContext = threadContext + clock + sink
+                val recomposer = androidx.compose.runtime.Recomposer(runnerContext)
+                panelRecomposer = recomposer
+                content.setParentCompositionContext(recomposer)
+                panelJob = panelScope.launch(runnerContext) {
+                    runCatching { recomposer.runRecomposeAndApplyChanges() }
+                        .onFailure { com.gamershub.GamersHubApp.note(it, "panel runner") }
                 }
             }
-            val recomposer = androidx.compose.runtime.Recomposer(
-                androidx.compose.ui.platform.AndroidUiDispatcher.CurrentThread + sink
-            )
-            panelRecomposer = recomposer
-            content.setParentCompositionContext(recomposer)
-            panelJob = panelScope.launch { recomposer.runRecomposeAndApplyChanges() }
         }
         content.setContent {
             GameCornerTheme(panelTheme) {
