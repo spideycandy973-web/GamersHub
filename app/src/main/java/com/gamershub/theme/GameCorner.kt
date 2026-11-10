@@ -48,10 +48,10 @@ object GC {
     val InkText = Color(0xFFF6F3F2)
     val InkDim = Color(0xFF9C9294)
     val InkSoft = Color(0xFFC8BEBF)
-    /** Reference signal red — the console accent. */
-    val Signal = Color(0xFFFF1717)
-    val SignalDeep = Color(0xFFC00B0B)
-    val SignalGlow = Color(0xFFFF5C5C)
+    /** Light red — the app's default accent, used here as the console accent too. */
+    val Signal = Color(0xFFFF5252)
+    val SignalDeep = Color(0xFFB3221F)
+    val SignalGlow = Color(0xFFFF9C9C)
 
     /* ---- Accents.  Index 0 is the default: "Molten Gold", the same amber the
        launcher gem is built from.  It splits into ember, exactly like the icon. ---- */
@@ -70,6 +70,11 @@ object GC {
     val CrimsonRed = Crimson
     val Beige = Color(0xFFC9BCB0)
 
+    /** Light red — the default look of the whole app. */
+    val LightRed = Color(0xFFFF5252)
+    /** Deeper stop that pairs with [LightRed] in gradients and rims. */
+    val LightRedDeep = Color(0xFFFF2E2E)
+
     /** Sampled from the launcher emblem: ember red core, orange edge, violet circuitry. */
     val IconRed = Color(0xFFF6231C)
     val IconAmber = Color(0xFFFF7A18)
@@ -80,7 +85,7 @@ object GC {
     var custom: Color? = null
 
     fun accentFor(index: Int): Color = when {
-        index == 4 -> custom ?: IconRed
+        index == 4 -> custom ?: LightRed
         index == 1 -> IconAmber
         index == 2 -> IconViolet
         index == 3 -> Jade
@@ -89,7 +94,7 @@ object GC {
 
     /** Darker bed for a custom accent — mixed into the warm surface, not a new hue. */
     fun customBed(): Color {
-        val c = custom ?: IconRed
+        val c = custom ?: LightRed
         val t = 0.22f
         return Color(
             red = Surface.red * (1 - t) + c.red * t,
@@ -101,11 +106,11 @@ object GC {
 
     /** Second stop of the accent gradient (used for glass rims and highlights). */
     fun accentPairFor(index: Int): Color = when (index) {
-        4 -> (custom ?: IconRed)
+        4 -> (custom ?: LightRed)
         1 -> IconRed
         2 -> Color(0xFF4F2BD6)
         3 -> Color(0xFF7CFFC9)
-        else -> IconAmber
+        else -> LightRedDeep
     }
 
     fun tagBgFor(index: Int): Color = when (index) {
@@ -113,7 +118,7 @@ object GC {
         1 -> Color(0xFF3A2410)
         2 -> Color(0xFF241A44)
         3 -> Color(0xFF10382B)
-        else -> Color(0xFF3A1210)
+        else -> Color(0xFF3D1416)
     }
 
     fun brownFor(index: Int): Color = when (index) {
@@ -154,7 +159,7 @@ object GC {
 }
 
 /** Live accent color (Settings ▸ Theme Color). */
-val LocalAccent = staticCompositionLocalOf { GC.IconRed }
+val LocalAccent = staticCompositionLocalOf { GC.LightRed }
 val LocalAccentIdx = staticCompositionLocalOf { 0 }
 
 @Composable
