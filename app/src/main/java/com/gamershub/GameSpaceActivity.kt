@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.content.IntentFilter
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,6 +46,8 @@ import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -106,6 +109,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -441,31 +445,53 @@ private fun GameSpaceScreen(
             )
 
             // ---------- featured card with a real captured frame ----------
-            AppCard(
-                entry = current,
-                art = art,
-                name = appName,
-                version = appVersion,
-                minutes = repo.playMinutes(currentPkg),
-                selected = true,
-                primary = true,
-                emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
-                onSelect = { if (library.isEmpty()) showApps = true },
-                onFilter = { showTexture = true; showControl = false; showApps = false },
-                onCapture = {
-                    if (currentPkg.isNotBlank()) {
-                        onLaunch(currentPkg)
-                        com.gamershub.data.ArtStore.captureLater(context, currentPkg, 9000L)
-                    }
+            // Switching apps now slides the card in the direction you swiped, so the
+            // change of selection is visible instead of the picture just swapping.
+            AnimatedContent(
+                targetState = currentPkg,
+                transitionSpec = {
+                    val from = library.indexOfFirst { it.pkg == initialState }
+                    val to = library.indexOfFirst { it.pkg == targetState }
+                    val forward = to >= from
+                    (
+                        slideInHorizontally(tween(300)) { width -> if (forward) width / 3 else -width / 3 } +
+                            fadeIn(tween(220)) +
+                            androidx.compose.animation.scaleIn(tween(300), initialScale = 0.96f)
+                        ).togetherWith(
+                        slideOutHorizontally(tween(200)) { width -> if (forward) -width / 4 else width / 4 } +
+                            fadeOut(tween(160))
+                    )
                 },
-                artSize = h * 0.115f,
-                nameSize = (h.value * 0.031f).sp,
-                metaSize = (h.value * 0.019f).sp,
+                label = "featuredApp",
                 modifier = Modifier
                     .offset(x = w * 0.045f, y = h * 0.340f)
                     .size(width = w * 0.356f, height = h * 0.348f)
                     .swipeToSwitchApp(library, currentPkg) { currentPkg = it }
-            )
+            ) { shownPkg ->
+                val shown = library.firstOrNull { it.pkg == shownPkg }
+                AppCard(
+                    entry = shown,
+                    art = if (shownPkg == currentPkg) art else null,
+                    name = shown?.name ?: shownPkg.ifBlank { "No app selected" },
+                    version = appVersion,
+                    minutes = repo.playMinutes(shownPkg),
+                    selected = true,
+                    primary = true,
+                    emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
+                    onSelect = { if (library.isEmpty()) showApps = true },
+                    onFilter = { showTexture = true; showControl = false; showApps = false },
+                    onCapture = {
+                        if (currentPkg.isNotBlank()) {
+                            onLaunch(currentPkg)
+                            com.gamershub.data.ArtStore.captureLater(context, currentPkg, 9000L)
+                        }
+                    },
+                    artSize = h * 0.115f,
+                    nameSize = (h.value * 0.031f).sp,
+                    metaSize = (h.value * 0.019f).sp,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             // ---------- live app facts, 2x2 ----------
             AppFacts(
@@ -979,32 +1005,51 @@ private fun AppStrip(
     iconSize: androidx.compose.ui.unit.Dp,
     nameSize: androidx.compose.ui.unit.TextUnit
 ) {
-    Row(
-        modifier.horizontalScroll(rememberScrollState()),
+    val listState = rememberLazyListState()
+    val activeIndex = library.indexOfFirst { it.pkg == currentPkg }
+
+    // Keep the chosen app in view, so a long library never hides the selection.
+    LaunchedEffect(activeIndex) {
+        if (activeIndex >= 0) runCatching { listState.animateScrollToItem(activeIndex) }
+    }
+
+    LazyRow(
+        state = listState,
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(iconSize * 0.18f),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        library.forEach { entry ->
+        items(library.size) { index ->
+            val entry = library[index]
             val active = entry.pkg == currentPkg
             val stripBg by animateColorAsState(
                 if (active) GC.Signal.copy(alpha = 0.20f) else Color(0x14FFFFFF),
-                tween(200), label = "stripBg"
+                tween(220), label = "stripBg"
             )
             val stripBorder by animateColorAsState(
                 if (active) GC.Signal.copy(alpha = 0.80f) else Color(0x10FFFFFF),
-                tween(200), label = "stripBorder"
+                tween(220), label = "stripBorder"
             )
             val stripInter = remember { MutableInteractionSource() }
             val stripPressed by stripInter.collectIsPressedAsState()
-            val stripScale by animateFloatAsState(
+            val pressScale by animateFloatAsState(
                 if (stripPressed) 0.94f else 1f,
                 spring(dampingRatio = 0.5f, stiffness = 900f), label = "stripScale"
+            )
+            // The chosen app breathes a little larger, so the change of selection is visible.
+            val activeScale by animateFloatAsState(
+                if (active) 1.06f else 1f,
+                spring(dampingRatio = 0.55f, stiffness = 420f), label = "stripActive"
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .height(iconSize * 1.55f)
-                    .graphicsLayer { scaleX = stripScale; scaleY = stripScale }
+                    .graphicsLayer {
+                        val s = pressScale * activeScale
+                        scaleX = s
+                        scaleY = s
+                    }
                     .clip(RoundedCornerShape(iconSize * 0.42f))
                     .background(stripBg)
                     .border(1.dp, stripBorder, RoundedCornerShape(iconSize * 0.42f))
@@ -1030,30 +1075,32 @@ private fun AppStrip(
                 )
             }
         }
-        if (library.isEmpty()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .height(iconSize * 1.55f)
-                    .clip(RoundedCornerShape(iconSize * 0.42f))
-                    .background(Color(0x14FFFFFF))
-                    .clickable(onClick = onAdd)
-                    .padding(horizontal = iconSize * 0.35f)
-            ) {
-                AIcon(Icons.Filled.Add, contentDescription = null, tint = GC.Signal, modifier = Modifier.size(iconSize * 0.7f))
-                Spacer(Modifier.width(iconSize * 0.2f))
-                Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = nameSize)
-            }
-        } else {
-            Box(
-                Modifier
-                    .size(iconSize * 1.55f)
-                    .clip(RoundedCornerShape(iconSize * 0.42f))
-                    .background(Color(0x14FFFFFF))
-                    .clickable(onClick = onAdd),
-                contentAlignment = Alignment.Center
-            ) {
-                AIcon(Icons.Filled.Add, contentDescription = "Add apps", tint = GC.InkText, modifier = Modifier.size(iconSize * 0.65f))
+        item {
+            if (library.isEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .height(iconSize * 1.55f)
+                        .clip(RoundedCornerShape(iconSize * 0.42f))
+                        .background(Color(0x14FFFFFF))
+                        .clickable(onClick = onAdd)
+                        .padding(horizontal = iconSize * 0.35f)
+                ) {
+                    AIcon(Icons.Filled.Add, contentDescription = null, tint = GC.Signal, modifier = Modifier.size(iconSize * 0.7f))
+                    Spacer(Modifier.width(iconSize * 0.2f))
+                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = nameSize)
+                }
+            } else {
+                Box(
+                    Modifier
+                        .size(iconSize * 1.55f)
+                        .clip(RoundedCornerShape(iconSize * 0.42f))
+                        .background(Color(0x14FFFFFF))
+                        .clickable(onClick = onAdd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AIcon(Icons.Filled.Add, contentDescription = "Add apps", tint = GC.InkText, modifier = Modifier.size(iconSize * 0.65f))
+                }
             }
         }
     }
