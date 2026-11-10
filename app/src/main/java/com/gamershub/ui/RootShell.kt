@@ -34,6 +34,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -657,17 +660,25 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             }
         }
 
-        // After a failure the system would have shown a dead-end dialog. Instead the
-        // exact words are put on screen here, ready to copy — no guessing.
+        // A failure now leaves a card with the actual words and a way to send them on.
         val crashAtLaunch = remember {
             runCatching {
                 val f = java.io.File(context.filesDir, "crash.log")
-                if (f.exists() && System.currentTimeMillis() - f.lastModified() < 15 * 60 * 1000L)
-                    f.readText().trim().takeLast(1400) else ""
+                if (f.exists() && System.currentTimeMillis() - f.lastModified() < 30 * 60 * 1000L)
+                    f.readText().trim().takeLast(2600) else ""
             }.getOrDefault("")
         }
         var showCrash by remember { mutableStateOf(crashAtLaunch.isNotBlank()) }
         if (showCrash) {
+            val crashSteps = remember(crashAtLaunch) {
+                crashAtLaunch.lineSequence().firstOrNull { it.startsWith("steps:") }.orEmpty()
+            }
+            val crashHead = remember(crashAtLaunch) {
+                crashAtLaunch.lineSequence()
+                    .filterNot { it.startsWith("steps:") || it.startsWith("===") }
+                    .joinToString("\n")
+                    .trim()
+            }
             Box(
                 Modifier.fillMaxSize().background(Color(0xF2000000)),
                 contentAlignment = Alignment.Center
@@ -675,17 +686,44 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .padding(20.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .padding(18.dp)
+                        .clip(RoundedCornerShape(22.dp))
                         .background(GC.Surface)
                         .padding(18.dp)
                 ) {
-                    Text("Last error", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
-                    Spacer(Modifier.height(6.dp))
-                    Text("Copy this and send it — it names the exact step that broke.", color = GC.TextDim, fontSize = 12.sp)
+                    Text(
+                        "It stopped here",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = GC.Text,
+                        fontSize = 21.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Copy or send this on — it names the exact step that failed.",
+                        color = GC.TextDim,
+                        fontSize = 12.sp
+                    )
                     Spacer(Modifier.height(10.dp))
-                    Text(crashAtLaunch, color = GC.TextSoft, fontSize = 10.sp, maxLines = 16)
-                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(
+                            crashHead.ifBlank { "no details were written" },
+                            color = GC.TextSoft,
+                            fontSize = 11.sp,
+                            modifier = Modifier
+                                .heightIn(max = 230.dp)
+                                .verticalScroll(rememberScrollState())
+                        )
+                    }
+                    if (crashSteps.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            crashSteps.removePrefix("steps: ").trim(),
+                            color = GC.TextDim,
+                            fontSize = 9.sp,
+                            maxLines = 3
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         BigButton(
                             text = "Copy",
@@ -693,20 +731,41 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                                 runCatching {
                                     val cm = context.getSystemService(android.content.ClipboardManager::class.java)
                                     cm?.setPrimaryClip(
-                                        android.content.ClipData.newPlainText("GamersHub error", crashAtLaunch)
+                                        android.content.ClipData.newPlainText(
+                                            "GamersHub error",
+                                            crashAtLaunch.ifBlank { crashHead }
+                                        )
                                     )
-                                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Error copied", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.weight(1f)
                         )
                         BigButton(
-                            text = "Close",
-                            onClick = { showCrash = false },
+                            text = "Send",
+                            onClick = {
+                                runCatching {
+                                    val send = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "GamersHub error report")
+                                        putExtra(Intent.EXTRA_TEXT, crashAtLaunch.ifBlank { crashHead })
+                                    }
+                                    context.startActivity(
+                                        Intent.createChooser(send, "Send the error").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }
+                            },
                             modifier = Modifier.weight(1f),
                             primary = false
                         )
                     }
+                    Spacer(Modifier.height(10.dp))
+                    BigButton(
+                        text = "Close",
+                        onClick = { showCrash = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        primary = false
+                    )
                 }
             }
         }

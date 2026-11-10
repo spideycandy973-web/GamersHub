@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.ScreenLockPortrait
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Screenshot
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
@@ -260,7 +261,7 @@ private fun <T> rememberLive(initial: T, periodMs: Long = 3000, block: () -> T):
 /* ------------------------------------------------------------------ */
 
 @Composable
-fun AxPanel(onClose: () -> Unit) {
+fun AxPanel(onClose: () -> Unit, onQuit: () -> Unit = onClose) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val stats = rememberPanelStats()
@@ -345,7 +346,7 @@ fun AxPanel(onClose: () -> Unit) {
         }
 
         if (st.page == AxPage.HOME) {
-            HomePage(api, stats, startedAt)
+            HomePage(api, stats, startedAt, onQuit)
         } else {
             PageHeader(api, st.page.title)
             when (st.page) {
@@ -371,7 +372,7 @@ fun AxPanel(onClose: () -> Unit) {
 /* ------------------------------------------------------------------ */
 
 @Composable
-private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
+private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () -> Unit) {
     val st = api.state
     val context = api.context
 
@@ -489,6 +490,8 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long) {
                 HeroMark(Modifier.size(24.dp))
                 Spacer(Modifier.width(14.dp))
                 RoundKey(Icons.Filled.Settings, "All features") { api.nav(AxPage.MENU) }
+                Spacer(Modifier.width(14.dp))
+                RoundKey(Icons.Filled.PowerSettingsNew, "Close floating icon") { onQuit() }
             }
         }
         ChevronGauge("RAM", stats.ram, flip = true)

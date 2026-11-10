@@ -209,6 +209,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         // only decodes one bitmap and draws two circles.
         val view = EmblemBubbleView(this).apply {
             onTap = { togglePanel() }
+            onLongPress = { quitFloating() }
             onDrag = { dx, dy ->
                 params.x += dx.toInt()
                 params.y += dy.toInt()
@@ -216,7 +217,17 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             }
         }
         bubbleView = view
-        val attached = runCatching { windowManager?.addView(view, params) }.isSuccess
+        val attached = runCatching {
+            windowManager?.addView(view, params)
+            // Small pop as it lands, so the mark is clearly "on".
+            view.alpha = 0f
+            view.scaleX = 0.6f
+            view.scaleY = 0.6f
+            view.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                .setDuration(260L)
+                .setInterpolator(android.view.animation.OvershootInterpolator(1.6f))
+                .start()
+        }.isSuccess
         if (!attached) {
             android.widget.Toast.makeText(
                 this,
@@ -226,6 +237,20 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             isRunning = false
             stopSelf()
         }
+    }
+
+    /** Removes the floating icon and stops the service — the "close" the icon was missing. */
+    private fun quitFloating() {
+        com.gamershub.GamersHubApp.step("bubble quit")
+        closePanel()
+        removeViews()
+        isRunning = false
+        android.widget.Toast.makeText(
+            this,
+            "Floating icon closed — switch it back on in Tools",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+        stopSelf()
     }
 
     private fun togglePanel() {
@@ -254,6 +279,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             val clock = threadContext[androidx.compose.runtime.MonotonicFrameClock]
             if (clock != null) {
                 val sink = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+                    if (error is kotlinx.coroutines.CancellationException) return@CoroutineExceptionHandler
                     com.gamershub.GamersHubApp.note(error, "panel compose")
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
                         runCatching {
@@ -274,13 +300,18 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
                 content.setParentCompositionContext(recomposer)
                 panelJob = panelScope.launch(runnerContext) {
                     runCatching { recomposer.runRecomposeAndApplyChanges() }
-                        .onFailure { com.gamershub.GamersHubApp.note(it, "panel runner") }
+                        .onFailure { error ->
+                            // Closing the panel cancels this job on purpose; that is not a crash.
+                            if (error !is kotlinx.coroutines.CancellationException) {
+                                com.gamershub.GamersHubApp.note(error, "panel runner")
+                            }
+                        }
                 }
             }
         }
         content.setContent {
             GameCornerTheme(panelTheme) {
-                AxPanel(onClose = { closePanel() })
+                AxPanel(onClose = { closePanel() }, onQuit = { quitFloating() })
             }
         }
         // ComposeView is final, so the outside-tap handler lives on a thin host.
@@ -299,7 +330,16 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         ))
         content.setViewTreeLifecycleOwner(this)
         content.setViewTreeSavedStateRegistryOwner(this)
-        val attached = runCatching { windowManager?.addView(view, params) }.isSuccess
+        val attached = runCatching {
+            windowManager?.addView(view, params)
+            // Slide up from the edge with a fade — the panel had no motion at all.
+            view.translationY = 64f * resources.displayMetrics.density
+            view.alpha = 0f
+            view.animate().translationY(0f).alpha(1f)
+                .setDuration(230L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
+                .start()
+        }.isSuccess
         if (!attached) {
             android.widget.Toast.makeText(
                 this,
@@ -314,13 +354,25 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
     }
 
     private fun closePanel() {
+        val closing = panelView
         expanded = false
         runCatching { panelJob?.cancel() }
         runCatching { panelRecomposer?.cancel() }
         panelJob = null
         panelRecomposer = null
-        panelView?.let { runCatching { windowManager?.removeView(it) } }
         panelView = null
+        if (closing == null) return
+        // Let it drop away instead of vanishing.
+        runCatching {
+            closing.animate().translationY(72f * resources.displayMetrics.density).alpha(0f)
+                .setDuration(170L)
+                .withEndAction {
+                    runCatching { windowManager?.removeView(closing) }
+                }
+                .start()
+        }.onFailure {
+            runCatching { windowManager?.removeView(closing) }
+        }
     }
 
     private fun buildNotification(): android.app.Notification {

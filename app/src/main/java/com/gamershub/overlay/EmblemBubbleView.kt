@@ -32,6 +32,9 @@ class EmblemBubbleView(context: Context) : View(context) {
     var onTap: () -> Unit = {}
     var onDrag: (Float, Float) -> Unit = { _, _ -> }
 
+    /** Held down: the way to get rid of the floating icon without opening the panel. */
+    var onLongPress: () -> Unit = {}
+
     private val density = resources.displayMetrics.density
 
     /** Whole touch target, one size down from the old 58dp circle. */
@@ -61,8 +64,8 @@ class EmblemBubbleView(context: Context) : View(context) {
         }
     }.getOrDefault(0xFFF6231C.toInt())
 
-    private val pulseAnimator = ValueAnimator.ofFloat(0.16f, 0.46f).apply {
-        duration = 2100L
+    private val pulseAnimator = ValueAnimator.ofFloat(0.18f, 0.92f).apply {
+        duration = 1900L
         startDelay = 0L
         repeatCount = ValueAnimator.INFINITE
         repeatMode = ValueAnimator.REVERSE
@@ -73,6 +76,20 @@ class EmblemBubbleView(context: Context) : View(context) {
         }
     }
 
+    private val gesture = android.view.GestureDetector(
+        context,
+        object : android.view.GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent): Boolean = true
+
+            override fun onLongPress(e: MotionEvent) {
+                longPressFired = true
+                dragging = false
+                runCatching { onLongPress() }
+            }
+        }
+    )
+
+    private var longPressFired = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var downRawX = 0f
     private var downRawY = 0f
@@ -141,18 +158,24 @@ class EmblemBubbleView(context: Context) : View(context) {
         )
         canvas.drawCircle(cx, cy, glowRadius, glowPaint)
 
-        // 3. The mark itself.
+        // 3. The mark itself, breathing very slightly with the light.
         emblem?.let {
+            val scale = 0.985f + pulse * 0.035f
+            canvas.save()
+            canvas.scale(scale, scale, cx, cy)
             canvas.drawBitmap(it, cx - it.width / 2f, cy - it.height / 2f, markPaint)
+            canvas.restore()
         }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        gesture.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downRawX = event.rawX; downRawY = event.rawY
                 lastRawX = event.rawX; lastRawY = event.rawY
                 dragging = false
+                longPressFired = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -171,7 +194,7 @@ class EmblemBubbleView(context: Context) : View(context) {
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (!dragging) runCatching { onTap() }
+                if (!dragging && !longPressFired) runCatching { onTap() }
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
