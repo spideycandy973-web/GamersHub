@@ -589,7 +589,7 @@ fun SettingsSheet(
             Text("Change the app colour", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Signal", GC.IconRed, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
+                ThemeColorTile("Light red", GC.LightRed, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
                 ThemeColorTile("Ember", GC.IconAmber, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
             }
             Spacer(Modifier.height(12.dp))

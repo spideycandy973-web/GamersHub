@@ -54,7 +54,7 @@ class EmblemBubbleView(context: Context) : View(context) {
     private val markPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     private var pulse = 0.18f
-    /** Mirrors GC.IconRed / IconAmber / IconViolet / Jade, kept as raw ARGB on purpose. */
+    /** Mirrors GC.LightRed / IconAmber / IconViolet / Jade, kept as raw ARGB on purpose. */
     private val accentColor: Int = runCatching {
         val picked = com.gamershub.data.AppRepo(context).customAccent()
         if (picked != 0) return@runCatching picked
@@ -62,9 +62,9 @@ class EmblemBubbleView(context: Context) : View(context) {
             1 -> 0xFFFF7A18.toInt()
             2 -> 0xFF8A5CFF.toInt()
             3 -> 0xFF2FD8A0.toInt()
-            else -> 0xFFF6231C.toInt()
+            else -> 0xFFFF5252.toInt()
         }
-    }.getOrDefault(0xFFF6231C.toInt())
+    }.getOrDefault(0xFFFF5252.toInt())
 
     private val pulseAnimator = ValueAnimator.ofFloat(0.18f, 0.92f).apply {
         duration = 1900L
