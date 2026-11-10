@@ -49,9 +49,9 @@ object GC {
     val InkDim = Color(0xFF9C9294)
     val InkSoft = Color(0xFFC8BEBF)
     /** Light red — the app's default accent, used here as the console accent too. */
-    val Signal = Color(0xFFFF5252)
-    val SignalDeep = Color(0xFFB3221F)
-    val SignalGlow = Color(0xFFFF9C9C)
+    val Signal = Color(0xFFFF8A80)
+    val SignalDeep = Color(0xFFB3352F)
+    val SignalGlow = Color(0xFFFFB4B0)
 
     /* ---- Accents.  Index 0 is the default: "Molten Gold", the same amber the
        launcher gem is built from.  It splits into ember, exactly like the icon. ---- */
@@ -71,9 +71,9 @@ object GC {
     val Beige = Color(0xFFC9BCB0)
 
     /** Light red — the default look of the whole app. */
-    val LightRed = Color(0xFFFF5252)
+    val LightRed = Color(0xFFFF8A80)
     /** Deeper stop that pairs with [LightRed] in gradients and rims. */
-    val LightRedDeep = Color(0xFFFF2E2E)
+    val LightRedDeep = Color(0xFFFF5A5A)
 
     /** Sampled from the launcher emblem: ember red core, orange edge, violet circuitry. */
     val IconRed = Color(0xFFF6231C)
@@ -84,17 +84,35 @@ object GC {
     @Volatile
     var custom: Color? = null
 
+    /**
+     * The red family. Six tones from pale to deep, plus a warm ember, so there is
+     * always one that reads clearly as text on the warm black and still works as a
+     * filled button under dark ink. Index order matches the swatches in Preferences.
+     */
+    data class Tone(val name: String, val color: Color, val pair: Color, val bed: Color)
+
+    val TONES: List<Tone> = listOf(
+        Tone("Light red", Color(0xFFFF8A80), Color(0xFFFF5A5A), Color(0xFF3E1818)),
+        Tone("Rose red", Color(0xFFFF6B6B), Color(0xFFFF3B3B), Color(0xFF3D1416)),
+        Tone("True red", Color(0xFFFF4D4D), Color(0xFFD32F2F), Color(0xFF3C1010)),
+        Tone("Signal red", Color(0xFFFF2D2D), Color(0xFFB71C1C), Color(0xFF3A0D0D)),
+        Tone("Deep red", Color(0xFFE53935), Color(0xFF9E2020), Color(0xFF360F0E)),
+        Tone("Ember", Color(0xFFFF7A18), Color(0xFFD84315), Color(0xFF3A2410))
+    )
+
+    /** Index that means "whatever the slider made". */
+    const val CUSTOM = 6
+
+    fun toneAt(index: Int): Tone = TONES.getOrElse(index) { TONES[0] }
+
     fun accentFor(index: Int): Color = when {
-        index == 4 -> custom ?: LightRed
-        index == 1 -> IconAmber
-        index == 2 -> IconViolet
-        index == 3 -> Jade
-        else -> IconRed
+        index == CUSTOM -> custom ?: TONES[0].color
+        else -> toneAt(index).color
     }
 
     /** Darker bed for a custom accent — mixed into the warm surface, not a new hue. */
     fun customBed(): Color {
-        val c = custom ?: LightRed
+        val c = custom ?: TONES[0].color
         val t = 0.22f
         return Color(
             red = Surface.red * (1 - t) + c.red * t,
@@ -104,29 +122,42 @@ object GC {
         )
     }
 
-    /** Second stop of the accent gradient (used for glass rims and highlights). */
-    fun accentPairFor(index: Int): Color = when (index) {
-        4 -> (custom ?: LightRed)
-        1 -> IconRed
-        2 -> Color(0xFF4F2BD6)
-        3 -> Color(0xFF7CFFC9)
-        else -> LightRedDeep
+    /** Second stop of the accent gradient (used for rims and highlights). */
+    fun accentPairFor(index: Int): Color = when {
+        index == CUSTOM -> custom ?: TONES[0].pair
+        else -> toneAt(index).pair
     }
 
-    fun tagBgFor(index: Int): Color = when (index) {
-        4 -> customBed()
-        1 -> Color(0xFF3A2410)
-        2 -> Color(0xFF241A44)
-        3 -> Color(0xFF10382B)
-        else -> Color(0xFF3D1416)
+    fun tagBgFor(index: Int): Color = when {
+        index == CUSTOM -> customBed()
+        else -> toneAt(index).bed
     }
 
-    fun brownFor(index: Int): Color = when (index) {
-        4 -> customBed()
-        1 -> Color(0xFF3D2612)
-        2 -> Color(0xFF291C4A)
-        3 -> Color(0xFF123B2D)
-        else -> Color(0xFF3B1613)
+    fun brownFor(index: Int): Color = when {
+        index == CUSTOM -> customBed()
+        else -> toneAt(index).bed
+    }
+
+    /**
+     * Readable ink for a filled accent chip: dark on every bright tone, white only if
+     * the accent is unusually dark (a deep slider pick).
+     */
+    fun inkOn(accent: Color): Color {
+        val lum = 0.2126f * accent.red + 0.7152f * accent.green + 0.0722f * accent.blue
+        return if (lum > 0.42f) Color(0xFF17100A) else Color(0xFFFDF7F3)
+    }
+
+    /** Accent nudged towards white, for small labels that must stay legible. */
+    fun readable(accent: Color): Color {
+        val lum = 0.2126f * accent.red + 0.7152f * accent.green + 0.0722f * accent.blue
+        if (lum >= 0.34f) return accent
+        val t = 0.34f
+        return Color(
+            red = accent.red * (1 - t) + t,
+            green = accent.green * (1 - t) + t,
+            blue = accent.blue * (1 - t) + t,
+            alpha = 1f
+        )
     }
 
     val HeroBrush = Brush.horizontalGradient(
@@ -198,7 +229,7 @@ fun GameCornerTheme(
     )
     androidx.compose.runtime.CompositionLocalProvider(
         LocalAccent provides accent,
-        LocalAccentIdx provides (if (customAccent != null) 4 else accentIndex)
+        LocalAccentIdx provides (if (customAccent != null) GC.CUSTOM else accentIndex)
     ) {
         MaterialTheme(colorScheme = scheme, typography = type, content = content)
     }
