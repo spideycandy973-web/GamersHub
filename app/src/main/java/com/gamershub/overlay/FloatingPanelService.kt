@@ -92,6 +92,7 @@ import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.HeroMark
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -116,10 +117,15 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         get() = savedStateRegistryController.savedStateRegistry
 
     private var windowManager: WindowManager? = null
-    private var bubbleView: ComposeView? = null
+    private var bubbleView: android.view.View? = null
     private var panelView: android.view.View? = null
     private var bubbleParams: WindowManager.LayoutParams? = null
     private var expanded = false
+    private var panelRecomposer: androidx.compose.runtime.Recomposer? = null
+    private var panelJob: kotlinx.coroutines.Job? = null
+    private val panelScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main
+    )
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -162,6 +168,8 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
 
     override fun onDestroy() {
         isRunning = false
+        runCatching { panelJob?.cancel() }
+        runCatching { panelRecomposer?.cancel() }
         removeViews()
         lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_STOP)
@@ -196,24 +204,18 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         com.gamershub.GamersHubApp.step("bubble attach")
         val params = overlayParams()
         bubbleParams = params
-        val themeIndex = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
-        val view = ComposeView(this).apply {
-            setContent {
-                GameCornerTheme(themeIndex) {
-                    Bubble(
-                            onTap = { togglePanel() },
-                            onDrag = { dx, dy ->
-                                params.x += dx.toInt()
-                                params.y += dy.toInt()
-                                runCatching { windowManager?.updateViewLayout(this, params) }
-                            }
-                        )
-                }
+        // A plain View, on purpose: a ComposeView builds its whole composition in
+        // onAttachedToWindow, and a single bad frame there closed the app. This one
+        // only decodes one bitmap and draws two circles.
+        val view = EmblemBubbleView(this).apply {
+            onTap = { togglePanel() }
+            onDrag = { dx, dy ->
+                params.x += dx.toInt()
+                params.y += dy.toInt()
+                runCatching { windowManager?.updateViewLayout(this, params) }
             }
         }
         bubbleView = view
-        view.setViewTreeLifecycleOwner(this)
-        view.setViewTreeSavedStateRegistryOwner(this)
         val attached = runCatching { windowManager?.addView(view, params) }.isSuccess
         if (!attached) {
             android.widget.Toast.makeText(
@@ -242,11 +244,34 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         params.x = 0
         params.y = 0
         val panelTheme = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
-        val content = ComposeView(this).apply {
-            setContent {
-                GameCornerTheme(panelTheme) {
-                    AxPanel(onClose = { closePanel() })
+        val content = ComposeView(this)
+        // The panel gets its own recomposer with an error sink. Anything that fails
+        // while the panel is being built is logged and the window is closed, instead
+        // of the exception reaching the thread's default handler and killing the app.
+        runCatching {
+            val sink = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+                com.gamershub.GamersHubApp.note(error, "panel compose")
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    runCatching {
+                        android.widget.Toast.makeText(
+                            this,
+                            "The pop-up hit a snag — details were saved",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    closePanel()
                 }
+            }
+            val recomposer = androidx.compose.runtime.Recomposer(
+                androidx.compose.ui.platform.AndroidUiDispatcher.CurrentThread + sink
+            )
+            panelRecomposer = recomposer
+            content.setParentCompositionContext(recomposer)
+            panelJob = panelScope.launch { recomposer.runRecomposeAndApplyChanges() }
+        }
+        content.setContent {
+            GameCornerTheme(panelTheme) {
+                AxPanel(onClose = { closePanel() })
             }
         }
         // ComposeView is final, so the outside-tap handler lives on a thin host.
@@ -281,6 +306,10 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
 
     private fun closePanel() {
         expanded = false
+        runCatching { panelJob?.cancel() }
+        runCatching { panelRecomposer?.cancel() }
+        panelJob = null
+        panelRecomposer = null
         panelView?.let { runCatching { windowManager?.removeView(it) } }
         panelView = null
     }
@@ -332,69 +361,5 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
 }
 
 /* ------------------------------------------------------------------ */
-
-@Composable
-private fun Bubble(onTap: () -> Unit, onDrag: (Float, Float) -> Unit) {
-    val accent = LocalAccent.current
-    // A slow, shallow breath of light behind the emblem — not a strobe.
-    val breath = rememberInfiniteTransition(label = "bubble")
-    val glow by breath.animateFloat(
-        initialValue = 0.16f,
-        targetValue = 0.46f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2100, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
-    Box(
-        Modifier
-            .size(62.dp)
-            .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    onDrag(dragAmount.x, dragAmount.y)
-                }
-            }
-            .clickable(onClick = onTap),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val radius = size.minDimension / 2f
-            val middle = center
-            // Thin dark bed so the emblem still reads over a bright game.
-            drawCircle(
-                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                    colors = listOf(Color(0x66000000), Color(0x22000000), Color.Transparent),
-                    center = middle,
-                    radius = radius
-                ),
-                radius = radius,
-                center = middle
-            )
-            // The breathing light itself, kept to the rim of the emblem.
-            drawCircle(
-                brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                    colors = listOf(
-                        accent.copy(alpha = glow * 0.30f),
-                        accent.copy(alpha = glow),
-                        accent.copy(alpha = glow * 0.35f),
-                        Color.Transparent
-                    ),
-                    center = middle,
-                    radius = radius * 0.94f
-                ),
-                radius = radius * 0.94f,
-                center = middle
-            )
-        }
-        // The main app mark, one size smaller than the old bubble.
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.ic_float_emblem),
-            contentDescription = "GamersHub panel",
-            modifier = Modifier.size(44.dp)
-        )
-    }
-}
 
 /* ------------------------------------------------------------------ */
