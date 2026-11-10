@@ -588,14 +588,46 @@ fun SettingsSheet(
             Spacer(Modifier.height(3.dp))
             Text("Change the app colour", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Light red", GC.LightRed, accentIndex == 0, Modifier.weight(1f)) { onAccent(0) }
-                ThemeColorTile("Ember", GC.IconAmber, accentIndex == 1, Modifier.weight(1f)) { onAccent(1) }
+            // Six shades of red: pick the one that is easiest to read on your screen.
+            GC.TONES.chunked(3).forEachIndexed { rowIndex, row ->
+                if (rowIndex > 0) Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { tone ->
+                        val i = GC.TONES.indexOf(tone)
+                        ToneTile(
+                            name = tone.name,
+                            color = tone.color,
+                            selected = accentIndex == i,
+                            modifier = Modifier.weight(1f)
+                        ) { onAccent(i) }
+                    }
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ThemeColorTile("Violet", GC.IconViolet, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
-                ThemeColorTile("Jade", GC.Jade, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
+            Spacer(Modifier.height(14.dp))
+            // Readability proof: the same colour as a filled chip and as bare text.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(accent)
+                        .padding(horizontal = 12.dp, vertical = 9.dp)
+                ) {
+                    Text(
+                        "Text on colour",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = GC.inkOn(accent),
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Text beside it",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GC.readable(accent),
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -753,24 +785,31 @@ private fun Card2(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun ThemeColorTile(name: String, color: Color, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+private fun ToneTile(name: String, color: Color, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(if (selected) GC.BrownPill else GC.Surface)
             .then(if (selected) Modifier.border(1.5.dp, color, RoundedCornerShape(14.dp)) else Modifier)
             .clickable(onClick = onClick)
-            .padding(13.dp)
+            .padding(vertical = 10.dp, horizontal = 6.dp)
     ) {
         Box(
             Modifier.size(34.dp).clip(CircleShape).background(color),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) AIcon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            if (selected) AIcon(Icons.Filled.Check, contentDescription = null, tint = GC.inkOn(color), modifier = Modifier.size(18.dp))
         }
-        Spacer(Modifier.width(11.dp))
-        Text(name, style = MaterialTheme.typography.labelLarge, color = if (selected) color else GC.TextSoft, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(7.dp))
+        Text(
+            name,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) GC.readable(color) else GC.TextSoft,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

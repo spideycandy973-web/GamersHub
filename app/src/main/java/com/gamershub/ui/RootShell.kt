@@ -156,7 +156,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
     }
     var iconIdx by remember { mutableIntStateOf(com.gamershub.data.AppIcon.current(context)) }
 
-    GameCornerTheme(if (customAccent != null) 4 else accentIdx, customAccent) {
+    GameCornerTheme(if (customAccent != null) com.gamershub.theme.GC.CUSTOM else accentIdx, customAccent) {
         val accent = LocalAccent.current
         var tab by remember { mutableStateOf(Tab.LOBBY) }
         var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
@@ -547,7 +547,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         onDismiss = { sheet = SheetState.None }
                     )
                     SheetState.Settings -> SettingsSheet(
-                        accentIndex = if (customAccent != null) 4 else accentIdx,
+                        accentIndex = if (customAccent != null) com.gamershub.theme.GC.CUSTOM else accentIdx,
                         onAccent = { i ->
                             accentIdx = i
                             customAccent = null
@@ -557,7 +557,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         customColor = customAccent,
                         onCustom = { colour ->
                             customAccent = colour
-                            repo.setAccentIndex(4)
+                            repo.setAccentIndex(com.gamershub.theme.GC.CUSTOM)
                             repo.setCustomAccent(colour.toArgb())
                         },
                         iconIndex = iconIdx,

@@ -313,7 +313,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             }
         }
         content.setContent {
-            GameCornerTheme(if (panelTint != null) 4 else panelTheme, panelTint) {
+            GameCornerTheme(if (panelTint != null) com.gamershub.theme.GC.CUSTOM else panelTheme, panelTint) {
                 AxPanel(onClose = { closePanel() }, onQuit = { quitFloating() })
             }
         }

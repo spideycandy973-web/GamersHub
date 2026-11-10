@@ -46,7 +46,7 @@ class AppRepo(private val context: Context) {
     fun setToggle(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
 
 
-    fun accentIndex(): Int = prefs.getInt("accent", 0).coerceIn(0, 4)
+    fun accentIndex(): Int = prefs.getInt("accent", 0).coerceIn(0, com.gamershub.theme.GC.CUSTOM)
     fun setAccentIndex(i: Int) = prefs.edit().putInt("accent", i).apply()
 
     /** Custom accent picked on the colour slider, as ARGB. 0 means "use the named one". */

@@ -11,6 +11,7 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.MotionEvent
 import android.view.View
+import androidx.compose.ui.graphics.toArgb
 import android.view.ViewConfiguration
 import android.view.animation.AccelerateDecelerateInterpolator
 import kotlin.math.hypot
@@ -54,17 +55,13 @@ class EmblemBubbleView(context: Context) : View(context) {
     private val markPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     private var pulse = 0.18f
-    /** Mirrors GC.LightRed / IconAmber / IconViolet / Jade, kept as raw ARGB on purpose. */
+    /** Same tone table the app uses, so the bubble ring always matches the accent. */
     private val accentColor: Int = runCatching {
-        val picked = com.gamershub.data.AppRepo(context).customAccent()
-        if (picked != 0) return@runCatching picked
-        when (com.gamershub.data.AppRepo(context).accentIndex()) {
-            1 -> 0xFFFF7A18.toInt()
-            2 -> 0xFF8A5CFF.toInt()
-            3 -> 0xFF2FD8A0.toInt()
-            else -> 0xFFFF5252.toInt()
-        }
-    }.getOrDefault(0xFFFF5252.toInt())
+        val store = com.gamershub.data.AppRepo(context)
+        val picked = store.customAccent()
+        if (picked != 0) picked
+        else com.gamershub.theme.GC.accentFor(store.accentIndex()).toArgb()
+    }.getOrDefault(0xFFFF8A80.toInt())
 
     private val pulseAnimator = ValueAnimator.ofFloat(0.18f, 0.92f).apply {
         duration = 1900L
