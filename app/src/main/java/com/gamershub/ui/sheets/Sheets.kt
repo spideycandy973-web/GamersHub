@@ -530,12 +530,28 @@ fun PermissionSheet(
 fun SettingsSheet(
     accentIndex: Int,
     onAccent: (Int) -> Unit,
+    customColor: androidx.compose.ui.graphics.Color? = null,
+    onCustom: (androidx.compose.ui.graphics.Color) -> Unit = {},
     iconIndex: Int,
     onIcon: (Int) -> Unit,
     onLanguage: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val accent = LocalAccent.current
+    var hue by remember {
+        androidx.compose.runtime.mutableFloatStateOf(
+            customColor?.let { colour ->
+                val hsv = FloatArray(3)
+                android.graphics.Color.RGBToHSV(
+                    (colour.red * 255f).toInt().coerceIn(0, 255),
+                    (colour.green * 255f).toInt().coerceIn(0, 255),
+                    (colour.blue * 255f).toInt().coerceIn(0, 255),
+                    hsv
+                )
+                hsv[0]
+            } ?: 6f
+        )
+    }
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Settings, size = 50)
@@ -581,6 +597,37 @@ fun SettingsSheet(
                 ThemeColorTile("Violet", GC.IconViolet, accentIndex == 2, Modifier.weight(1f)) { onAccent(2) }
                 ThemeColorTile("Jade", GC.Jade, accentIndex == 3, Modifier.weight(1f)) { onAccent(3) }
             }
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Any colour", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp)
+                    Text(
+                        "Slide to tint the whole app and its text",
+                        style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp
+                    )
+                }
+                Box(
+                    Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(androidx.compose.ui.graphics.Color.hsv(hue, 0.82f, 1f))
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.material3.Slider(
+                value = hue,
+                onValueChange = { value ->
+                    hue = value
+                    onCustom(androidx.compose.ui.graphics.Color.hsv(value, 0.82f, 1f))
+                },
+                valueRange = 0f..360f,
+                colors = androidx.compose.material3.SliderDefaults.colors(
+                    thumbColor = androidx.compose.ui.graphics.Color.hsv(hue, 0.82f, 1f),
+                    activeTrackColor = androidx.compose.ui.graphics.Color.hsv(hue, 0.82f, 1f),
+                    inactiveTrackColor = GC.SurfaceHi
+                ),
+                modifier = Modifier.fillMaxWidth().height(28.dp)
+            )
         }
         Spacer(Modifier.height(12.dp))
         Card2 {

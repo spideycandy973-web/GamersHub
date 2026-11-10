@@ -268,7 +268,10 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         params.gravity = Gravity.BOTTOM or Gravity.START
         params.x = 0
         params.y = 0
-        val panelTheme = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
+        val panelRepo = runCatching { com.gamershub.data.AppRepo(this) }.getOrNull()
+        val customArgb = runCatching { panelRepo?.customAccent() ?: 0 }.getOrDefault(0)
+        val panelTint = if (customArgb != 0) androidx.compose.ui.graphics.Color(customArgb) else null
+        val panelTheme = runCatching { panelRepo?.accentIndex() ?: 0 }.getOrDefault(0)
         val content = ComposeView(this)
         // The panel gets its own recomposer with an error sink, so a failure inside the
         // panel closes the window instead of killing the process. A recomposer can only
@@ -310,7 +313,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
             }
         }
         content.setContent {
-            GameCornerTheme(panelTheme) {
+            GameCornerTheme(if (panelTint != null) 4 else panelTheme, panelTint) {
                 AxPanel(onClose = { closePanel() }, onQuit = { quitFloating() })
             }
         }

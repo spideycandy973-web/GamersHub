@@ -147,7 +147,9 @@ class GameSpaceActivity : ComponentActivity() {
         val pkg = intent.getStringExtra(EXTRA_PKG) ?: ""
         val repo = AppRepo(applicationContext)
         setContent {
-            GameCornerTheme(repo.accentIndex()) {
+            val customArgb = runCatching { repo.customAccent() }.getOrDefault(0)
+            val customTint = if (customArgb != 0) androidx.compose.ui.graphics.Color(customArgb) else null
+            GameCornerTheme(if (customTint != null) 4 else repo.accentIndex(), customTint) {
                 var showIntro by remember { mutableStateOf(true) }
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                     GameSpaceScreen(

@@ -144,9 +144,18 @@ sealed interface SheetState {
 fun RootShell(repo: AppRepo, initialSheet: String? = null) {
     val context = LocalContext.current
     var accentIdx by remember { mutableIntStateOf(repo.accentIndex()) }
+    // Index 4 means "the colour this slider made"; 0 in prefs means no custom colour yet.
+    var customAccent by remember {
+        mutableStateOf(
+            runCatching {
+                val argb = repo.customAccent()
+                if (argb == 0) null else Color(argb)
+            }.getOrNull()
+        )
+    }
     var iconIdx by remember { mutableIntStateOf(com.gamershub.data.AppIcon.current(context)) }
 
-    GameCornerTheme(accentIdx) {
+    GameCornerTheme(if (customAccent != null) 4 else accentIdx, customAccent) {
         val accent = LocalAccent.current
         var tab by remember { mutableStateOf(Tab.LOBBY) }
         var sheet by remember { mutableStateOf<SheetState>(SheetState.None) }
@@ -155,8 +164,23 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
         var showIntro by remember { mutableStateOf(true) }
         // Stateful toggles — the source of truth for animated Toggle composables.
         val toggles = remember { mutableStateMapOf<String, Boolean>() }
-        fun toggleGet(key: String): Boolean = toggles[key] ?: repo.toggle(key).also { toggles[key] = it }
+        fun toggleGet(key: String): Boolean = when (key) {
+            // Read straight from the running service so the switch can never claim
+            // "on" while the overlay is actually gone.
+            "magic_mapper" -> com.gamershub.overlay.MappingOverlayService.isRunning
+            else -> toggles[key] ?: repo.toggle(key).also { toggles[key] = it }
+        }
         fun toggleSet(key: String, v: Boolean) {
+            // Keys that own a real overlay also switch it here, so the switch is never
+            // just a stored flag: turning it on puts the overlay on screen, off removes it.
+            runCatching {
+                when (key) {
+                    "magic_mapper" -> {
+                        if (v) com.gamershub.overlay.MappingOverlayService.start(context)
+                        else com.gamershub.overlay.MappingOverlayService.stop(context)
+                    }
+                }
+            }
             toggles[key] = v
             repo.setToggle(key, v)
         }
@@ -522,10 +546,18 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         onDismiss = { sheet = SheetState.None }
                     )
                     SheetState.Settings -> SettingsSheet(
-                        accentIndex = accentIdx,
+                        accentIndex = if (customAccent != null) 4 else accentIdx,
                         onAccent = { i ->
                             accentIdx = i
+                            customAccent = null
                             repo.setAccentIndex(i)
+                            repo.setCustomAccent(0)
+                        },
+                        customColor = customAccent,
+                        onCustom = { colour ->
+                            customAccent = colour
+                            repo.setAccentIndex(4)
+                            repo.setCustomAccent(colour.toArgb())
                         },
                         iconIndex = iconIdx,
                         onIcon = { i ->

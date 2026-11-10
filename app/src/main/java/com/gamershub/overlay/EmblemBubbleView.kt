@@ -56,6 +56,8 @@ class EmblemBubbleView(context: Context) : View(context) {
     private var pulse = 0.18f
     /** Mirrors GC.IconRed / IconAmber / IconViolet / Jade, kept as raw ARGB on purpose. */
     private val accentColor: Int = runCatching {
+        val picked = com.gamershub.data.AppRepo(context).customAccent()
+        if (picked != 0) return@runCatching picked
         when (com.gamershub.data.AppRepo(context).accentIndex()) {
             1 -> 0xFFFF7A18.toInt()
             2 -> 0xFF8A5CFF.toInt()
