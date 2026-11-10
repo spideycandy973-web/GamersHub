@@ -821,7 +821,10 @@ private fun GfxPage(api: AxApi) {
     val st = api.state
     val context = api.context
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
-    val targetPkg = remember { FpsMeter.foregroundPackage(context) ?: GfxEngine.currentGamePackage(context) ?: "" }
+    val targetPkg = remember {
+        runCatching { FpsMeter.foregroundPackage(context) ?: GfxEngine.currentGamePackage(context) ?: "" }
+            .getOrDefault("")
+    }
     val pkgLabel = targetPkg.substringAfterLast('.').ifBlank { "no game in front" }
 
     fun save() {
@@ -1006,11 +1009,14 @@ private fun GfxPage(api: AxApi) {
 private fun DisplayPage(api: AxApi) {
     val st = api.state
     val context = api.context
-    val state = remember { GfxEngine.displayState(context) }
+    val state = remember { runCatching { GfxEngine.displayState(context) }.getOrNull() }
     val override = rememberLive("") { GfxEngine.currentOverride() }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
-        ReadRow("SURFACE", "${state.width}x${state.height} · ${state.density}dpi")
+        ReadRow(
+            "SURFACE",
+            state?.let { "${it.width}x${it.height} · ${it.density}dpi" } ?: "--"
+        )
         ReadRow("OVERRIDE", override.ifBlank { "none" })
         ReadRow("REFRESH NOW", rememberLive("--", 3000) { GfxEngine.refreshSummary(context) })
         StepRow(
@@ -1082,7 +1088,7 @@ private fun UpscalePage(api: AxApi) {
     var measured by remember { mutableStateOf("") }
     var frameGen by remember { mutableStateOf(prefs.getBoolean("ax_up_framegen", false)) }
 
-    val caps = remember { UpscaleEngine.caps(context) }
+    val caps = remember { runCatching { UpscaleEngine.caps(context) }.getOrNull() }
     val state = rememberLive<RenderEngine.LosslessState?>(null, 2500) {
         RenderEngine.losslessState(context)
     }
@@ -1127,8 +1133,8 @@ private fun UpscalePage(api: AxApi) {
     }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
-        ReadRow("GPU", caps.renderer.take(30))
-        ReadRow("CAPABLE", caps.line())
+        ReadRow("GPU", caps?.renderer?.take(30) ?: "--")
+        ReadRow("CAPABLE", caps?.line() ?: "--")
         ReadRow("LIVE", liveFps + if (measured.isNotBlank()) " · $measured" else "")
         ReadRow("FRAME TIME", frameTimes)
         StepRow(
