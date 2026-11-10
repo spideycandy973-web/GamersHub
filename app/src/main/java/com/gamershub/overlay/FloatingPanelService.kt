@@ -193,6 +193,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         }
 
     private fun addBubble() {
+        com.gamershub.GamersHubApp.step("bubble attach")
         val params = overlayParams()
         bubbleParams = params
         val themeIndex = runCatching { com.gamershub.data.AppRepo(this).accentIndex() }.getOrDefault(0)
@@ -226,10 +227,12 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
     }
 
     private fun togglePanel() {
+        com.gamershub.GamersHubApp.step(if (expanded) "panel close" else "panel open")
         if (expanded) closePanel() else openPanel()
     }
 
     private fun openPanel() {
+        com.gamershub.GamersHubApp.step("panel window")
         if (panelView != null) return
         val params = overlayParams(WindowManager.LayoutParams.MATCH_PARENT)
         // Taps anywhere outside the sheet come back as ACTION_OUTSIDE and close it —

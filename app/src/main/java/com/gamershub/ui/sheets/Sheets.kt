@@ -141,8 +141,12 @@ fun LaunchModeSheet(
                 modifier = Modifier.align(Alignment.CenterEnd).size(120.dp)
             )
         }
-        Spacer(Modifier.height(-46.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 2.dp)) {
+        // Negative heights are not a valid measurement in Compose — lift the row
+        // with an offset instead so this sheet can never fail to lay out.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 2.dp).offset(y = (-46).dp)
+        ) {
             Image(
                             painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                 contentDescription = null,
