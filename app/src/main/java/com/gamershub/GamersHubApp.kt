@@ -22,6 +22,18 @@ import java.util.Locale
 class GamersHubApp : Application() {
 
     companion object {
+        /** Breadcrumbs left by the UI, so a crash report says which screen died. */
+        private val steps = java.util.ArrayDeque<String>()
+
+        fun step(label: String) {
+            synchronized(steps) {
+                steps.addLast(label)
+                while (steps.size > 18) steps.removeFirst()
+            }
+        }
+
+        fun stepsText(): String = synchronized(steps) { steps.joinToString(" → ") }
+
         /** Last trace caught in this process — the Settings card reads the file, the UI reads this. */
         @Volatile
         var lastCrash: String = ""
@@ -112,6 +124,7 @@ class GamersHubApp : Application() {
         val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         val trace = buildString {
             append("\n=== ").append(stamp).append(" · ").append(thread.name).append(" ===\n")
+            append("steps: ").append(stepsText()).append('\n')
             append(error.toString()).append('\n')
             error.stackTrace.take(40).forEach { append("    at ").append(it).append('\n') }
         }

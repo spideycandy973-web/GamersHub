@@ -390,6 +390,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                 label = "tab",
                 modifier = Modifier.fillMaxSize()
             ) { tabTarget ->
+            com.gamershub.GamersHubApp.step("tab:${tabTarget.name}")
             when (tabTarget) {
                 Tab.PROFILE -> ProfileScreen(
                     version = "6.10.2",
@@ -493,6 +494,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
 
             // Sheet overlay host
             val current = sheet
+            if (current != SheetState.None) com.gamershub.GamersHubApp.step("sheet:$current")
             AnimatedVisibility(
                 visible = current != SheetState.None,
                 enter = slideInVertically { it },
@@ -560,8 +562,8 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         onDismiss = { sheet = SheetState.None }
                     )
                     is SheetState.Permission -> PermissionSheet(
-                        config = PERM_CONFIGS[current.index],
-                        granted = when (PERM_CONFIGS[current.index].kind) {
+                        config = PERM_CONFIGS[current.index.coerceIn(0, PERM_CONFIGS.lastIndex)],
+                        granted = when (PERM_CONFIGS[current.index.coerceIn(0, PERM_CONFIGS.lastIndex)].kind) {
                             PermKind.NOTIFICATION -> notifGranted
                             PermKind.OVERLAY -> Settings.canDrawOverlays(context)
                             PermKind.WRITE_SETTINGS -> Settings.System.canWrite(context)
@@ -651,6 +653,60 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         onDismiss = { sheet = SheetState.None }
                     )
                     SheetState.None -> {}
+                }
+            }
+        }
+
+        // After a failure the system would have shown a dead-end dialog. Instead the
+        // exact words are put on screen here, ready to copy — no guessing.
+        val crashAtLaunch = remember {
+            runCatching {
+                val f = java.io.File(context.filesDir, "crash.log")
+                if (f.exists() && System.currentTimeMillis() - f.lastModified() < 15 * 60 * 1000L)
+                    f.readText().trim().takeLast(1400) else ""
+            }.getOrDefault("")
+        }
+        var showCrash by remember { mutableStateOf(crashAtLaunch.isNotBlank()) }
+        if (showCrash) {
+            Box(
+                Modifier.fillMaxSize().background(Color(0xF2000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(GC.Surface)
+                        .padding(18.dp)
+                ) {
+                    Text("Last error", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Copy this and send it — it names the exact step that broke.", color = GC.TextDim, fontSize = 12.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Text(crashAtLaunch, color = GC.TextSoft, fontSize = 10.sp, maxLines = 16)
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        BigButton(
+                            text = "Copy",
+                            onClick = {
+                                runCatching {
+                                    val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                                    cm?.setPrimaryClip(
+                                        android.content.ClipData.newPlainText("GamersHub error", crashAtLaunch)
+                                    )
+                                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        BigButton(
+                            text = "Close",
+                            onClick = { showCrash = false },
+                            modifier = Modifier.weight(1f),
+                            primary = false
+                        )
+                    }
                 }
             }
         }

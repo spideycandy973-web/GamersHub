@@ -14,8 +14,8 @@ android {
         applicationId = "com.gamershub"
         minSdk = 26
         targetSdk = 34
-        versionCode = 72
-        versionName = "6.10.9"
+        versionCode = 74
+        versionName = "6.11.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -29,7 +29,11 @@ android {
             // not obfuscate: both have a history of breaking Shizuku user-service
             // reflection and kotlinx-serialization on real devices (random
             // crashes after Shizuku connects). Stability > ~200 KB of APK size.
-            isMinifyEnabled = true
+            // OFF on purpose. R8 kept eating classes that are only reached on a
+            // particular screen (and anything reflective), which showed up as the
+            // app closing itself the moment a panel or a settings page opened.
+            // A few extra megabytes are a fair trade for not crashing.
+            isMinifyEnabled = false
             // Resource shrinking stays OFF on purpose: R8 inlines R.raw.* ids, so a cold
             // shrinker pass decided the intro clips were unused and silently deleted
             // 12 MB of media (v6.7.0 shipped without the intro video). The unused

@@ -66,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -141,8 +142,12 @@ fun LaunchModeSheet(
                 modifier = Modifier.align(Alignment.CenterEnd).size(120.dp)
             )
         }
-        Spacer(Modifier.height(-46.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 2.dp)) {
+        // Negative heights are not a valid measurement in Compose — lift the row
+        // with an offset instead so this sheet can never fail to lay out.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 2.dp).offset(y = (-46).dp)
+        ) {
             Image(
                             painter = androidx.compose.ui.graphics.painter.BitmapPainter(app.icon),
                 contentDescription = null,
@@ -584,13 +589,13 @@ fun SettingsSheet(
             Text("Pick the icon on your home display", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile("GH", com.gamershub.R.mipmap.ic_launcher_bolt, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
-                IconTile("Pad", com.gamershub.R.mipmap.ic_launcher, iconIndex == 1, Modifier.weight(1f)) { onIcon(1) }
+                IconTile("GH", com.gamershub.R.drawable.ic_pick_gh, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
+                IconTile("Pad", com.gamershub.R.drawable.ic_pick_pad, iconIndex == 1, Modifier.weight(1f)) { onIcon(1) }
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile("Speed", com.gamershub.R.mipmap.ic_launcher_chevron, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
-                IconTile("Mono", com.gamershub.R.mipmap.ic_launcher_gh, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
+                IconTile("Speed", com.gamershub.R.drawable.ic_pick_speed, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+                IconTile("Mono", com.gamershub.R.drawable.ic_pick_mono, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -659,6 +664,16 @@ private fun DiagnosticsCard() {
 @Composable
 private fun IconTile(name: String, res: Int, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val accent = LocalAccent.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Plain bitmaps only. Asking Compose to open a launcher mipmap here used to hit
+    // the <adaptive-icon> XML on Android 8+ and throw, which closed the app the
+    // moment this page opened.
+    val art = remember(res) {
+        val decoded = runCatching { android.graphics.BitmapFactory.decodeResource(context.resources, res) }
+            .getOrNull()
+        (decoded ?: android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
+            .asImageBitmap()
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -669,7 +684,7 @@ private fun IconTile(name: String, res: Int, selected: Boolean, modifier: Modifi
             .padding(vertical = 11.dp)
     ) {
         androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(res),
+            bitmap = art,
             contentDescription = name,
             modifier = Modifier.size(52.dp).clip(RoundedCornerShape(13.dp))
         )
