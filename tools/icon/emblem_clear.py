@@ -55,7 +55,7 @@ def circle_mask(size):
 def main():
     # Adaptive foreground: kept inside the 66% safe zone.
     fg = load_emblem(SIZE, margin=0.17)
-    legacy_src = load_emblem(SIZE, margin=0.05)
+    legacy_src = load_emblem(SIZE, margin=0.02)
 
     mono_base = load_emblem(SIZE, margin=0.17)
     alpha = mono_base.split()[3]
@@ -85,15 +85,9 @@ def main():
         legacy_src.resize((192, 192), Image.LANCZOS).save(
             os.path.join(RES, 'drawable-nodpi', preview))
 
-        for suffix in ('', '_round'):
-            xml = f'''<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@android:color/transparent" />
-    <foreground android:drawable="@drawable/ic_launcher{sfx}_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher{sfx}_mono" />
-</adaptive-icon>
-'''
-            open(os.path.join(RES, f'mipmap-anydpi-v26/ic_launcher{sfx}{suffix}.xml'), 'w').write(xml)
+        # No adaptive-icon XML on purpose: a transparent background layer still makes
+        # some launchers (and themed-icon packs) draw a plate behind the mark. Plain
+        # PNGs keep the alpha exactly as drawn.
 
     try:
         legacy_src.resize((512, 512), Image.LANCZOS).save(os.path.join(DOCS, 'icon-512.png'))

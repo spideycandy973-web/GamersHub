@@ -46,8 +46,12 @@ class AppRepo(private val context: Context) {
     fun setToggle(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
 
 
-    fun accentIndex(): Int = prefs.getInt("accent", 0)
+    fun accentIndex(): Int = prefs.getInt("accent", 0).coerceIn(0, 4)
     fun setAccentIndex(i: Int) = prefs.edit().putInt("accent", i).apply()
+
+    /** Custom accent picked on the colour slider, as ARGB. 0 means "use the named one". */
+    fun customAccent(): Int = prefs.getInt("accent_custom", 0)
+    fun setCustomAccent(argb: Int) = prefs.edit().putInt("accent_custom", argb).apply()
 
     /** Per-game graphics config (Texture Filtering panel). */
     fun gfx(pkg: String, key: String, default: Boolean): Boolean =

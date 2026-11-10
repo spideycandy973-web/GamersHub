@@ -75,15 +75,33 @@ object GC {
     val IconAmber = Color(0xFFFF7A18)
     val IconViolet = Color(0xFF8A5CFF)
 
-    fun accentFor(index: Int): Color = when (index) {
-        1 -> IconAmber
-        2 -> IconViolet
-        3 -> Jade
+    /** Set by [GameCornerTheme] when the user picks a colour on the slider (index 4). */
+    @Volatile
+    var custom: Color? = null
+
+    fun accentFor(index: Int): Color = when {
+        index == 4 -> custom ?: IconRed
+        index == 1 -> IconAmber
+        index == 2 -> IconViolet
+        index == 3 -> Jade
         else -> IconRed
+    }
+
+    /** Darker bed for a custom accent — mixed into the warm surface, not a new hue. */
+    fun customBed(): Color {
+        val c = custom ?: IconRed
+        val t = 0.22f
+        return Color(
+            red = Surface.red * (1 - t) + c.red * t,
+            green = Surface.green * (1 - t) + c.green * t,
+            blue = Surface.blue * (1 - t) + c.blue * t,
+            alpha = 1f
+        )
     }
 
     /** Second stop of the accent gradient (used for glass rims and highlights). */
     fun accentPairFor(index: Int): Color = when (index) {
+        4 -> (custom ?: IconRed)
         1 -> IconRed
         2 -> Color(0xFF4F2BD6)
         3 -> Color(0xFF7CFFC9)
@@ -91,6 +109,7 @@ object GC {
     }
 
     fun tagBgFor(index: Int): Color = when (index) {
+        4 -> customBed()
         1 -> Color(0xFF3A2410)
         2 -> Color(0xFF241A44)
         3 -> Color(0xFF10382B)
@@ -98,6 +117,7 @@ object GC {
     }
 
     fun brownFor(index: Int): Color = when (index) {
+        4 -> customBed()
         1 -> Color(0xFF3D2612)
         2 -> Color(0xFF291C4A)
         3 -> Color(0xFF123B2D)
@@ -140,9 +160,13 @@ val LocalAccentIdx = staticCompositionLocalOf { 0 }
 @Composable
 fun GameCornerTheme(
     accentIndex: Int = 0,
+    customAccent: Color? = null,
     content: @Composable () -> Unit
 ) {
-    val accent = GC.accentFor(accentIndex)
+    // Publishing the slider colour here keeps every helper that only knows an index
+    // (tag beds, icon chips, gradients) in step with the chosen hue.
+    GC.custom = customAccent
+    val accent = customAccent ?: GC.accentFor(accentIndex)
     val scheme = darkColorScheme(
         primary = accent, onPrimary = Color.White,
         secondary = accent, background = GC.Bg, onBackground = GC.Text,
@@ -169,7 +193,7 @@ fun GameCornerTheme(
     )
     androidx.compose.runtime.CompositionLocalProvider(
         LocalAccent provides accent,
-        LocalAccentIdx provides accentIndex
+        LocalAccentIdx provides (if (customAccent != null) 4 else accentIndex)
     ) {
         MaterialTheme(colorScheme = scheme, typography = type, content = content)
     }

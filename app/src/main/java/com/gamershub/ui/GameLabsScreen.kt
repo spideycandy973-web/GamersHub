@@ -42,6 +42,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import android.widget.Toast
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -81,6 +86,13 @@ fun GameLabsScreen(
     val accent = LocalAccent.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var tab by remember { mutableStateOf(LabsTab.ALL) }
+
+    // Real read-out of the touch panel, refreshed when the tab is opened.
+    val touchRate by produceState(initialValue = "checking…") {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.gamershub.core.TouchProbe.summary()
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(GC.Bg)) {
         // ---- Fixed opaque header: content can never collide with it ----
@@ -223,7 +235,7 @@ fun GameLabsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Magic Mapper Listener", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
-                                if (toggleState("magic_mapper")) "Monitoring 1 device(s)" else "Turn on Magic Mapper service",
+                                if (toggleState("magic_mapper")) "Mapping overlay running" else "Turn on the mapping overlay",
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp
                             )
                         }
@@ -249,13 +261,12 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.TouchApp, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("HW Touch Booster", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Touch Sampling", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
-                                "Speed touch response via Hardware Composer",
+                                touchRate,
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
                             )
                         }
-                        Toggle(on = toggleState("hw_touch")) { onToggle("hw_touch", it) }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -331,8 +342,21 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf(0) }
-    val hosts = listOf("8.8.8.8", "1.1.1.1", "208.67.222.222", "8.8.8.8")
-    val names = listOf("Google", "Cloudflare", "OpenDNS", "Custom")
+    val scope = rememberCoroutineScope()
+    val hosts = listOf("dns.google", "one.one.one.one", "doh.opendns.com", "automatic")
+    val names = listOf("Google", "Cloudflare", "OpenDNS", "Automatic")
+
+    fun applyProvider(index: Int) {
+        provider = index
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) { com.gamershub.core.DnsEngine.apply(index) }
+            Toast.makeText(
+                context,
+                if (ok) "Private DNS: ${names[index]}" else "Needs Shizuku to change DNS",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
     val latency by produceState(initialValue = -1) {
         while (true) {
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -353,8 +377,22 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                 )
             }
             Toggle(on = on) {
-                onToggle("dns", it)
                 expanded = it
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) {
+                        if (it) com.gamershub.core.DnsEngine.apply(provider) else com.gamershub.core.DnsEngine.off()
+                    }
+                    Toast.makeText(
+                        context,
+                        when {
+                            ok && it -> "Private DNS set to ${names[provider]}"
+                            ok -> "Private DNS back to the phone's default"
+                            else -> "Needs Shizuku — grant it in Activate to change DNS"
+                        },
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    if (ok) onToggle("dns", it)
+                }
             }
         }
         if (on && expanded) {
@@ -366,7 +404,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
                         .background(GC.SurfaceHi)
-                        .clickable { provider = (provider + 1) % 4 }
+                        .clickable { applyProvider((provider + 1) % 4) }
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -403,7 +441,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { provider = i }
+                            .clickable { applyProvider(i) }
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
                         Text(n, style = MaterialTheme.typography.labelLarge, color = if (i == provider) GC.Text else GC.TextSoft, fontSize = 14.sp)
