@@ -54,7 +54,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gamershub.theme.accentNow
+import com.gamershub.theme.accentPairNow
 import com.gamershub.theme.GC
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.LocalAccent
 
 /**
@@ -71,14 +74,14 @@ fun AIcon(
     val transition = rememberInfiniteTransition(label = "aicon")
     val breathe by transition.animateFloat(
         initialValue = 1f,
-        targetValue = 1.07f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        targetValue = 1.02f,
+        animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "breathe"
     )
     val glow by transition.animateFloat(
         initialValue = 0.8f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "glow"
     )
     androidx.compose.material3.Icon(
@@ -98,19 +101,20 @@ fun AIcon(
 fun Toggle(on: Boolean, modifier: Modifier = Modifier, onCheckedChange: (Boolean) -> Unit) {
     val accent = LocalAccent.current
     val track by animateColorAsState(
-        if (on) accent else Color(0xFF2B2420), tween(220), label = "track"
+        if (on) accent else RomKit.Panel2, tween(RomKit.Micro), label = "track"
     )
     val knob by animateColorAsState(
-        if (on) Color.White else Color(0xFF7E7A76), tween(220), label = "knob"
+        if (on) RomKit.OnEmber else RomKit.TextLo, tween(RomKit.Micro), label = "knob"
     )
     val shift by animateDpAsState(
-        if (on) 26.dp else 3.dp, spring(stiffness = Spring.StiffnessMediumLow), label = "shift"
+        if (on) 26.dp else 3.dp, tween(RomKit.Micro), label = "shift"
     )
     Box(
         modifier
             .size(width = 54.dp, height = 31.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RomKit.RPill)
             .background(track)
+            .border(1.dp, if (on) accent.copy(alpha = 0.55f) else RomKit.Stroke, RomKit.RPill)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -127,25 +131,29 @@ fun Toggle(on: Boolean, modifier: Modifier = Modifier, onCheckedChange: (Boolean
     }
 }
 
-/** Small accent tag pill: "● REQUIRED · APP DETECTION". */
+/** Status chip: full radius, 1 dp border at 55%, monospace label in its own colour. */
 @Composable
 fun TagPill(text: String, modifier: Modifier = Modifier) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
+    val accent = accentNow()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(GC.tagBgFor(idx))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .clip(RomKit.RPill)
+            .border(1.dp, accent.copy(alpha = 0.55f), RomKit.RPill)
+            .background(accent.copy(alpha = 0.16f), RomKit.RPill)
+            .padding(horizontal = 9.dp, vertical = 4.dp)
     ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
-        Spacer(Modifier.width(7.dp))
-        Text(text, style = MaterialTheme.typography.labelMedium, color = accent, fontSize = 12.sp)
+        Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text.uppercase(),
+            style = RomKit.Label.copy(fontSize = 11.sp, letterSpacing = 0.6.sp),
+            color = accent
+        )
     }
 }
 
-/** Dark rounded-square icon chip. */
+/** Icon tile: PANEL2 square, hairline, accent glyph. */
 @Composable
 fun IconChip(
     icon: ImageVector,
@@ -154,31 +162,34 @@ fun IconChip(
     tint: Color? = null,
     bg: Color? = null
 ) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
+    val accent = accentNow()
     Box(
         modifier
             .size(size.dp)
-            .clip(RoundedCornerShape((size * 0.30f).dp))
-            .background(bg ?: GC.brownFor(idx)),
+            .clip(RomKit.R12)
+            .background(bg ?: RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = tint ?: accent, modifier = Modifier.size((size * 0.55f).dp))
+        Icon(
+            icon, contentDescription = null, tint = tint ?: accent,
+            modifier = Modifier.size((size * 0.50f).dp)
+        )
     }
 }
 
+/** Section label: monospace 10 sp, +1 tracking, uppercase, TEXT-LO. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text,
-        modifier = modifier.padding(top = 14.dp, bottom = 8.dp),
-        style = MaterialTheme.typography.titleMedium,
-        color = GC.TextSoft,
-        fontSize = 18.sp
+        text.uppercase(),
+        modifier = modifier.padding(top = 14.dp, bottom = 6.dp),
+        style = RomKit.Label,
+        color = RomKit.TextLo
     )
 }
 
-/** Big rounded action button with press animation. */
+/** The one primary action on a screen: ember gradient, black 800 label, 56 dp. */
 @Composable
 fun BigButton(
     text: String,
@@ -188,35 +199,42 @@ fun BigButton(
     leadingIcon: ImageVector? = null,
     textColor: Color? = null
 ) {
-    val accent = LocalAccent.current
+    val accent = accentNow()
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        if (pressed) 0.96f else 1f, spring(Spring.DampingRatioNoBouncy), label = "press"
+    val alpha by animateFloatAsState(
+        if (pressed) 0.86f else 1f, tween(RomKit.Micro), label = "press"
     )
     Box(
         modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (primary) accent else GC.SurfaceHi)
+            .clip(RomKit.R16)
+            .then(
+                if (primary) Modifier.background(RomKit.emberBrush())
+                else Modifier
+                    .background(Color.Transparent)
+                    .border(1.dp, accent.copy(alpha = 0.40f), RomKit.R16)
+            )
             .clickable(interaction, indication = null, onClick = onClick)
-            .padding(vertical = 15.dp),
+            .height(56.dp)
+            .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.graphicsLayer { this.alpha = alpha }
+        ) {
             if (leadingIcon != null) {
                 Icon(
                     leadingIcon, contentDescription = null,
-                    tint = textColor ?: if (primary) GC.OnAccent else accent,
-                    modifier = Modifier.size(20.dp)
+                    tint = textColor ?: if (primary) RomKit.OnEmber else accent,
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(9.dp))
             }
             Text(
-                text,
-                style = MaterialTheme.typography.labelLarge,
-                fontSize = 16.sp,
-                color = textColor ?: if (primary) GC.OnAccent else GC.Text
+                text.uppercase(),
+                style = RomKit.Display.copy(fontSize = 16.sp, letterSpacing = 0.3.sp),
+                color = textColor ?: if (primary) RomKit.OnEmber else accent
             )
         }
     }
@@ -225,22 +243,22 @@ fun BigButton(
 /** Status pill (e.g. "● Not Activated", "Good", "Pro"). */
 @Composable
 fun StatusPill(text: String, modifier: Modifier = Modifier, orange: Boolean = true) {
-    val accent = LocalAccent.current
-    val idx = com.gamershub.theme.LocalAccentIdx.current
+    val accent = accentNow()
+    val color = if (orange) accent else RomKit.TextLo
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (orange) GC.tagBgFor(idx) else GC.SurfaceHi)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .clip(RomKit.RPill)
+            .border(1.dp, color.copy(alpha = 0.55f), RomKit.RPill)
+            .background(if (orange) color.copy(alpha = 0.16f) else Color.Transparent, RomKit.RPill)
+            .padding(horizontal = 9.dp, vertical = 4.dp)
     ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(if (orange) accent else GC.TextDim))
+        Box(Modifier.size(6.dp).clip(CircleShape).background(color))
         Spacer(Modifier.width(6.dp))
         Text(
-            text,
-            style = MaterialTheme.typography.labelMedium,
-            fontSize = 13.sp,
-            color = if (orange) accent else GC.TextDim
+            text.uppercase(),
+            style = RomKit.Label.copy(fontSize = 11.sp, letterSpacing = 0.6.sp),
+            color = color
         )
     }
 }
@@ -248,35 +266,33 @@ fun StatusPill(text: String, modifier: Modifier = Modifier, orange: Boolean = tr
 @Composable
 fun CircleIconButton(icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(Spring.DampingRatioNoBouncy), label = "cbtn")
     Box(
         modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
             .size(44.dp)
             .clip(CircleShape)
-            .background(GC.SurfaceHi)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, CircleShape)
             .clickable(interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = GC.TextSoft, modifier = Modifier.size(21.dp))
+        Icon(icon, contentDescription = null, tint = RomKit.TextHi, modifier = Modifier.size(20.dp))
     }
 }
 
-/** Circular progress gauge. */
+/** Circular progress gauge — hairline track, accent arc, monospace numbers. */
 @Composable
 fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifier, diameter: Int = 150) {
-    val accent = LocalAccent.current
+    val accent = accentNow()
     val bigSp = (diameter / 5).coerceIn(13, 28)
-    val smallSp = (diameter / 11).coerceIn(9, 13)
+    val smallSp = (diameter / 12).coerceIn(9, 12)
     val animatedPct by animateFloatAsState(pct.coerceIn(0, 100).toFloat(), label = "gauge")
     Box(modifier.size(diameter.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(diameter.dp)) {
-            val stroke = 13.dp.toPx()
+            val stroke = 4.dp.toPx()
             val inset = stroke / 2
             val arcSize = Size(size.width - stroke, size.height - stroke)
             drawArc(
-                color = Color(0xFF2E2119), startAngle = -90f, sweepAngle = 360f, useCenter = false,
+                color = RomKit.Panel2, startAngle = -90f, sweepAngle = 360f, useCenter = false,
                 topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round)
             )
             drawArc(
@@ -286,24 +302,32 @@ fun GaugeRing(pct: Int, big: String, small: String, modifier: Modifier = Modifie
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(big, style = MaterialTheme.typography.headlineMedium, color = GC.Text, fontSize = bigSp.sp)
-            Text(small, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = smallSp.sp)
+            Text(
+                big,
+                style = RomKit.Counter.copy(fontSize = bigSp.sp),
+                color = RomKit.TextHi
+            )
+            Text(
+                small.uppercase(),
+                style = RomKit.Label.copy(fontSize = smallSp.sp),
+                color = RomKit.TextLo
+            )
         }
     }
 }
 
 @Composable
 fun SegmentedBar(pct: Int, segments: Int, modifier: Modifier = Modifier, height: Int = 8) {
-    val accent = LocalAccent.current
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+    val accent = accentNow()
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         val filled = (segments * pct.coerceIn(0, 100)) / 100
         repeat(segments) { i ->
             Box(
                 Modifier
                     .weight(1f)
                     .height(height.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (i < filled) accent else Color(0xFF2E2119))
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (i < filled) accent else RomKit.Panel2)
             )
         }
     }
@@ -311,19 +335,19 @@ fun SegmentedBar(pct: Int, segments: Int, modifier: Modifier = Modifier, height:
 
 @Composable
 fun SolidBar(pct: Int, modifier: Modifier = Modifier) {
-    val accent = LocalAccent.current
+    val accent = accentNow()
     Box(
         modifier
             .fillMaxWidth()
-            .height(9.dp)
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFF2E2119))
+            .height(6.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(RomKit.Panel2)
     ) {
         Box(
             Modifier
                 .fillMaxWidth(pct.coerceIn(0, 100) / 100f)
-                .height(9.dp)
-                .clip(RoundedCornerShape(50))
+                .height(6.dp)
+                .clip(RoundedCornerShape(2.dp))
                 .background(accent)
         )
     }
@@ -336,8 +360,8 @@ fun Grabber(modifier: Modifier = Modifier) {
             .padding(vertical = 8.dp)
             .width(44.dp)
             .height(5.dp)
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFF4A4340))
+            .clip(RomKit.RPill)
+            .background(RomKit.Stroke)
     )
 }
 
@@ -347,8 +371,8 @@ fun Grabber(modifier: Modifier = Modifier) {
  */
 @Composable
 fun HeroMark(modifier: Modifier = Modifier) {
-    val accent = LocalAccent.current
-    val accent2 = GC.accentPairFor(com.gamershub.theme.LocalAccentIdx.current)
+    val accent = accentNow()
+    val accent2 = accentPairNow()
     Canvas(modifier) {
         val k = minOf(size.width, size.height) / 1024f
         fun p(x: Float, y: Float) = Offset(x * k, y * k)
@@ -373,15 +397,16 @@ fun HeroMark(modifier: Modifier = Modifier) {
     }
 }
 
-/** Section card used across screens — compact, wrap-friendly. */
+/** Panel card: 18 dp radius, PANEL fill, 1 dp hairline, 16 dp padding. */
 @Composable
 fun Card(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(GC.Surface)
-            .padding(15.dp),
+            .clip(RomKit.R18)
+            .background(RomKit.Panel)
+            .border(1.dp, RomKit.Stroke, RomKit.R18)
+            .padding(RomKit.PanelPadding),
         content = content
     )
 }
