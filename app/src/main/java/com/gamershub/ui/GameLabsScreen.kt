@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gamershub.core.MonitorPrefs
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
@@ -250,7 +251,7 @@ fun GameLabsScreen(
                             if (ok) onToggle("show_taps", v)
                             com.gamershub.feedbackOnWrite(context, ok)
                         }
-                        SmallActionButton("Show Coordinates", Modifier.weight(1f), active = toggleState("show_coords")) {
+                        SmallActionButton("Show Pointers", Modifier.weight(1f), active = toggleState("show_coords")) {
                             val v = !toggleState("show_coords")
                             val ok = com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
                             if (ok) onToggle("show_coords", v)
@@ -306,7 +307,7 @@ fun GameLabsScreen(
 
             // ---- Feature Settings ----
             if (tab != LabsTab.CONFIGS) {
-                SectionLabel("Option Preferences")
+                SectionLabel("Feature Likes")
                 Card {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -320,10 +321,7 @@ fun GameLabsScreen(
                             Text("Ready to Play", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text("Phone health and steady score", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
                         }
-                        Toggle(on = toggleState("game_ready")) {
-                            onToggle("game_ready", it)
-                            if (it) onGameReady()
-                        }
+                        Text("OPEN", color = accent, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                     Divider()
                     DnsTunerCard(toggleState("dns"), onToggle)
@@ -458,16 +456,18 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
 @Composable
 private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, onToggle: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var expanded by remember { mutableStateOf(false) }
-    val live by produceState(initialValue = Triple("0", "0", "--")) {
+    // The field chips write straight into the floating watcher's own list, so what you
+    // tick here is exactly what the overlay draws.
+    var picked by remember { mutableStateOf(MonitorPrefs.fields(context)) }
+    val live by produceState(initialValue = listOf("--", "--", "--", "--")) {
         while (true) {
-            val measured = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val cpu = DeviceStats.cpu()
                 val mem = DeviceStats.mem(context)
                 val batt = DeviceStats.battery(context)
-                Triple(cpu.pct.toString(), mem.pct.toString(), batt.first.toString())
+                val fps = com.gamershub.core.FpsMeter.liveFps(context)
+                listOf("${cpu.pct}%", "${mem.pct}%", "${batt.first}%", if (fps > 0) fps.toString() else "--")
             }
-            value = measured
             kotlinx.coroutines.delay(1500)
         }
     }
@@ -483,13 +483,19 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
                 )
             }
             Toggle(on = on) {
+                if (it && !android.provider.Settings.canDrawOverlays(context)) {
+                    Toast.makeText(context, "Allow draw-over-apps first", Toast.LENGTH_SHORT).show()
+                    return@Toggle
+                }
                 onToggle("session", it)
-                expanded = it
+                runCatching {
+                    if (it) com.gamershub.overlay.MonitorOverlayService.start(context)
+                    else com.gamershub.overlay.MonitorOverlayService.stop(context)
+                }
             }
         }
-        if (on && expanded) {
+        if (on) {
             Spacer(Modifier.height(10.dp))
-            // live monitor strip
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -498,24 +504,44 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
                     .padding(horizontal = 12.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StripStat("CPU", "${live.first}%")
-                StripStat("RAM", "${live.second}%")
-                StripStat("BAT", "${live.third}%")
-                StripStat("FPS", "0")
+                StripStat("CPU", live[0])
+                StripStat("RAM", live[1])
+                StripStat("BAT", live[2])
+                StripStat("FPS", live[3])
                 StripStat("CLK", java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(java.util.Date()))
             }
             Spacer(Modifier.height(10.dp))
-            val checks = listOf(
-                Triple("sm_cpu", "CPU Usage", Icons.Filled.Speed),
-                Triple("sm_gpu", "GPU Usage", Icons.Filled.Memory),
-                Triple("sm_batt", "Cell Level", Icons.Filled.Bolt),
-                Triple("sm_batt_temp", "Cell Heat", Icons.Filled.Storage),
-                Triple("sm_fps", "Frame Rate (FPS)", Icons.Filled.GraphicEq),
-                Triple("sm_clock", "Clock", Icons.Filled.Dns)
-            )
-            CheckRow("RAM Used/Available", "ram_mode", toggleState, onToggle, ramToggle = true)
-            checks.forEach { (key, label, icon) ->
-                CheckRow(label, key, toggleState, onToggle, icon = icon)
+            MonitorPrefs.ORDER.forEach { field ->
+                val checked = picked.contains(field)
+                val label = when (field) {
+                    "fps" -> "Frames"
+                    "cpu" -> "CPU Use"
+                    "gpu" -> "GPU Use"
+                    "ram" -> "Memory"
+                    "temp" -> "Heat"
+                    "batt" -> "Cell"
+                    "ping" -> "Net Wait"
+                    "hz" -> "Screen HZ"
+                    "clk" -> "Clock"
+                    else -> field.uppercase()
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(if (checked) accentNow().copy(alpha = 0.14f) else GC.SurfaceHi)
+                        .clickable {
+                            val ok = MonitorPrefs.toggleField(context, field)
+                            if (ok) picked = MonitorPrefs.fields(context)
+                            else Toast.makeText(context, "Keep at least one field", Toast.LENGTH_SHORT).show()
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(label, color = if (checked) accentNow() else GC.TextSoft, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(if (checked) "ON" else "OFF", color = if (checked) accentNow() else GC.TextDim, fontSize = 11.sp)
+                }
             }
         }
     }

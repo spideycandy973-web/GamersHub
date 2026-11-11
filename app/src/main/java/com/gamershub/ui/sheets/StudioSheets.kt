@@ -572,24 +572,24 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         )
         Spacer(Modifier.height(2.dp))
         BiSliderRow("CRISP", sharpen, -100, 100, signed(sharpen)) { sharpen = it }
-        BiSliderRow("TEXTURE", tex, -3, 3, signed(tex)) { tex = it }
-        BiSliderRow("SHADOW", shd, -3, 3, signed(shd)) { shd = it }
-        BiSliderRow("EFFECTS", fx, -3, 3, signed(fx)) { fx = it }
-        BiSliderRow("ANTI-ALIAS", aa, -3, 3, signed(aa)) { aa = it }
-        BiSliderRow("POST FX", post, -3, 3, signed(post)) { post = it }
+        BiSliderRow("SURFACE", tex, -3, 3, signed(tex)) { tex = it }
+        BiSliderRow("SHADE", shd, -3, 3, signed(shd)) { shd = it }
+        BiSliderRow("LIGHTS", fx, -3, 3, signed(fx)) { fx = it }
+        BiSliderRow("SOFT EDGES", aa, -3, 3, signed(aa)) { aa = it }
+        BiSliderRow("AFTER GLOW", post, -3, 3, signed(post)) { post = it }
 
         Spacer(Modifier.height(10.dp))
         Text("SCREEN & PACE", color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.6.sp)
-        BiSliderRow("GAME SCALE", gameScale, 50, 100, if (gameScale >= 100) "NATIVE" else "$gameScale%") { gameScale = it }
-        BiSliderRow("SCREEN SCALE", screenScale, 50, 100, if (screenScale >= 100) "NATIVE" else "$screenScale%") { screenScale = it }
-        BiSliderRow("FPS CAP", fps, 0, 144, if (fps == 0) "DEFAULT" else "$fps") { fps = it }
+        BiSliderRow("GAME SIZE", gameScale, 50, 100, if (gameScale >= 100) "FULL" else "$gameScale%") { gameScale = it }
+        BiSliderRow("SCREEN SIZE", screenScale, 50, 100, if (screenScale >= 100) "FULL" else "$screenScale%") { screenScale = it }
+        BiSliderRow("FPS CAP", fps, 0, 144, if (fps == 0) "GAME'S OWN" else "$fps") { fps = it }
 
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("performance", "standard", "battery").forEach { option ->
                 Chip(option.uppercase(), mode == option) { mode = option }
             }
-            Chip(if (angle) "ANGLE" else "NATIVE", angle) { angle = !angle }
+            Chip(if (angle) "ANGLE" else "FULL", angle) { angle = !angle }
         }
 
         if (log.isNotBlank()) {

@@ -2318,7 +2318,7 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
             feedbackOnWrite(context, ok)
         }
         Divider()
-        GfxRow("Show Coordinates", "Show pointer position overlay while touching.", coords) {
+        GfxRow("Show Pointers", "Show pointer position overlay while touching.", coords) {
             val ok = putSystemSetting(context, "pointer_location", if (it) 1 else 0)
             if (ok) { coords = it; repo.setToggle("show_coords", it) }
             feedbackOnWrite(context, ok)
