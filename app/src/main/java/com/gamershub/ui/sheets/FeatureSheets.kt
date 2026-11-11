@@ -67,6 +67,7 @@ import com.gamershub.overlay.CrosshairOverlayService
 import com.gamershub.overlay.MappingOverlayService
 import com.gamershub.overlay.MonitorOverlayService
 import com.gamershub.overlay.MouseCursorService
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.BigButton
@@ -170,8 +171,9 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .clickable(enabled = !busy) { refresh() }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
@@ -204,8 +206,9 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 7.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(GC.SurfaceHi)
+                        .clip(RomKit.R12)
+                        .background(RomKit.Panel2)
+                        .border(1.dp, RomKit.Stroke, RomKit.R12)
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -439,8 +442,9 @@ private fun StatBox(label: String, value: String, color: Color, modifier: Modifi
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(GC.SurfaceHi)
+            .clip(RomKit.R12)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12)
             .padding(vertical = 10.dp)
     ) {
         Text(label, color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.sp)
@@ -487,8 +491,9 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(horizontal = 11.dp, vertical = 8.dp)
             ) {
                 Box(
@@ -857,8 +862,9 @@ fun ScreenshotSheet(onDismiss: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(12.dp)
             ) {
                 Text(shot.name, color = GC.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)

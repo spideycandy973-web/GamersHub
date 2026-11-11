@@ -60,6 +60,8 @@ import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.overlay.MappingOverlayService
 import com.gamershub.overlay.MonitorOverlayService
 import com.gamershub.overlay.MouseCursorService
+import androidx.compose.foundation.border
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.theme.accentNow
@@ -452,8 +454,9 @@ private fun ToolRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
-            .clip(RoundedCornerShape(15.dp))
-            .background(GC.Surface)
+            .clip(RomKit.R18)
+            .background(RomKit.Panel)
+            .border(1.dp, RomKit.Stroke, RomKit.R18)
             // whole row is the button — tapping the title/icon/anywhere used to do nothing
             .clickable { onConfig() }
             .padding(horizontal = 12.dp, vertical = 11.dp)
@@ -502,8 +505,9 @@ private fun ToolRow(
         Spacer(Modifier.width(6.dp))
         Box(
             Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(GC.SurfaceHi)
+                .clip(RomKit.R12)
+                .background(RomKit.Panel2)
+                .border(1.dp, RomKit.Stroke, RomKit.R12)
                 .clickable(onClick = onConfig)
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {

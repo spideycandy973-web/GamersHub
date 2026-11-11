@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.data.InstalledApp
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.theme.accentNow
@@ -104,8 +105,9 @@ fun SheetFrame(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Uni
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .heightIn(max = 760.dp)
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(GC.Surface)
+                .clip(RomKit.R18)
+                .background(RomKit.Panel)
+                .border(1.dp, RomKit.Stroke, RomKit.R18)
                 .clickable(enabled = false) {}
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
@@ -252,8 +254,9 @@ private fun SlideToOpen(onOpen: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(62.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(GC.SurfaceHi)
+            .clip(RomKit.R12)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12)
             .onSizeChanged { trackPx = it.width.toFloat() },
         contentAlignment = Alignment.Center
     ) {
@@ -326,8 +329,9 @@ fun AppSelectorSheet(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(GC.SurfaceHi)
+                .clip(RomKit.R12)
+                .background(RomKit.Panel2)
+                .border(1.dp, RomKit.Stroke, RomKit.R12)
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             AIcon(Icons.Filled.Search, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(20.dp))
@@ -370,8 +374,9 @@ fun AppSelectorSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(GC.SurfaceHi)
+                        .clip(RomKit.R12)
+                        .background(RomKit.Panel2)
+                        .border(1.dp, RomKit.Stroke, RomKit.R12)
                         .padding(12.dp)
                 ) {
                     Image(
@@ -478,8 +483,9 @@ fun PermissionSheet(
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(GC.SurfaceHi)
+                .clip(RomKit.R12)
+                .background(RomKit.Panel2)
+                .border(1.dp, RomKit.Stroke, RomKit.R12)
                 .padding(15.dp)
         ) {
             Text(config.desc, style = MaterialTheme.typography.bodyLarge, color = GC.TextSoft, fontSize = 15.sp, lineHeight = 22.sp)
@@ -504,8 +510,9 @@ fun PermissionSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(14.dp)
             ) {
                 AIcon(Icons.Filled.CheckCircle, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
@@ -781,8 +788,9 @@ private fun Card2(content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(GC.Surface)
+            .clip(RomKit.R18)
+            .background(RomKit.Panel)
+            .border(1.dp, RomKit.Stroke, RomKit.R18)
             .padding(16.dp),
         content = content
     )
@@ -1001,8 +1009,9 @@ private fun TuningCard(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(GC.SurfaceHi)
+            .clip(RomKit.R12)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12)
             .padding(15.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1097,8 +1106,9 @@ fun ActivationSheet(
         Row(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(GC.SurfaceHi)
+                .clip(RomKit.R12)
+                .background(RomKit.Panel2)
+                .border(1.dp, RomKit.Stroke, RomKit.R12)
                 .padding(5.dp)
         ) {
             Box(
@@ -1126,8 +1136,9 @@ fun ActivationSheet(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(15.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1199,8 +1210,9 @@ fun ActivationSheet(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(15.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1234,8 +1246,9 @@ fun ActivationSheet(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(15.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1307,8 +1320,9 @@ fun ActivationSheet(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(15.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1410,8 +1424,9 @@ fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(GC.SurfaceHi)
+                .clip(RomKit.R12)
+                .background(RomKit.Panel2)
+                .border(1.dp, RomKit.Stroke, RomKit.R12)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             AIcon(Icons.Filled.Info, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(15.dp))
@@ -1433,8 +1448,9 @@ fun SlideControl(label: String, icon: ImageVector, onDone: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .height(62.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(GC.SurfaceHi)
+            .clip(RomKit.R12)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12)
             .onSizeChanged { trackPx = it.width.toFloat() },
         contentAlignment = Alignment.Center
     ) {

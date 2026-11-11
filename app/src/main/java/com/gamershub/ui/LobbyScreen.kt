@@ -85,8 +85,9 @@ fun LobbyScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(horizontal = 13.dp, vertical = 8.dp)
             ) {
                 Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
@@ -208,8 +209,9 @@ fun LobbyScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(GC.Surface)
+                    .clip(RomKit.R18)
+                    .background(RomKit.Panel)
+                    .border(1.dp, RomKit.Stroke, RomKit.R18)
                     .padding(vertical = 26.dp, horizontal = 18.dp)
             ) {
                 IconChip(Icons.Filled.Gamepad, size = 64)
@@ -243,8 +245,9 @@ fun LobbyScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(GC.Surface)
+                            .clip(RomKit.R18)
+                            .background(RomKit.Panel)
+                            .border(1.dp, RomKit.Stroke, RomKit.R18)
                             .clickable { onGameTap(app) }
                             .padding(12.dp)
                     ) {
