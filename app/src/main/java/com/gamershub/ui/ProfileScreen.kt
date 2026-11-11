@@ -275,7 +275,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconChip(Icons.Filled.Wifi, size = 36)
                 Spacer(Modifier.width(10.dp))
-                Text("Network", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Text("Net", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
                 StatusPill(if (ping in 0..120) "Good" else if (ping > 0) "Slow" else "Offline")
             }
             Spacer(Modifier.height(9.dp))

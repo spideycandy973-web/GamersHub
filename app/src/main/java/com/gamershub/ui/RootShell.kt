@@ -1036,7 +1036,7 @@ private fun MonitorStrip(context: android.content.Context) {
                 .background(Color(0xF0221314))
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
-            AIcon(Icons.Filled.Add, contentDescription = "Drag", tint = accentNow(), modifier = Modifier.size(14.dp))
+            AIcon(Icons.Filled.Add, contentDescription = "Pull", tint = accentNow(), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             StripChip("CPU", stats.first + "%")
             StripChip("RAM", stats.second + "%")

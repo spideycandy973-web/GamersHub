@@ -721,7 +721,7 @@ private fun DiagnosticsCard() {
                         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                             as android.content.ClipboardManager
                         cm.setPrimaryClip(
-                            android.content.ClipData.newPlainText("GamersHub crash log", log.ifBlank { "no crash" })
+                            android.content.ClipData.newPlainText("GamersHub stop log", log.ifBlank { "no crash" })
                         )
                     }
                 },

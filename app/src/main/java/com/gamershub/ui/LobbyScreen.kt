@@ -89,7 +89,7 @@ fun LobbyScreen(
             ) {
                 Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text("Local", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 14.sp)
+                Text("Here", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 14.sp)
             }
         }
 

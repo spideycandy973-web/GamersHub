@@ -114,7 +114,7 @@ class GamersHubApp : Application() {
     private fun copyToClipboard(text: String) {
         runCatching {
             val cm = getSystemService(ClipboardManager::class.java) ?: return
-            cm.setPrimaryClip(ClipData.newPlainText("GamersHub crash", text))
+            cm.setPrimaryClip(ClipData.newPlainText("GamersHub stop", text))
         }
     }
 

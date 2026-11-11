@@ -386,7 +386,7 @@ private fun GameSpaceScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.offset(x = w * 0.738f, y = h * 0.082f)
             ) {
-                AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = accentNow(), modifier = Modifier.size(h * 0.032f))
+                AIcon(Icons.Filled.Bolt, contentDescription = "Free room", tint = accentNow(), modifier = Modifier.size(h * 0.032f))
                 Spacer(Modifier.width(w * 0.004f))
                 Text(
                     "${(freeMb / 10)}",
