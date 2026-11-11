@@ -89,6 +89,24 @@ fun GameLabsScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var tab by remember { mutableStateOf(LabsTab.ALL) }
 
+    // Read the two system switches themselves, so the buttons can never lie.
+    val tapsOn by produceState(initialValue = false) {
+        while (true) {
+            value = runCatching {
+                android.provider.Settings.System.getInt(context.contentResolver, "show_touches") == 1
+            }.getOrDefault(false)
+            kotlinx.coroutines.delay(1500)
+        }
+    }
+    val pointersOn by produceState(initialValue = false) {
+        while (true) {
+            value = runCatching {
+                android.provider.Settings.System.getInt(context.contentResolver, "pointer_location") == 1
+            }.getOrDefault(false)
+            kotlinx.coroutines.delay(1500)
+        }
+    }
+
     // Real read-out of the touch panel, refreshed when the tab is opened.
     val touchRate by produceState(initialValue = "checking…") {
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -245,14 +263,14 @@ fun GameLabsScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SmallActionButton("Show Taps", Modifier.weight(1f), active = toggleState("show_taps")) {
-                            val v = !toggleState("show_taps")
+                        SmallActionButton("Show Taps", Modifier.weight(1f), active = tapsOn) {
+                            val v = !tapsOn
                             val ok = com.gamershub.putSystemSetting(context, "show_touches", if (v) 1 else 0)
                             if (ok) onToggle("show_taps", v)
                             com.gamershub.feedbackOnWrite(context, ok)
                         }
-                        SmallActionButton("Show Pointers", Modifier.weight(1f), active = toggleState("show_coords")) {
-                            val v = !toggleState("show_coords")
+                        SmallActionButton("Show Pointers", Modifier.weight(1f), active = pointersOn) {
+                            val v = !pointersOn
                             val ok = com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
                             if (ok) onToggle("show_coords", v)
                             com.gamershub.feedbackOnWrite(context, ok)
@@ -324,7 +342,7 @@ fun GameLabsScreen(
                         Text("OPEN", color = accent, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                     Divider()
-                    DnsTunerCard(toggleState("dns"), onToggle)
+                    DnsTunerCard(onToggle)
                     Divider()
                     SessionMonitorCard(toggleState("session"), toggleState, onToggle)
                 }
@@ -337,11 +355,21 @@ fun GameLabsScreen(
 /* ------------------------------------------------------------------ */
 
 @Composable
-private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
+private fun DnsTunerCard(onToggle: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    // What the phone is really using, not what we last wrote.
+    val liveMode by produceState(initialValue = "") {
+        while (true) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.gamershub.core.DnsEngine.current() }.getOrDefault("")
+            }
+            kotlinx.coroutines.delay(4000)
+        }
+    }
+    val dnsOn = liveMode.startsWith("private dns")
     val hosts = listOf("dns.google", "one.one.one.one", "doh.opendns.com", "automatic")
     val names = listOf("Google", "Cloudflare", "OpenDNS", "Automatic")
 
@@ -375,7 +403,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
                 )
             }
-            Toggle(on = on) {
+            Toggle(on = dnsOn) {
                 expanded = it
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) {
@@ -394,7 +422,11 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                 }
             }
         }
-        if (on && expanded) {
+        if (liveMode.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text("Now: $liveMode", color = GC.TextDim, fontSize = 11.5.sp)
+        }
+        if (dnsOn && expanded) {
             Spacer(Modifier.height(10.dp))
             // provider row + latency pill
             Row(verticalAlignment = Alignment.CenterVertically) {
