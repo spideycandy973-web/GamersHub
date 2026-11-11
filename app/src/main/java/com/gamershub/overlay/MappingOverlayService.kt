@@ -187,7 +187,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
             (c.green * 255f).toInt().coerceIn(0, 255),
             (c.blue * 255f).toInt().coerceIn(0, 255)
         )
-    }.getOrDefault(0xFFFF8A80)
+    }.getOrDefault(0xFFFF8A80.toInt())
 
     private fun buildBar() {
         val params = overlayParams().apply {
