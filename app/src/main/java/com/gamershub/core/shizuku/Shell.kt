@@ -39,6 +39,20 @@ object Shell {
     @Volatile
     var lastError: String = ""
 
+    /** Real ring buffer of what this app actually asked the shell to do. */
+    private val history = java.util.ArrayDeque<String>()
+
+    fun recent(limit: Int = 8): List<String> = synchronized(history) {
+        history.toList().takeLast(limit)
+    }
+
+    private fun record(line: String) {
+        synchronized(history) {
+            history.addLast(line)
+            while (history.size > 40) history.removeFirst()
+        }
+    }
+
     private val conn = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             binder = IGamersHubShell.Stub.asInterface(service)
@@ -141,7 +155,10 @@ object Shell {
      * The bound user service remains as a fallback for older Shizuku builds.
      */
     fun exec(command: String): String? {
-        directExec(command)?.let { return it }
+        directExec(command)?.let { out ->
+            record("$ " + command.take(70) + "  →  ok")
+            return out
+        }
         if (binder == null) autoBind()
         val out = try {
             binder?.exec(command)
@@ -149,7 +166,12 @@ object Shell {
             lastError = t.message ?: "exec failed"
             null
         }
-        if (out == null) notifyNeeded()
+        if (out == null) {
+            record("$ " + command.take(70) + "  →  " + reason())
+            notifyNeeded()
+        } else {
+            record("$ " + command.take(70) + "  →  ok")
+        }
         return out
     }
 

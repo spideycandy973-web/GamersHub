@@ -186,7 +186,7 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
 
         if (results.isEmpty()) {
             Text(
-                if (busy) "Probing game endpoints…" else "No samples yet — tap RE-RUN.",
+                if (busy) "Checking game servers…" else "No samples yet — tap RUN AGAIN.",
                 color = GC.TextDim,
                 fontSize = 13.sp
             )
@@ -634,7 +634,7 @@ fun MonitorConfigSheet(onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(MonitorPrefs.scale(context)) }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Info Watcher", "Pick what floats over your game", onDismiss)
+        SheetTitle("Info Watcher", "Pick what floats on your game", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (MonitorOverlayService.isRunning) "● Live" else "● Off")
             Spacer(Modifier.weight(1f))
@@ -666,7 +666,7 @@ fun MonitorConfigSheet(onDismiss: () -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        SliderRow("SCALE", scale, 0.7f..1.8f, String.format(java.util.Locale.US, "%.1fx", scale)) {
+        SliderRow("SIZE", scale, 0.7f..1.8f, String.format(java.util.Locale.US, "%.1fx", scale)) {
             scale = it
             MonitorPrefs.setScale(context, it)
             if (MonitorOverlayService.isRunning) MonitorOverlayService.restart(context)

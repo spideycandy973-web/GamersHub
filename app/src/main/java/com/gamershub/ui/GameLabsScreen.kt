@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gamershub.core.MonitorPrefs
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
@@ -87,6 +88,24 @@ fun GameLabsScreen(
     val accent = LocalAccent.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var tab by remember { mutableStateOf(LabsTab.ALL) }
+
+    // Read the two system switches themselves, so the buttons can never lie.
+    val tapsOn by produceState(initialValue = false) {
+        while (true) {
+            value = runCatching {
+                android.provider.Settings.System.getInt(context.contentResolver, "show_touches") == 1
+            }.getOrDefault(false)
+            kotlinx.coroutines.delay(1500)
+        }
+    }
+    val pointersOn by produceState(initialValue = false) {
+        while (true) {
+            value = runCatching {
+                android.provider.Settings.System.getInt(context.contentResolver, "pointer_location") == 1
+            }.getOrDefault(false)
+            kotlinx.coroutines.delay(1500)
+        }
+    }
 
     // Real read-out of the touch panel, refreshed when the tab is opened.
     val touchRate by produceState(initialValue = "checking…") {
@@ -244,14 +263,14 @@ fun GameLabsScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SmallActionButton("Show Taps", Modifier.weight(1f), active = toggleState("show_taps")) {
-                            val v = !toggleState("show_taps")
+                        SmallActionButton("Show Taps", Modifier.weight(1f), active = tapsOn) {
+                            val v = !tapsOn
                             val ok = com.gamershub.putSystemSetting(context, "show_touches", if (v) 1 else 0)
                             if (ok) onToggle("show_taps", v)
                             com.gamershub.feedbackOnWrite(context, ok)
                         }
-                        SmallActionButton("Show Coordinates", Modifier.weight(1f), active = toggleState("show_coords")) {
-                            val v = !toggleState("show_coords")
+                        SmallActionButton("Show Pointers", Modifier.weight(1f), active = pointersOn) {
+                            val v = !pointersOn
                             val ok = com.gamershub.putSystemSetting(context, "pointer_location", if (v) 1 else 0)
                             if (ok) onToggle("show_coords", v)
                             com.gamershub.feedbackOnWrite(context, ok)
@@ -306,7 +325,7 @@ fun GameLabsScreen(
 
             // ---- Feature Settings ----
             if (tab != LabsTab.CONFIGS) {
-                SectionLabel("Option Preferences")
+                SectionLabel("Feature Likes")
                 Card {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -320,13 +339,10 @@ fun GameLabsScreen(
                             Text("Ready to Play", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text("Phone health and steady score", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
                         }
-                        Toggle(on = toggleState("game_ready")) {
-                            onToggle("game_ready", it)
-                            if (it) onGameReady()
-                        }
+                        Text("OPEN", color = accent, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                     Divider()
-                    DnsTunerCard(toggleState("dns"), onToggle)
+                    DnsTunerCard(onToggle)
                     Divider()
                     SessionMonitorCard(toggleState("session"), toggleState, onToggle)
                 }
@@ -339,11 +355,21 @@ fun GameLabsScreen(
 /* ------------------------------------------------------------------ */
 
 @Composable
-private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
+private fun DnsTunerCard(onToggle: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var provider by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    // What the phone is really using, not what we last wrote.
+    val liveMode by produceState(initialValue = "") {
+        while (true) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { com.gamershub.core.DnsEngine.current() }.getOrDefault("")
+            }
+            kotlinx.coroutines.delay(4000)
+        }
+    }
+    val dnsOn = liveMode.startsWith("private dns")
     val hosts = listOf("dns.google", "one.one.one.one", "doh.opendns.com", "automatic")
     val names = listOf("Google", "Cloudflare", "OpenDNS", "Automatic")
 
@@ -377,7 +403,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
                 )
             }
-            Toggle(on = on) {
+            Toggle(on = dnsOn) {
                 expanded = it
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) {
@@ -396,7 +422,11 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
                 }
             }
         }
-        if (on && expanded) {
+        if (liveMode.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text("Now: $liveMode", color = GC.TextDim, fontSize = 11.5.sp)
+        }
+        if (dnsOn && expanded) {
             Spacer(Modifier.height(10.dp))
             // provider row + latency pill
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -458,16 +488,18 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
 @Composable
 private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, onToggle: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var expanded by remember { mutableStateOf(false) }
-    val live by produceState(initialValue = Triple("0", "0", "--")) {
+    // The field chips write straight into the floating watcher's own list, so what you
+    // tick here is exactly what the overlay draws.
+    var picked by remember { mutableStateOf(MonitorPrefs.fields(context)) }
+    val live by produceState(initialValue = listOf("--", "--", "--", "--")) {
         while (true) {
-            val measured = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val cpu = DeviceStats.cpu()
                 val mem = DeviceStats.mem(context)
                 val batt = DeviceStats.battery(context)
-                Triple(cpu.pct.toString(), mem.pct.toString(), batt.first.toString())
+                val fps = com.gamershub.core.FpsMeter.liveFps(context)
+                listOf("${cpu.pct}%", "${mem.pct}%", "${batt.first}%", if (fps > 0) fps.toString() else "--")
             }
-            value = measured
             kotlinx.coroutines.delay(1500)
         }
     }
@@ -483,13 +515,19 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
                 )
             }
             Toggle(on = on) {
+                if (it && !android.provider.Settings.canDrawOverlays(context)) {
+                    Toast.makeText(context, "Allow draw-over-apps first", Toast.LENGTH_SHORT).show()
+                    return@Toggle
+                }
                 onToggle("session", it)
-                expanded = it
+                runCatching {
+                    if (it) com.gamershub.overlay.MonitorOverlayService.start(context)
+                    else com.gamershub.overlay.MonitorOverlayService.stop(context)
+                }
             }
         }
-        if (on && expanded) {
+        if (on) {
             Spacer(Modifier.height(10.dp))
-            // live monitor strip
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -498,24 +536,44 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
                     .padding(horizontal = 12.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StripStat("CPU", "${live.first}%")
-                StripStat("RAM", "${live.second}%")
-                StripStat("BAT", "${live.third}%")
-                StripStat("FPS", "0")
+                StripStat("CPU", live[0])
+                StripStat("RAM", live[1])
+                StripStat("BAT", live[2])
+                StripStat("FPS", live[3])
                 StripStat("CLK", java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(java.util.Date()))
             }
             Spacer(Modifier.height(10.dp))
-            val checks = listOf(
-                Triple("sm_cpu", "CPU Usage", Icons.Filled.Speed),
-                Triple("sm_gpu", "GPU Usage", Icons.Filled.Memory),
-                Triple("sm_batt", "Cell Level", Icons.Filled.Bolt),
-                Triple("sm_batt_temp", "Cell Heat", Icons.Filled.Storage),
-                Triple("sm_fps", "Frame Rate (FPS)", Icons.Filled.GraphicEq),
-                Triple("sm_clock", "Clock", Icons.Filled.Dns)
-            )
-            CheckRow("RAM Used/Available", "ram_mode", toggleState, onToggle, ramToggle = true)
-            checks.forEach { (key, label, icon) ->
-                CheckRow(label, key, toggleState, onToggle, icon = icon)
+            MonitorPrefs.ORDER.forEach { field ->
+                val checked = picked.contains(field)
+                val label = when (field) {
+                    "fps" -> "Frames"
+                    "cpu" -> "CPU Use"
+                    "gpu" -> "GPU Use"
+                    "ram" -> "Memory"
+                    "temp" -> "Heat"
+                    "batt" -> "Cell"
+                    "ping" -> "Net Wait"
+                    "hz" -> "Screen HZ"
+                    "clk" -> "Clock"
+                    else -> field.uppercase()
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(if (checked) accentNow().copy(alpha = 0.14f) else GC.SurfaceHi)
+                        .clickable {
+                            val ok = MonitorPrefs.toggleField(context, field)
+                            if (ok) picked = MonitorPrefs.fields(context)
+                            else Toast.makeText(context, "Keep at least one field", Toast.LENGTH_SHORT).show()
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(label, color = if (checked) accentNow() else GC.TextSoft, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(if (checked) "ON" else "OFF", color = if (checked) accentNow() else GC.TextDim, fontSize = 11.sp)
+                }
             }
         }
     }

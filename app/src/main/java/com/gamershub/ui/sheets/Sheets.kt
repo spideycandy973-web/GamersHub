@@ -58,6 +58,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import android.widget.Toast
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -831,6 +834,15 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
             } catch (_: Throwable) { 2 }
         )
     }
+    var tick by remember { mutableIntStateOf(0) }
+    var sizePct by remember { mutableFloatStateOf(100f) }
+    var dpi by remember {
+        mutableFloatStateOf(
+            runCatching { com.gamershub.core.DeviceSpoofer.panel(context).density.toFloat() }
+                .getOrDefault(420f)
+                .coerceIn(240f, 640f)
+        )
+    }
     SheetFrame(onDismiss = onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Palette, size = 50)
@@ -869,58 +881,115 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Resolution Changer
-        val physW = dm.widthPixels
-        val physH = dm.heightPixels
+        // Screen size — a real `wm size` override, with a one-tap way back.
+        val panel = remember(tick) { com.gamershub.core.DeviceSpoofer.panel(context) }
+        val overrideSize = remember(tick) { com.gamershub.core.DeviceSpoofer.currentOverrideSize() }
+        val overrideDpi = remember(tick) {
+            runCatching {
+                Regex("Override density:\\s*(\\d+)")
+                    .find(com.gamershub.core.shizuku.Shell.exec("wm density") ?: "")
+                    ?.groupValues?.getOrNull(1)
+            }.getOrNull().orEmpty()
+        }
+        val targetW = evenNumber(panel.width * (sizePct / 100f).toInt())
+        val targetH = evenNumber(panel.height * (sizePct / 100f).toInt())
+
         TuningCard(icon = Icons.Filled.Apps, title = "Crisp Changer", desc = "Change screen size (Width x Height)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill("Res-Ratio: 1.00")
-                StatPill("W-Scale: 1.00")
-                StatPill("H-Scale: 1.00")
+                StatPill("Panel ${panel.width}x${panel.height}")
+                StatPill(if (overrideSize.isBlank()) "Stock size" else "Now $overrideSize")
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ValueBox("$physW", "W", Modifier.weight(1f))
+                ValueBox("$targetW", "W", Modifier.weight(1f))
                 Text("X", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
-                ValueBox("$physH", "H", Modifier.weight(1f))
+                ValueBox("$targetH", "H", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(6.dp))
-            Text("Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            Spacer(Modifier.height(8.dp))
+            SliderRow("SIZE", sizePct, 50f..100f, "${sizePct.toInt()}%") { sizePct = it }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Okay",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm size ${targetW}x$targetH")
+                            Toast.makeText(
+                                context,
+                                if (ok) "Screen size → ${targetW}x$targetH" else "Needs Power Up to change the size",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Put back",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm size reset")
+                            Toast.makeText(context, if (ok) "Back to the panel size" else "Needs Power Up", Toast.LENGTH_SHORT).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        primary = false
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
-        // Smallest Width Changer
+        // Density — real `wm density`, so text and layout change together.
         TuningCard(icon = Icons.Filled.Apps, title = "Width Changer", desc = "Set screen DPI and small width by hand") {
-            StatPill("DPI-Proportion: ${String.format(Locale.US, "%.2f", dm.densityDpi / 160f * 100f / 90f)}%")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatPill("Panel ${panel.density} ppi")
+                StatPill(if (overrideDpi.isBlank()) "Stock density" else "Now $overrideDpi ppi")
+            }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ValueBox("${cfg.smallestScreenWidthDp}", "dp", Modifier.weight(1f))
+                ValueBox("${(minOf(panel.width, panel.height) * 160f / dpi).toInt()}", "dp", Modifier.weight(1f))
                 Text("=", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
-                ValueBox("${dm.densityDpi}", "ppi", Modifier.weight(1f))
+                ValueBox("${dpi.toInt()}", "ppi", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(6.dp))
-            Text("Small Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            Spacer(Modifier.height(8.dp))
+            SliderRow("DENSITY", dpi, 240f..640f, "${dpi.toInt()}") { dpi = (it / 10f).toInt() * 10f }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Okay",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm density ${dpi.toInt()}")
+                            Toast.makeText(
+                                context,
+                                if (ok) "Density → ${dpi.toInt()} ppi" else "Needs Power Up to change the density",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Put back",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm density reset")
+                            Toast.makeText(context, if (ok) "Back to the panel density" else "Needs Power Up", Toast.LENGTH_SHORT).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        primary = false
+                    )
+                }
+            }
         }
     }
 }
+
+/** Phone screens only render cleanly on even pixel counts. */
+private fun evenNumber(value: Int): Int = (value / 2) * 2
 
 @Composable
 private fun TuningCard(
@@ -990,7 +1059,16 @@ fun ActivationSheet(
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
     var quickStart by remember { mutableStateOf(true) }
+    var usbNote by remember { mutableStateOf("") }
     var logOpen by remember { mutableStateOf(false) }
+    var tick by remember { mutableIntStateOf(0) }
+    // Keep the live shell log fresh while it is open.
+    LaunchedEffect(logOpen) {
+        while (logOpen) {
+            kotlinx.coroutines.delay(1200)
+            tick++
+        }
+    }
     SheetFrame(onDismiss = onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Power Up Spot", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
@@ -1096,12 +1174,18 @@ fun ActivationSheet(
                             .background(GC.Bg)
                             .padding(12.dp)
                     ) {
-                        listOf(
-                            "$ shizuku: binder alive",
-                            "$ settings put system show_touches …",
-                            "$ settings put system pointer_location …",
-                            "$ settings put system peak_refresh_rate …"
-                        ).forEach {
+                        val lines = remember(tick) {
+                            val history = runCatching { com.gamershub.core.shizuku.Shell.recent(8) }.getOrDefault(emptyList())
+                            if (history.isEmpty()) {
+                                listOf(
+                                    "binder: " + com.gamershub.core.shizuku.Shell.statusLabel(),
+                                    "error: " + com.gamershub.core.shizuku.Shell.reason()
+                                )
+                            } else {
+                                history.reversed()
+                            }
+                        }
+                        lines.forEach {
                             Text(it, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.5.sp, lineHeight = 17.sp)
                         }
                     }
@@ -1160,7 +1244,7 @@ fun ActivationSheet(
                     Text("Cordless Debug", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                 }
                 Spacer(Modifier.height(8.dp))
-                StatPill("ADB Wireless Debugging")
+                StatPill(runCatching { "This phone: " + com.gamershub.core.ScreenInfo.wifiIp() }.getOrDefault("ADB Wireless Debugging"))
                 Spacer(Modifier.height(10.dp))
                 listOf(
                     "Open Wireless Debugging in Developer Options",
@@ -1200,11 +1284,22 @@ fun ActivationSheet(
                             .clip(RoundedCornerShape(50))
                             .background(accent)
                             .clickable {
-                                android.widget.Toast.makeText(context, "Looking for codes…", android.widget.Toast.LENGTH_SHORT).show()
+                                // Real jump to the system's own wireless-debugging screen.
+                                val deep = android.content.Intent("android.settings.WIRELESS_DEBUGGING")
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                val plain = android.content.Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                val opened = runCatching { context.startActivity(deep); true }
+                                    .getOrElse { runCatching { context.startActivity(plain); true }.getOrDefault(false) }
+                                Toast.makeText(
+                                    context,
+                                    if (opened) "Opened wireless debugging" else "Open Developer options by hand",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Go", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                    ) { Text("Open", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1263,11 +1358,18 @@ fun ActivationSheet(
                         .clip(RoundedCornerShape(50))
                         .background(accent)
                         .clickable {
-                            android.widget.Toast.makeText(context, "Plug the cable to look", android.widget.Toast.LENGTH_SHORT).show()
+                            val found = com.gamershub.core.ScreenInfo.usbDevices(context)
+                            usbNote = if (found.isEmpty()) "Nothing on the USB port right now"
+                            else found.joinToString(" · ")
+                            Toast.makeText(context, usbNote, Toast.LENGTH_LONG).show()
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
-                ) { Text("Look for USB phone", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                ) { Text("Check USB port", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                if (usbNote.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(usbNote, color = GC.TextDim, fontSize = 12.sp, lineHeight = 17.sp)
+                }
             }
         }
     }

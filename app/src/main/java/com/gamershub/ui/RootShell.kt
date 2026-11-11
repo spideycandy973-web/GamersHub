@@ -1004,15 +1004,22 @@ internal fun IntroAnimation(onDone: () -> Unit) {
 @Composable
 private fun MonitorStrip(context: android.content.Context) {
     val accent = LocalAccent.current
-    val stats by produceState(initialValue = Triple("0", "0", "--")) {
+    val stats by produceState(initialValue = listOf("--", "--", "--", "--", "--")) {
         while (true) {
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val cpu = com.gamershub.data.DeviceStats.cpu()
                 val mem = com.gamershub.data.DeviceStats.mem(context)
                 val batt = com.gamershub.data.DeviceStats.battery(context)
-                Triple(cpu.pct.toString(), mem.pct.toString(), batt.second.toInt().toString() + "°C")
+                val fps = com.gamershub.core.FpsMeter.liveFps(context)
+                listOf(
+                    "${cpu.pct}%",
+                    "${mem.pct}%",
+                    "${batt.first}%",
+                    batt.second.toInt().toString() + "°C",
+                    if (fps > 0) fps.toString() else "--"
+                )
             }
-            kotlinx.coroutines.delay(2500)
+            kotlinx.coroutines.delay(2000)
         }
     }
     var offX by remember { mutableStateOf(0f) }
@@ -1038,10 +1045,11 @@ private fun MonitorStrip(context: android.content.Context) {
         ) {
             AIcon(Icons.Filled.Add, contentDescription = "Pull", tint = accentNow(), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            StripChip("CPU", stats.first + "%")
-            StripChip("RAM", stats.second + "%")
-            StripChip("BAT", stats.third)
-            StripChip("FPS", "0")
+            StripChip("CPU", stats[0])
+            StripChip("RAM", stats[1])
+            StripChip("BAT", stats[2])
+            StripChip("TEMP", stats[3])
+            StripChip("FPS", stats[4])
             StripChip("CLK", java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date()))
         }
     }
