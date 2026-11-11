@@ -39,7 +39,10 @@ class GamersHubApp : Application() {
         var lastCrash: String = ""
 
         @Volatile
-        private var instance: GamersHubApp? = null
+        /** Process context, used by helpers that need it without a Context argument. */
+        @JvmStatic
+        var instance: GamersHubApp? = null
+            private set
 
         @Volatile
         private var lastRecovery: Long = 0L

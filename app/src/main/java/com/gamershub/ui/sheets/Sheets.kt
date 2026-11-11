@@ -1059,7 +1059,16 @@ fun ActivationSheet(
     val context = androidx.compose.ui.platform.LocalContext.current
     val accent = LocalAccent.current
     var quickStart by remember { mutableStateOf(true) }
+    var usbNote by remember { mutableStateOf("") }
     var logOpen by remember { mutableStateOf(false) }
+    var tick by remember { mutableIntStateOf(0) }
+    // Keep the live shell log fresh while it is open.
+    LaunchedEffect(logOpen) {
+        while (logOpen) {
+            kotlinx.coroutines.delay(1200)
+            tick++
+        }
+    }
     SheetFrame(onDismiss = onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Power Up Spot", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
@@ -1165,12 +1174,18 @@ fun ActivationSheet(
                             .background(GC.Bg)
                             .padding(12.dp)
                     ) {
-                        listOf(
-                            "$ shizuku: binder alive",
-                            "$ settings put system show_touches …",
-                            "$ settings put system pointer_location …",
-                            "$ settings put system peak_refresh_rate …"
-                        ).forEach {
+                        val lines = remember(tick) {
+                            val history = runCatching { com.gamershub.core.shizuku.Shell.recent(8) }.getOrDefault(emptyList())
+                            if (history.isEmpty()) {
+                                listOf(
+                                    "binder: " + com.gamershub.core.shizuku.Shell.statusLabel(),
+                                    "error: " + com.gamershub.core.shizuku.Shell.reason()
+                                )
+                            } else {
+                                history.reversed()
+                            }
+                        }
+                        lines.forEach {
                             Text(it, style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.5.sp, lineHeight = 17.sp)
                         }
                     }
@@ -1229,7 +1244,7 @@ fun ActivationSheet(
                     Text("Cordless Debug", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                 }
                 Spacer(Modifier.height(8.dp))
-                StatPill("ADB Wireless Debugging")
+                StatPill(runCatching { "This phone: " + com.gamershub.core.ScreenInfo.wifiIp() }.getOrDefault("ADB Wireless Debugging"))
                 Spacer(Modifier.height(10.dp))
                 listOf(
                     "Open Wireless Debugging in Developer Options",
@@ -1269,11 +1284,22 @@ fun ActivationSheet(
                             .clip(RoundedCornerShape(50))
                             .background(accent)
                             .clickable {
-                                android.widget.Toast.makeText(context, "Looking for codes…", android.widget.Toast.LENGTH_SHORT).show()
+                                // Real jump to the system's own wireless-debugging screen.
+                                val deep = android.content.Intent("android.settings.WIRELESS_DEBUGGING")
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                val plain = android.content.Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                val opened = runCatching { context.startActivity(deep); true }
+                                    .getOrElse { runCatching { context.startActivity(plain); true }.getOrDefault(false) }
+                                Toast.makeText(
+                                    context,
+                                    if (opened) "Opened wireless debugging" else "Open Developer options by hand",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Go", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                    ) { Text("Open", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1332,11 +1358,18 @@ fun ActivationSheet(
                         .clip(RoundedCornerShape(50))
                         .background(accent)
                         .clickable {
-                            android.widget.Toast.makeText(context, "Plug the cable to look", android.widget.Toast.LENGTH_SHORT).show()
+                            val found = com.gamershub.core.ScreenInfo.usbDevices(context)
+                            usbNote = if (found.isEmpty()) "Nothing on the USB port right now"
+                            else found.joinToString(" · ")
+                            Toast.makeText(context, usbNote, Toast.LENGTH_LONG).show()
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
-                ) { Text("Look for USB phone", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                ) { Text("Check USB port", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                if (usbNote.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(usbNote, color = GC.TextDim, fontSize = 12.sp, lineHeight = 17.sp)
+                }
             }
         }
     }
