@@ -124,6 +124,8 @@ import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
+import com.gamershub.theme.accentPairNow
 import com.gamershub.ui.components.GaugeRing
 import com.gamershub.ui.components.HeroMark
 import com.gamershub.ui.components.SegmentedBar
