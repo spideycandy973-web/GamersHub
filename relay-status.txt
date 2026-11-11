@@ -1,0 +1,15 @@
+=== relay status Wed Nov 11 18:19:46 UTC 2026 ===
+file_id=13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9
+--- attempt 1: gdown
+Downloading...
+From (original): https://drive.google.com/uc?id=13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9
+From (redirected): https://drive.google.com/uc?id=13rST-GQ9WKlELLrVvpxHBaupi2GYdYy9&confirm=t&uuid=5d7120b4-fda3-4129-9731-6a5c464b2850
+To: /home/runner/work/GamersHub/GamersHub/recording.mp4
+  0%|          | 0.00/210M [00:00<?, ?B/s]  4%|▍         | 9.44M/210M [00:00<00:02, 93.6MB/s] 12%|█▏        | 25.2M/210M [00:00<00:01, 130MB/s]  20%|██        | 43.0M/210M [00:00<00:01, 150MB/s] 28%|██▊       | 58.7M/210M [00:00<00:01, 150MB/s] 35%|███▌      | 73.9M/210M [00:00<00:00, 145MB/s] 43%|████▎     | 90.2M/210M [00:00<00:00, 150MB/s] 50%|█████     | 105M/210M [00:00<00:00, 137MB/s]  57%|█████▋    | 121M/210M [00:00<00:00, 141MB/s] 64%|██████▍   | 135M/210M [00:01<00:00, 113MB/s] 70%|███████   | 148M/210M [00:01<00:00, 108MB/s] 78%|███████▊  | 165M/210M [00:01<00:00, 121MB/s] 86%|████████▌ | 180M/210M [00:01<00:00, 128MB/s] 93%|█████████▎| 196M/210M [00:01<00:00, 134MB/s]100%|██████████| 210M/210M [00:01<00:00, 134MB/s]
+gdown exit=0 size=209891586
+--- head of file:
+^@^@^@^Xftypmp42^@^@^@^@isommp42^@^@^LM-0free0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+--- ffprobe:
+/home/runner/work/_temp/b66a1425-b95e-4573-8fd7-7fc4001d59c4.sh: line 19: ffprobe: command not found
+FFPROBE FAILED
+frames=534
