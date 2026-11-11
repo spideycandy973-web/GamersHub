@@ -58,6 +58,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import android.widget.Toast
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -831,6 +834,15 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
             } catch (_: Throwable) { 2 }
         )
     }
+    var tick by remember { mutableIntStateOf(0) }
+    var sizePct by remember { mutableFloatStateOf(100f) }
+    var dpi by remember {
+        mutableFloatStateOf(
+            runCatching { com.gamershub.core.DeviceSpoofer.panel(context).density.toFloat() }
+                .getOrDefault(420f)
+                .coerceIn(240f, 640f)
+        )
+    }
     SheetFrame(onDismiss = onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Palette, size = 50)
@@ -869,58 +881,115 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // Resolution Changer
-        val physW = dm.widthPixels
-        val physH = dm.heightPixels
+        // Screen size — a real `wm size` override, with a one-tap way back.
+        val panel = remember(tick) { com.gamershub.core.DeviceSpoofer.panel(context) }
+        val overrideSize = remember(tick) { com.gamershub.core.DeviceSpoofer.currentOverrideSize() }
+        val overrideDpi = remember(tick) {
+            runCatching {
+                Regex("Override density:\\s*(\\d+)")
+                    .find(com.gamershub.core.shizuku.Shell.exec("wm density") ?: "")
+                    ?.groupValues?.getOrNull(1)
+            }.getOrNull().orEmpty()
+        }
+        val targetW = evenNumber(panel.width * (sizePct / 100f).toInt())
+        val targetH = evenNumber(panel.height * (sizePct / 100f).toInt())
+
         TuningCard(icon = Icons.Filled.Apps, title = "Crisp Changer", desc = "Change screen size (Width x Height)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatPill("Res-Ratio: 1.00")
-                StatPill("W-Scale: 1.00")
-                StatPill("H-Scale: 1.00")
+                StatPill("Panel ${panel.width}x${panel.height}")
+                StatPill(if (overrideSize.isBlank()) "Stock size" else "Now $overrideSize")
             }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ValueBox("$physW", "W", Modifier.weight(1f))
+                ValueBox("$targetW", "W", Modifier.weight(1f))
                 Text("X", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
-                ValueBox("$physH", "H", Modifier.weight(1f))
+                ValueBox("$targetH", "H", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(6.dp))
-            Text("Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            Spacer(Modifier.height(8.dp))
+            SliderRow("SIZE", sizePct, 50f..100f, "${sizePct.toInt()}%") { sizePct = it }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Okay",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm size ${targetW}x$targetH")
+                            Toast.makeText(
+                                context,
+                                if (ok) "Screen size → ${targetW}x$targetH" else "Needs Power Up to change the size",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Put back",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm size reset")
+                            Toast.makeText(context, if (ok) "Back to the panel size" else "Needs Power Up", Toast.LENGTH_SHORT).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        primary = false
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
-        // Smallest Width Changer
+        // Density — real `wm density`, so text and layout change together.
         TuningCard(icon = Icons.Filled.Apps, title = "Width Changer", desc = "Set screen DPI and small width by hand") {
-            StatPill("DPI-Proportion: ${String.format(Locale.US, "%.2f", dm.densityDpi / 160f * 100f / 90f)}%")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatPill("Panel ${panel.density} ppi")
+                StatPill(if (overrideDpi.isBlank()) "Stock density" else "Now $overrideDpi ppi")
+            }
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ValueBox("${cfg.smallestScreenWidthDp}", "dp", Modifier.weight(1f))
+                ValueBox("${(minOf(panel.width, panel.height) * 160f / dpi).toInt()}", "dp", Modifier.weight(1f))
                 Text("=", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 18.sp)
-                ValueBox("${dm.densityDpi}", "ppi", Modifier.weight(1f))
+                ValueBox("${dpi.toInt()}", "ppi", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(6.dp))
-            Text("Small Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
-            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            Spacer(Modifier.height(8.dp))
+            SliderRow("DENSITY", dpi, 240f..640f, "${dpi.toInt()}") { dpi = (it / 10f).toInt() * 10f }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Okay",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm density ${dpi.toInt()}")
+                            Toast.makeText(
+                                context,
+                                if (ok) "Density → ${dpi.toInt()} ppi" else "Needs Power Up to change the density",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    BigButton(
+                        text = "Put back",
+                        onClick = {
+                            val ok = com.gamershub.core.shizuku.Shell.ok("wm density reset")
+                            Toast.makeText(context, if (ok) "Back to the panel density" else "Needs Power Up", Toast.LENGTH_SHORT).show()
+                            tick++
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        primary = false
+                    )
+                }
+            }
         }
     }
 }
+
+/** Phone screens only render cleanly on even pixel counts. */
+private fun evenNumber(value: Int): Int = (value / 2) * 2
 
 @Composable
 private fun TuningCard(
