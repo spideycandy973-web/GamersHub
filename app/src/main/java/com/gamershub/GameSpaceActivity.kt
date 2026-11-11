@@ -319,7 +319,7 @@ private fun GameSpaceScreen(
                                 .width(w * 0.016f)
                                 .height(h * 0.011f)
                                 .clip(RoundedCornerShape(1.dp))
-                                .background(if (i < level.coerceAtLeast(2)) GC.Signal else Color(0x33FFFFFF))
+                                .background(if (i < level.coerceAtLeast(2)) accentNow() else Color(0x33FFFFFF))
                         )
                     }
                 }
@@ -339,7 +339,7 @@ private fun GameSpaceScreen(
             }
             tabs.forEachIndexed { i, icon ->
                 val tabBg by animateColorAsState(
-                    if (i == activeTab) GC.Signal else Color(0xFF150E0F),
+                    if (i == activeTab) accentNow() else Color(0xFF150E0F),
                     tween(220), label = "tabBg$i"
                 )
                 val tabTint by animateColorAsState(
@@ -384,7 +384,7 @@ private fun GameSpaceScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.offset(x = w * 0.738f, y = h * 0.082f)
             ) {
-                AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = GC.Signal, modifier = Modifier.size(h * 0.032f))
+                AIcon(Icons.Filled.Bolt, contentDescription = "Free memory", tint = accentNow(), modifier = Modifier.size(h * 0.032f))
                 Spacer(Modifier.width(w * 0.004f))
                 Text(
                     "${(freeMb / 10)}",
@@ -427,7 +427,7 @@ private fun GameSpaceScreen(
             ) {
                 AIcon(
                     Icons.Filled.PowerSettingsNew,
-                    contentDescription = "Close Play Hub",
+                    contentDescription = "Shut tool shelf",
                     tint = GC.InkText,
                     modifier = Modifier.size(h * 0.048f)
                 )
@@ -479,7 +479,7 @@ private fun GameSpaceScreen(
                     minutes = repo.playMinutes(shownPkg),
                     selected = true,
                     primary = true,
-                    emptyLabel = if (library.isEmpty()) "ADD APPS" else "SELECT AN APP",
+                    emptyLabel = if (library.isEmpty()) "PICK APPS" else "SELECT AN APP",
                     onSelect = { if (library.isEmpty()) showApps = true },
                     onFilter = { showTexture = true; showControl = false; showApps = false },
                     onCapture = {
@@ -567,7 +567,7 @@ private fun GameSpaceScreen(
 
             // ---------- stat wall ----------
             StatBox(
-                title = "PING INTERVAL",
+                title = "PING GAP",
                 value = if (ping >= 0) String.format("%.1f ms", ping) else "-- ms",
                 good = ping in 0.0..80.0,
                 titleSize = (h.value * 0.017f).sp,
@@ -579,7 +579,7 @@ private fun GameSpaceScreen(
                 TickRow(filled = if (ping >= 0) (10 - (ping / 12).toInt()).coerceIn(0, 10) else 0, segments = 10, tickW = w * 0.007f)
             }
             StatBox(
-                title = "TEMPERATURE",
+                title = "HEAT",
                 value = String.format("%.1f°C", battery.second.coerceAtLeast(0.0)),
                 good = battery.second in 0.0..45.0,
                 titleSize = (h.value * 0.017f).sp,
@@ -765,6 +765,8 @@ private val ChevShape = GenericShape { size, _ ->
 /** Solid angular emblem, matching the chunky reference logo. */
 @Composable
 private fun GsMark(modifier: Modifier) {
+    val accent = accentNow()
+    val accentPair = accentPairNow()
     Canvas(modifier) {
         val w = size.width
         val h = size.height
@@ -779,7 +781,7 @@ private fun GsMark(modifier: Modifier) {
         drawPath(outline, Color(0xFF241516))
         drawPath(
             outline,
-            Brush.linearGradient(listOf(GC.Signal, GC.SignalDeep)),
+            Brush.linearGradient(listOf(accent, accentPair)),
             style = Stroke(width = h * 0.075f, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
         )
         val bolt = androidx.compose.ui.graphics.Path().apply {
@@ -797,6 +799,7 @@ private fun GsMark(modifier: Modifier) {
 
 @Composable
 private fun BatteryGlyph(pct: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
+    val accent = accentNow()
     Canvas(Modifier.width(w).height(h)) {
         val body = size.width - 3.dp.toPx()
         val radius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
@@ -806,7 +809,7 @@ private fun BatteryGlyph(pct: Int, w: androidx.compose.ui.unit.Dp, h: androidx.c
             cornerRadius = radius
         )
         drawRoundRect(
-            color = GC.Signal,
+            color = accent,
             size = androidx.compose.ui.geometry.Size(
                 (body - 2.dp.toPx()) * (pct.coerceIn(0, 100) / 100f),
                 size.height - 2.dp.toPx()
@@ -815,7 +818,7 @@ private fun BatteryGlyph(pct: Int, w: androidx.compose.ui.unit.Dp, h: androidx.c
             cornerRadius = radius
         )
         drawRoundRect(
-            color = GC.Signal,
+            color = accent,
             size = androidx.compose.ui.geometry.Size(2.dp.toPx(), size.height * 0.40f),
             topLeft = Offset(body + 1.dp.toPx(), size.height * 0.30f),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
@@ -851,7 +854,7 @@ private fun AppCard(
             .clip(shape)
             .background(GC.InkPanel)
             .then(
-                if (selected) Modifier.border(1.dp, GC.Signal.copy(alpha = 0.55f), shape)
+                if (selected) Modifier.border(1.dp, accentNow().copy(alpha = 0.55f), shape)
                 else Modifier.border(1.dp, Color(0x12FFFFFF), shape)
             )
             .clickable(onClick = onSelect)
@@ -923,8 +926,8 @@ private fun AppCard(
             ) {
                 AIcon(
                     Icons.Filled.PhotoCamera,
-                    contentDescription = if (art != null) "Retake the card frame" else "Capture this app's frame",
-                    tint = if (art != null) GC.InkText else GC.Signal,
+                    contentDescription = if (art != null) "Snap the card again" else "Snap this app",
+                    tint = if (art != null) GC.InkText else accentNow(),
                     modifier = Modifier.size(artSize * 0.30f)
                 )
             }
@@ -944,7 +947,7 @@ private fun AppCard(
                     .clickable(onClick = onFilter),
                 contentAlignment = Alignment.Center
             ) {
-                AIcon(Icons.Filled.Tune, contentDescription = "Surface filtering", tint = GC.InkText, modifier = Modifier.size(artSize * 0.30f))
+                AIcon(Icons.Filled.Tune, contentDescription = "Surface smooth", tint = GC.InkText, modifier = Modifier.size(artSize * 0.30f))
             }
         }
 
@@ -1025,11 +1028,11 @@ private fun AppStrip(
             val entry = library[index]
             val active = entry.pkg == currentPkg
             val stripBg by animateColorAsState(
-                if (active) GC.Signal.copy(alpha = 0.20f) else Color(0x14FFFFFF),
+                if (active) accentNow().copy(alpha = 0.20f) else Color(0x14FFFFFF),
                 tween(220), label = "stripBg"
             )
             val stripBorder by animateColorAsState(
-                if (active) GC.Signal.copy(alpha = 0.80f) else Color(0x10FFFFFF),
+                if (active) accentNow().copy(alpha = 0.80f) else Color(0x10FFFFFF),
                 tween(220), label = "stripBorder"
             )
             val stripInter = remember { MutableInteractionSource() }
@@ -1088,9 +1091,9 @@ private fun AppStrip(
                         .clickable(onClick = onAdd)
                         .padding(horizontal = iconSize * 0.35f)
                 ) {
-                    AIcon(Icons.Filled.Add, contentDescription = null, tint = GC.Signal, modifier = Modifier.size(iconSize * 0.7f))
+                    AIcon(Icons.Filled.Add, contentDescription = null, tint = accentNow(), modifier = Modifier.size(iconSize * 0.7f))
                     Spacer(Modifier.width(iconSize * 0.2f))
-                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = nameSize)
+                    Text("PICK APPS", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = nameSize)
                 }
             } else {
                 Box(
@@ -1101,7 +1104,7 @@ private fun AppStrip(
                         .clickable(onClick = onAdd),
                     contentAlignment = Alignment.Center
                 ) {
-                    AIcon(Icons.Filled.Add, contentDescription = "Add apps", tint = GC.InkText, modifier = Modifier.size(iconSize * 0.65f))
+                    AIcon(Icons.Filled.Add, contentDescription = "Pick apps", tint = GC.InkText, modifier = Modifier.size(iconSize * 0.65f))
                 }
             }
         }
@@ -1251,7 +1254,7 @@ private fun LaunchBar(
             .graphicsLayer { scaleX = launchScale; scaleY = launchScale }
             .clip(RoundedCornerShape(height * 0.16f))
             .background(
-                if (enabled) Brush.horizontalGradient(listOf(Color(0xFFFF2B2B), GC.SignalDeep))
+                if (enabled) Brush.horizontalGradient(listOf(accentNow(), accentPairNow()))
                 else Brush.horizontalGradient(listOf(Color(0xFF2A1E1F), Color(0xFF180F10)))
             )
     ) {
@@ -1284,7 +1287,7 @@ private fun LaunchBar(
                 .clickable(onClick = onBoost)
                 .padding(horizontal = height * 0.18f)
         ) {
-            AIcon(Icons.Filled.Bolt, contentDescription = "RAM boost", tint = Color.White, modifier = Modifier.size(height * 0.34f))
+            AIcon(Icons.Filled.Bolt, contentDescription = "Memory boost", tint = Color.White, modifier = Modifier.size(height * 0.34f))
             Spacer(Modifier.width(width * 0.012f))
             Text(
                 "${(freeMb / 100).coerceAtLeast(0)}",
@@ -1375,7 +1378,7 @@ private fun TickRow(filled: Int, segments: Int, tickW: androidx.compose.ui.unit.
                     .width(tickW)
                     .height(tickW * 0.28f)
                     .clip(RoundedCornerShape(1.dp))
-                    .background(if (i < filled) GC.Signal else Color(0x33FFFFFF))
+                    .background(if (i < filled) accentNow() else Color(0x33FFFFFF))
             )
         }
     }
@@ -1426,7 +1429,7 @@ private fun StatBox(
                 Modifier
                     .size(5.dp)
                     .clip(CircleShape)
-                    .background(if (good) Color(0xFF39D98A) else GC.Signal)
+                    .background(if (good) Color(0xFF39D98A) else accentNow())
             )
         }
         footer()
@@ -1436,6 +1439,7 @@ private fun StatBox(
 @Composable
 private fun TempBar(celsius: Double, height: androidx.compose.ui.unit.Dp) {
     val pct = ((celsius.coerceIn(0.0, 80.0)) / 80.0).toFloat()
+    val accent = accentNow()
     Canvas(Modifier.fillMaxWidth().height(height)) {
         val h = size.height
         drawRoundRect(
@@ -1444,7 +1448,7 @@ private fun TempBar(celsius: Double, height: androidx.compose.ui.unit.Dp) {
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
         )
         drawRoundRect(
-            brush = Brush.horizontalGradient(listOf(Color(0xFF6BD34F), Color(0xFFF2C94C), GC.Signal)),
+            brush = Brush.horizontalGradient(listOf(Color(0xFF6BD34F), Color(0xFFF2C94C), accent)),
             size = androidx.compose.ui.geometry.Size(size.width * pct, h),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2)
         )
@@ -1479,6 +1483,8 @@ private fun CpuCard(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 7.dp)
         )
 
+        val accent = accentNow()
+        val accentPair = accentPairNow()
         Canvas(Modifier.fillMaxSize().padding(top = titleSize.value.dp * 1.6f)) {
             val stroke = size.minDimension * 0.085f
             val radius = (size.minDimension / 2f) - stroke
@@ -1498,7 +1504,7 @@ private fun CpuCard(
             )
             drawArc(
                 brush = Brush.sweepGradient(
-                    listOf(GC.SignalDeep, GC.Signal, Color(0xFFFFFFFF), GC.Signal)
+                    listOf(accentPair, accent, Color(0xFFFFFFFF), accent)
                 ),
                 startAngle = 135f,
                 sweepAngle = 270f * (loadPct.coerceIn(0, 100) / 100f),
@@ -1530,7 +1536,7 @@ private fun CpuCard(
         Text(
             "$loadPct%",
             style = MaterialTheme.typography.labelMedium,
-            color = GC.Signal,
+            color = accentNow(),
             fontSize = titleSize,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 7.dp)
         )
@@ -1600,7 +1606,7 @@ private fun ControlCenter(
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.width(3.dp).height(20.dp).background(GC.Signal))
+                Box(Modifier.width(3.dp).height(20.dp).background(accentNow()))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -1626,7 +1632,7 @@ private fun ControlCenter(
                         .clickable(onClick = onDismiss),
                     contentAlignment = Alignment.Center
                 ) {
-                    AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.InkText, modifier = Modifier.size(16.dp))
+                    AIcon(Icons.Filled.Close, contentDescription = "Shut", tint = GC.InkText, modifier = Modifier.size(16.dp))
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -1635,7 +1641,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Videocam,
                     category = "CAPTURE",
-                    title = if (Recorder.isRecording) "End recording" else "Display record",
+                    title = if (Recorder.isRecording) "End clip" else "Screen clip",
                     active = Recorder.isRecording,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1645,7 +1651,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Podcasts,
                     category = "LIVE",
-                    title = if (Stream.isStreaming) "End stream" else "Go Live (RTMP)",
+                    title = if (Stream.isStreaming) "End air" else "Go On Air (RTMP)",
                     active = Stream.isStreaming,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1670,14 +1676,14 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Bolt,
                     category = "OVERLAY",
-                    title = if (panelRunning) "Pop-up panel on" else "Pop-up panel off",
+                    title = if (panelRunning) "Panel on" else "Panel off",
                     active = panelRunning,
                     modifier = Modifier.weight(1f)
                 ) { onOpenPanel() }
                 ToolTile(
                     icon = Icons.Filled.Memory,
                     category = "MEMORY",
-                    title = "Speed RAM",
+                    title = "Quick Ram",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1695,7 +1701,7 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.CleaningServices,
                     category = "MEMORY",
-                    title = "Full clean",
+                    title = "Deep wipe",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -1710,21 +1716,21 @@ private fun ControlCenter(
                 ToolTile(
                     icon = Icons.Filled.Tune,
                     category = "GRAPHICS",
-                    title = "Surface · shadow",
+                    title = "Surface · shade",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) { onTextureSettings() }
                 ToolTile(
                     icon = Icons.Filled.TouchApp,
                     category = "CONFIG",
-                    title = "Touch settings",
+                    title = "Tap settings",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) { onTouchSettings() }
                 ToolTile(
                     icon = Icons.Filled.Apps,
                     category = "APPS",
-                    title = "My apps",
+                    title = "My picks",
                     active = false,
                     modifier = Modifier.weight(1f)
                 ) { onPickApps() }
@@ -1743,13 +1749,13 @@ private fun ToolTile(
     onClick: () -> Unit
 ) {
     val tileBg by animateColorAsState(
-        if (active) GC.Signal.copy(alpha = 0.16f) else GC.InkPanelHi, tween(200), label = "tileBg"
+        if (active) accentNow().copy(alpha = 0.16f) else GC.InkPanelHi, tween(200), label = "tileBg"
     )
     val tileEdge by animateColorAsState(
-        if (active) GC.Signal.copy(alpha = 0.70f) else Color(0x12FFFFFF), tween(200), label = "tileEdge"
+        if (active) accentNow().copy(alpha = 0.70f) else Color(0x12FFFFFF), tween(200), label = "tileEdge"
     )
     val tileTint by animateColorAsState(
-        if (active) GC.Signal else GC.InkSoft, tween(200), label = "tileTint"
+        if (active) accentNow() else GC.InkSoft, tween(200), label = "tileTint"
     )
     val tileInter = remember { MutableInteractionSource() }
     val tilePressed by tileInter.collectIsPressedAsState()
@@ -1886,14 +1892,14 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     Text(
                         if (engine.shellReady()) engine.statusLine() else "Shizuku needed for real changes",
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (engine.shellReady()) GC.Signal else GC.InkDim,
+                        color = if (engine.shellReady()) accentNow() else GC.InkDim,
                         fontSize = 11.sp
                     )
                 }
                 Box(
                     Modifier.size(32.dp).clip(CircleShape).background(Color(0x1AFFFFFF)).clickable(onClick = onDismiss),
                     contentAlignment = Alignment.Center
-                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.InkText, modifier = Modifier.size(16.dp)) }
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Shut", tint = GC.InkText, modifier = Modifier.size(16.dp)) }
             }
             Spacer(Modifier.height(12.dp))
             Column(
@@ -1905,7 +1911,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     .padding(14.dp)
             ) {
                 Stepper(
-                    "LOSSLESS SCALING", if (lossless >= 100) "OFF" else "$lossless%",
+                    "NO-LOSS SCALE", if (lossless >= 100) "OFF" else "$lossless%",
                     onMinus = {
                     lossless = (lossless - 10).coerceAtLeast(50); apply()
                     },
@@ -1925,7 +1931,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 )
                 Divider()
                 Stepper(
-                    "FPS LIMIT", if (fps == 0) "UNLIMITED" else "$fps",
+                    "FPS CAP", if (fps == 0) "UNLIMITED" else "$fps",
                     onMinus = {
                     fps = fpsOf(fps, -1); apply()
                     },
@@ -1935,7 +1941,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 )
                 Divider()
                 Stepper(
-                    "GPU MODE", mode.uppercase(),
+                    "CHIP MODE", mode.uppercase(),
                     onMinus = {
                     mode = when (mode) { "standard" -> "battery"; "battery" -> "performance"; else -> "standard" }; apply()
                     },
@@ -1965,7 +1971,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                 )
                 Divider()
                 Stepper(
-                    "SHARPNESS", signedOffset(sharp),
+                    "CRISP", signedOffset(sharp),
                     onMinus = {
                     sharp = (sharp - 10).coerceAtLeast(-100); apply()
                     },
@@ -2003,7 +2009,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(GC.Signal)
+                        .background(accentNow())
                         .clickable {
                             com.gamershub.core.upscale.UpscaleMirror.sharpen = sharp / 100f
                             apply()
@@ -2012,7 +2018,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("RUN ENGINE", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                    Text("START DRAW", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.2.sp)
                 }
                 Box(
                     Modifier
@@ -2031,7 +2037,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("STOP ENGINE", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                    Text("HALT DRAW", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
                 }
             }
             Spacer(Modifier.height(9.dp))
@@ -2040,12 +2046,12 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(GC.Signal)
+                        .background(accentNow())
                         .clickable { apply() }
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("APPLY NOW", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.4.sp)
+                    Text("USE NOW", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp, letterSpacing = 1.4.sp)
                 }
                 Box(
                     Modifier
@@ -2062,7 +2068,7 @@ private fun TexturePanel(pkg: String, repo: AppRepo, appName: String, onDismiss:
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("RESTORE", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                    Text("PUT BACK", style = MaterialTheme.typography.labelLarge, color = GC.InkText, fontSize = 13.sp, letterSpacing = 1.2.sp)
                 }
             }
         }
@@ -2299,8 +2305,8 @@ private fun TouchPanel(repo: AppRepo, onDismiss: () -> Unit) {
     var taps by remember { mutableStateOf(repo.toggle("show_taps")) }
     var coords by remember { mutableStateOf(repo.toggle("show_coords")) }
     var hw by remember { mutableStateOf(repo.toggle("hw_touch")) }
-    SidePanel(title = "Touch Preferences", subtitle = "CONFIGS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
-        GfxRow("Magic Mapper Listener", "Turn on Magic Mapper service", magic) {
+    SidePanel(title = "Tap Likes", subtitle = "SETUPS", active = magic || taps || coords || hw, onDismiss = onDismiss) {
+        GfxRow("Magic Pad Mapper", "Turn on the pad mapper", magic) {
             magic = it; repo.setToggle("magic_mapper", it)
         }
         Divider()
@@ -2334,8 +2340,8 @@ private fun DisplayPanel(onDismiss: () -> Unit) {
             } catch (_: Throwable) { true }
         )
     }
-    SidePanel(title = "Display Preferences", subtitle = "CONFIGS", active = true, onDismiss = onDismiss) {
-        Text("Display Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
+    SidePanel(title = "Screen Likes", subtitle = "SETUPS", active = true, onDismiss = onDismiss) {
+        Text("Screen Pace", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("60Hz", "90Hz", "120Hz", "144Hz").forEachIndexed { i, label ->
@@ -2416,7 +2422,7 @@ private fun SidePanel(
                 }
                 Box(
                     Modifier.clip(CutCornerShape(4.dp)).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss).padding(10.dp)
-                ) { AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp)) }
+                ) { AIcon(Icons.Filled.Close, contentDescription = "Shut", tint = GC.Text, modifier = Modifier.size(18.dp)) }
             }
             Spacer(Modifier.height(16.dp))
             Column(
@@ -2499,7 +2505,7 @@ private fun AppsPanel(
                 AIcon(Icons.Filled.Apps, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("MY APPS", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                    Text("MY PICKS", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                     Text(
                         "${library.size} selected · tap to choose, LAUNCH to open",
                         style = MaterialTheme.typography.labelMedium,
@@ -2511,7 +2517,7 @@ private fun AppsPanel(
                     Modifier.size(30.dp).clip(CircleShape).background(Color(0x22FFFFFF)).clickable(onClick = onDismiss),
                     contentAlignment = Alignment.Center
                 ) {
-                    AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(16.dp))
+                    AIcon(Icons.Filled.Close, contentDescription = "Shut", tint = GC.Text, modifier = Modifier.size(16.dp))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -2533,7 +2539,7 @@ private fun AppsPanel(
                 ) {
                     AIcon(Icons.Filled.Apps, contentDescription = null, tint = Color(0xFF17100A), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("ADD APPS", style = MaterialTheme.typography.labelLarge, color = Color(0xFF17100A), fontSize = 13.sp, letterSpacing = 1.sp)
+                    Text("PICK APPS", style = MaterialTheme.typography.labelLarge, color = Color(0xFF17100A), fontSize = 13.sp, letterSpacing = 1.sp)
                 }
             } else {
                 Column(

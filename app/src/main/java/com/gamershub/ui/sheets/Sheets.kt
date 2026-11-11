@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.sp
 import com.gamershub.data.InstalledApp
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
 import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.Grabber
@@ -167,20 +168,20 @@ fun LaunchModeSheet(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     version,
-                    style = MaterialTheme.typography.labelLarge, color = Color(0xFFE05A2B), fontSize = 13.sp
+                    style = MaterialTheme.typography.labelLarge, color = accentNow(), fontSize = 13.sp
                 )
             }
         }
         Spacer(Modifier.height(14.dp))
-        Text("Pick Begin Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
+        Text("Pick Start Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LaunchModeCard(
-                icon = Icons.Filled.Rocket, title = "Play Hub", cost = "FREE · panel + boosters",
+                icon = Icons.Filled.Rocket, title = "Tool Shelf", cost = "FREE · panel and boosters",
                 selected = gameSpace, onSelect = { gameSpace = true }, modifier = Modifier.weight(1f)
             )
             LaunchModeCard(
-                icon = Icons.Filled.Android, title = "Direct Open", cost = "FREE · plain launch",
+                icon = Icons.Filled.Android, title = "Straight In", cost = "FREE · plain start",
                 selected = !gameSpace, onSelect = { gameSpace = false }, modifier = Modifier.weight(1f)
             )
         }
@@ -253,7 +254,7 @@ private fun SlideToOpen(onOpen: () -> Unit) {
             .onSizeChanged { trackPx = it.width.toFloat() },
         contentAlignment = Alignment.Center
     ) {
-        Text("Slide to Open", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 19.sp)
+        Text("Slide to Enter", style = MaterialTheme.typography.titleMedium, color = GC.TextDim, fontSize = 19.sp)
         Box(
             Modifier
                 .align(Alignment.CenterStart)
@@ -275,7 +276,7 @@ private fun SlideToOpen(onOpen: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            AIcon(Icons.Filled.FastForward, contentDescription = "Open", tint = Color.White, modifier = Modifier.size(26.dp))
+            AIcon(Icons.Filled.FastForward, contentDescription = "Enter", tint = Color.White, modifier = Modifier.size(26.dp))
         }
     }
 }
@@ -312,7 +313,7 @@ fun AppSelectorSheet(
             IconChip(Icons.Filled.Apps, size = 50)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("App Selector", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("App Picker", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text("${added.size} Added", style = MaterialTheme.typography.labelMedium, color = LocalAccent.current, fontSize = 14.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
@@ -329,7 +330,7 @@ fun AppSelectorSheet(
             AIcon(Icons.Filled.Search, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) Text("Find Apps", color = GC.TextDim, fontSize = 15.sp)
+                if (query.isEmpty()) Text("Search apps", color = GC.TextDim, fontSize = 15.sp)
                 androidx.compose.foundation.text.BasicTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -346,7 +347,7 @@ fun AppSelectorSheet(
         ) {
             FilterChip("All", filter == AppFilter.ALL) { filter = AppFilter.ALL }
             Spacer(Modifier.width(8.dp))
-            FilterChip("Games", filter == AppFilter.GAMES) { filter = AppFilter.GAMES }
+            FilterChip("Run", filter == AppFilter.GAMES) { filter = AppFilter.GAMES }
             Spacer(Modifier.width(8.dp))
             FilterChip("Apps", filter == AppFilter.APPS) { filter = AppFilter.APPS }
             Spacer(Modifier.width(10.dp))
@@ -506,18 +507,18 @@ fun PermissionSheet(
             ) {
                 AIcon(Icons.Filled.CheckCircle, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("Granted ✓", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 16.sp)
+                Text("Allowed ✓", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 16.sp)
             }
         }
         Spacer(Modifier.height(10.dp))
         BigButton("Open App Detail", onOpenDetail, Modifier.fillMaxWidth(), primary = false, leadingIcon = Icons.Filled.Settings, textColor = accent)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BigButton("Later", onLater, Modifier.weight(1f), primary = false)
+            BigButton("Not now", onLater, Modifier.weight(1f), primary = false)
             if (granted) {
-                BigButton("Continue", onLater, Modifier.weight(1f))
+                BigButton("Carry on", onLater, Modifier.weight(1f))
             } else {
-                BigButton("Allow", onAllow, Modifier.weight(1f))
+                BigButton("Let it", onAllow, Modifier.weight(1f))
             }
         }
     }
@@ -556,7 +557,7 @@ fun SettingsSheet(
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Settings, size = 50)
             Spacer(Modifier.width(12.dp))
-            Text("Preferences", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 25.sp)
+            Text("Likes", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 25.sp)
             Spacer(Modifier.weight(1f))
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -564,9 +565,9 @@ fun SettingsSheet(
         Card2 {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Words", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                    Text("Wording", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                     Spacer(Modifier.height(3.dp))
-                    Text("Pick the words you like", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+                    Text("Pick your words", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -576,7 +577,7 @@ fun SettingsSheet(
                         .clickable(onClick = onLanguage)
                         .padding(horizontal = 15.dp, vertical = 10.dp)
                 ) {
-                    Text("System Default", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
+                    Text("Phone Default", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
                     Spacer(Modifier.width(6.dp))
                     Text(">", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
                 }
@@ -584,9 +585,9 @@ fun SettingsSheet(
         }
         Spacer(Modifier.height(12.dp))
         Card2 {
-            Text("Colour Style", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Text("Colour Look", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
             Spacer(Modifier.height(3.dp))
-            Text("Change the app colour", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Text("Pick the app colour", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             // Six shades of red: pick the one that is easiest to read on your screen.
             GC.TONES.chunked(3).forEachIndexed { rowIndex, row ->
@@ -632,7 +633,7 @@ fun SettingsSheet(
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Any colour", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp)
+                    Text("Any shade", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 17.sp)
                     Text(
                         "Slide to tint the whole app and its text",
                         style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp
@@ -663,9 +664,9 @@ fun SettingsSheet(
         }
         Spacer(Modifier.height(12.dp))
         Card2 {
-            Text("Icon Style", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Text("Icon Look", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
             Spacer(Modifier.height(3.dp))
-            Text("Pick the icon on your home display", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Text("Pick the icon on your home screen", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 IconTile("GH", com.gamershub.R.drawable.ic_pick_gh, iconIndex == 0, Modifier.weight(1f)) { onIcon(0) }
@@ -673,7 +674,7 @@ fun SettingsSheet(
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile("Speed", com.gamershub.R.drawable.ic_pick_speed, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
+                IconTile("Pace", com.gamershub.R.drawable.ic_pick_speed, iconIndex == 2, Modifier.weight(1f)) { onIcon(2) }
                 IconTile("Mono", com.gamershub.R.drawable.ic_pick_mono, iconIndex == 3, Modifier.weight(1f)) { onIcon(3) }
             }
         }
@@ -694,7 +695,7 @@ private fun DiagnosticsCard() {
         )
     }
     Card2 {
-        Text("Health Check", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+        Text("Health Look", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
         Spacer(Modifier.height(3.dp))
         Text(
             if (log.isBlank()) "No crash recorded — every feature is running clean"
@@ -714,7 +715,7 @@ private fun DiagnosticsCard() {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BigButton(
-                text = "Copy log",
+                text = "Grab log",
                 onClick = {
                     runCatching {
                         val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
@@ -728,7 +729,7 @@ private fun DiagnosticsCard() {
                 primary = false
             )
             BigButton(
-                text = "Clear",
+                text = "Wipe",
                 onClick = {
                     runCatching { java.io.File(context.filesDir, "crash.log").delete() }
                     log = ""
@@ -834,13 +835,13 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconChip(Icons.Filled.Palette, size = 50)
             Spacer(Modifier.width(12.dp))
-            Text("Display Adjust", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
+            Text("Screen Tweak", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
         Spacer(Modifier.height(14.dp))
 
         // Navigation Mode
-        TuningCard(icon = Icons.Filled.Language, title = "Navigation Mode", desc = "Change how you navigate your device") {
+        TuningCard(icon = Icons.Filled.Language, title = "Button Mode", desc = "Change how you move around your phone") {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf("3-Button", "2-Button", "Gestual").forEachIndexed { i, label ->
                     val selected = navMode == i
@@ -855,7 +856,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                                 } catch (_: Throwable) { false }
                                 if (ok) navMode = i
                                 else {
-                                    android.widget.Toast.makeText(context, "Requires Activation — see Activation Center", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, "Needs Power Up — see the Power Up Spot", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                             .padding(vertical = 13.dp),
@@ -871,7 +872,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
         // Resolution Changer
         val physW = dm.widthPixels
         val physH = dm.heightPixels
-        TuningCard(icon = Icons.Filled.Apps, title = "Detail Changer", desc = "Change screen resolution (Width x Height)") {
+        TuningCard(icon = Icons.Filled.Apps, title = "Crisp Changer", desc = "Change screen size (Width x Height)") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatPill("Res-Ratio: 1.00")
                 StatPill("W-Scale: 1.00")
@@ -893,12 +894,12 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                     .background(GC.SurfaceHi)
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Done", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
         }
         Spacer(Modifier.height(12.dp))
 
         // Smallest Width Changer
-        TuningCard(icon = Icons.Filled.Apps, title = "Smallest Width Changer", desc = "Override screen DPI & smallest width directly") {
+        TuningCard(icon = Icons.Filled.Apps, title = "Width Changer", desc = "Set screen DPI and small width by hand") {
             StatPill("DPI-Proportion: ${String.format(Locale.US, "%.2f", dm.densityDpi / 160f * 100f / 90f)}%")
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -907,7 +908,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                 ValueBox("${dm.densityDpi}", "ppi", Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
-            Text("Smallest Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+            Text("Small Width", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
             Spacer(Modifier.height(10.dp))
             Box(
                 Modifier
@@ -916,7 +917,7 @@ fun DisplayTuningSheet(onDismiss: () -> Unit) {
                     .background(GC.SurfaceHi)
                     .padding(vertical = 13.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Done", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
+            ) { Text("Okay", style = MaterialTheme.typography.labelLarge, color = GC.TextDim, fontSize = 15.sp) }
         }
     }
 }
@@ -992,11 +993,11 @@ fun ActivationSheet(
     var logOpen by remember { mutableStateOf(false) }
     SheetFrame(onDismiss = onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Activation Center", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
+            Text("Power Up Spot", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 24.sp, modifier = Modifier.weight(1f))
             Box(
                 Modifier.clip(RoundedCornerShape(50)).background(GC.SurfaceHi).clickable(onClick = onDismiss).padding(11.dp)
             ) {
-                AIcon(Icons.Filled.Close, contentDescription = "Close", tint = GC.Text, modifier = Modifier.size(18.dp))
+                AIcon(Icons.Filled.Close, contentDescription = "Shut", tint = GC.Text, modifier = Modifier.size(18.dp))
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -1011,7 +1012,7 @@ fun ActivationSheet(
             ) {
                 Box(Modifier.size(7.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(8.dp))
-                Text("ADVANCED TIER", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 13.sp, letterSpacing = 1.2.sp)
+                Text("DEEP TIER", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 13.sp, letterSpacing = 1.2.sp)
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -1030,7 +1031,7 @@ fun ActivationSheet(
                     .clickable { quickStart = true }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Fast Begin", style = MaterialTheme.typography.labelLarge, color = if (quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
+            ) { Text("Quick Start", style = MaterialTheme.typography.labelLarge, color = if (quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
             Box(
                 Modifier
                     .weight(1f)
@@ -1039,7 +1040,7 @@ fun ActivationSheet(
                     .clickable { quickStart = false }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Manual Pairing", style = MaterialTheme.typography.labelLarge, color = if (!quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
+            ) { Text("Pair by Hand", style = MaterialTheme.typography.labelLarge, color = if (!quickStart) Color.White else GC.TextSoft, fontSize = 15.sp) }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -1054,7 +1055,7 @@ fun ActivationSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconChip(Icons.Filled.Android, size = 44)
                     Spacer(Modifier.width(11.dp))
-                    Text("Shizuku Entry", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                    Text("Shizuku Door", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1083,7 +1084,7 @@ fun ActivationSheet(
                 ) {
                     AIcon(Icons.Filled.FastForward, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Shizuku Execution Log", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text("Shizuku Log", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp, modifier = Modifier.weight(1f))
                     Text(if (logOpen) "⌃" else "⌄", style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
                 }
                 if (logOpen) {
@@ -1121,7 +1122,7 @@ fun ActivationSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconChip(Icons.Filled.Dns, size = 44)
                     Spacer(Modifier.width(11.dp))
-                    Text("TCP/IP Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                    Text("Net Mode", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(9.dp))
                 Row(
@@ -1156,7 +1157,7 @@ fun ActivationSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconChip(Icons.Filled.Dns, size = 44)
                     Spacer(Modifier.width(11.dp))
-                    Text("Wireless Debugging", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                    Text("Cordless Debug", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                 }
                 Spacer(Modifier.height(8.dp))
                 StatPill("ADB Wireless Debugging")
@@ -1192,18 +1193,18 @@ fun ActivationSheet(
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Preferences", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp) }
+                    ) { Text("Likes", style = MaterialTheme.typography.labelLarge, color = GC.Text, fontSize = 15.sp) }
                     Box(
                         Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(50))
                             .background(accent)
                             .clickable {
-                                android.widget.Toast.makeText(context, "Searching for pairing codes…", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "Looking for codes…", android.widget.Toast.LENGTH_SHORT).show()
                             }
                             .padding(vertical = 13.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("Begin", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                    ) { Text("Go", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1229,7 +1230,7 @@ fun ActivationSheet(
                             .background(accent)
                             .padding(vertical = 11.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("This device = Computer", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp) }
+                    ) { Text("This phone = Brains", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 13.sp) }
                     Box(
                         Modifier
                             .weight(1f)
@@ -1237,7 +1238,7 @@ fun ActivationSheet(
                             .background(Color(0x14FFFFFF))
                             .padding(vertical = 11.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("This device = Target", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp) }
+                    ) { Text("This phone = Target", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp) }
                 }
                 Spacer(Modifier.height(10.dp))
                 listOf(
@@ -1262,11 +1263,11 @@ fun ActivationSheet(
                         .clip(RoundedCornerShape(50))
                         .background(accent)
                         .clickable {
-                            android.widget.Toast.makeText(context, "Plug in the OTG cable to scan", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, "Plug the cable to look", android.widget.Toast.LENGTH_SHORT).show()
                         }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
-                ) { Text("Scan USB Phone", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
+                ) { Text("Look for USB phone", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp) }
             }
         }
     }
@@ -1285,7 +1286,7 @@ fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            "Game Ready",
+            "Ready to Play",
             Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.displaySmall,
             color = GC.Text,
@@ -1313,10 +1314,10 @@ fun GameReadySheet(onDone: () -> Unit, onDismiss: () -> Unit) {
         ) {
             AIcon(Icons.Filled.Info, contentDescription = null, tint = GC.TextDim, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Results may vary by device.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.5.sp)
+            Text("May differ per phone.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.5.sp)
         }
         Spacer(Modifier.height(16.dp))
-        SlideControl(label = "Slide to get ready", icon = Icons.Filled.Autorenew, onDone = onDone)
+        SlideControl(label = "Slide to warm up", icon = Icons.Filled.Autorenew, onDone = onDone)
     }
 }
 

@@ -94,6 +94,7 @@ import com.gamershub.data.InstalledApp
 import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
 import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.Grabber
@@ -370,7 +371,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                         val shizukuAlive = com.gamershub.core.shizuku.Shell.running()
                         if (com.gamershub.core.shizuku.Shell.granted()) {
                             com.gamershub.core.shizuku.Shell.ensure(context)
-                            Toast.makeText(context, "Shizuku already granted — connected", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Shizuku already allowed — linked", Toast.LENGTH_SHORT).show()
                         } else if (shizukuAlive) {
                             val prompted = com.gamershub.core.shizuku.Shell
                                 .requestPermission(SHIZUKU_PERMISSION_REQ)
@@ -388,9 +389,9 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                             if (intent != null) {
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 context.startActivity(intent)
-                                Toast.makeText(context, "Start the Shizuku service, then come back", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Start the Shizuku service, then return", Toast.LENGTH_LONG).show()
                             } else {
-                                Toast.makeText(context, "Install Shizuku to enable the advanced service", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Install Shizuku to unlock the deep tools", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
@@ -399,7 +400,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             // If the vendor settings page is missing, fall back to app details
             // where every permission can still be granted by hand.
             if (!opened && kind != PermKind.NOTIFICATION && kind != PermKind.SHIZUKU) {
-                Toast.makeText(context, "Opening app details — grant the permission there", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Opening app details — allow it there", Toast.LENGTH_LONG).show()
                 openAppDetails()
             }
         }
@@ -453,7 +454,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     onToggle = ::toggleSet,
                     onExportPresets = {
                         repo.addPreset(displayInfo)
-                        Toast.makeText(context, "Preset exported: $displayInfo", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Look kept: $displayInfo", Toast.LENGTH_SHORT).show()
                     },
                     onManagePresets = { sheet = SheetState.Presets },
                     onTuneDisplay = { sheet = SheetState.DisplayTuning },
@@ -647,7 +648,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                                     if (p.processName != context.packageName) am.killBackgroundProcesses(p.processName)
                                 }
                             }
-                            Toast.makeText(context, "Device ready — background apps cleared", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Phone ready — hidden apps cleared", Toast.LENGTH_SHORT).show()
                             sheet = SheetState.None
                         },
                         onDismiss = { sheet = SheetState.None }
@@ -759,7 +760,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         BigButton(
-                            text = "Copy",
+                            text = "Grab text",
                             onClick = {
                                 runCatching {
                                     val cm = context.getSystemService(android.content.ClipboardManager::class.java)
@@ -769,13 +770,13 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                                             crashAtLaunch.ifBlank { crashHead }
                                         )
                                     )
-                                    Toast.makeText(context, "Error copied", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Text grabbed", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.weight(1f)
                         )
                         BigButton(
-                            text = "Send",
+                            text = "Pass on",
                             onClick = {
                                 runCatching {
                                     val send = Intent(Intent.ACTION_SEND).apply {
@@ -794,7 +795,7 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     }
                     Spacer(Modifier.height(10.dp))
                     BigButton(
-                        text = "Close",
+                        text = "Shut",
                         onClick = { showCrash = false },
                         modifier = Modifier.fillMaxWidth(),
                         primary = false
@@ -830,12 +831,12 @@ private fun PresetsSheet(presets: List<String>, onClear: () -> Unit, onDismiss: 
     val accent = LocalAccent.current
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Display Presets", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            Text("Screen Setups", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp, modifier = Modifier.weight(1f))
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
         Spacer(Modifier.height(12.dp))
         if (presets.isEmpty()) {
-            Text("No saved presets yet. Use Export in Game-Labs.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
+            Text("No saved looks yet. Use Save in the lab.", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 14.sp)
         } else {
             presets.forEach { line ->
                 Row(
@@ -1035,7 +1036,7 @@ private fun MonitorStrip(context: android.content.Context) {
                 .background(Color(0xF0221314))
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
-            AIcon(Icons.Filled.Add, contentDescription = "Drag", tint = Color(0xFFFF3B3B), modifier = Modifier.size(14.dp))
+            AIcon(Icons.Filled.Add, contentDescription = "Drag", tint = accentNow(), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             StripChip("CPU", stats.first + "%")
             StripChip("RAM", stats.second + "%")

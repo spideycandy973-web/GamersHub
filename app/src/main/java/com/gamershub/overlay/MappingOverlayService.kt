@@ -117,7 +117,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                 GameCornerTheme {
                     var edit by remember { mutableStateOf(MappingStore.editMode(this@MappingOverlayService)) }
                     var armed by remember { mutableStateOf(false) }
-                    val accent = Color(0xFFE23A3A)
+                    val accent = runCatching { com.gamershub.theme.GC.accentFor(com.gamershub.data.AppRepo(this).accentIndex()).toArgb() }.getOrDefault(0xFFFF8A80)
                     Box(
                         Modifier
                             .size(key.size.dp)
@@ -197,7 +197,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                 ) {
                     Text(
                         "MAPPING",
-                        color = Color(0xFFE23A3A),
+                        color = accent,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
@@ -259,7 +259,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
             android.app.Notification.Builder(this, "mapping")
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
         return b.setContentTitle("Mapping active")
-            .setContentText("GamersHub mapping overlay")
+            .setContentText("Key mapper window")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
     }

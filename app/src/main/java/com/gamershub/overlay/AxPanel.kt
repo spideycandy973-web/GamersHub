@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import com.gamershub.theme.accentNow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -103,8 +104,8 @@ import java.util.Locale
 /* palette                                                             */
 /* ------------------------------------------------------------------ */
 
-/* Liquid-glass panel palette — molten gold accent, smoked ember surfaces. */
-private val AX_RED = Color(0xFFFFB03A)
+/* Panel palette — the accent comes from the tone chosen in Preferences. */
+private val AX_FALLBACK = Color(0xFFFF8A80)
 private val AX_DEEP = Color(0xEE0E0906)
 private val AX_ARM = Color(0x14FFD9B4)
 private val AX_EDGE = Color(0x3DFFDFAE)
@@ -341,7 +342,7 @@ fun AxPanel(onClose: () -> Unit, onQuit: () -> Unit = onClose) {
                     .width(56.dp)
                     .height(5.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(AX_RED)
+                    .background(accentNow())
             )
         }
 
@@ -420,7 +421,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
             Modifier
                 .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(50))
-                .background(AX_RED)
+                .background(accentNow())
                 .padding(horizontal = 24.dp, vertical = 5.dp)
         ) {
             Text(
@@ -475,7 +476,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
     ) {
         ChevronGauge("CPU", stats.cpu, flip = false)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("GAME BOOSTER", color = AX_DIM, fontSize = 7.sp, letterSpacing = 3.sp)
+            Text("PLAY BOOSTER", color = AX_DIM, fontSize = 7.sp, letterSpacing = 3.sp)
             Text(
                 "GAMERSHUB",
                 color = Color.White,
@@ -485,7 +486,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
             )
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RoundKey(Icons.Filled.Home, "Home") { api.nav(AxPage.HOME) }
+                RoundKey(Icons.Filled.Home, "Base") { api.nav(AxPage.HOME) }
                 Spacer(Modifier.width(14.dp))
                 HeroMark(Modifier.size(24.dp))
                 Spacer(Modifier.width(14.dp))
@@ -501,7 +502,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
         Column(Modifier.weight(1f)) {
             Tile(
                 Icons.Filled.GpsFixed,
-                "Crosshair",
+                "Aim Mark",
                 if (CrosshairOverlayService.isRunning) "ON" else "OFF"
             ) {
                 if (CrosshairOverlayService.isRunning) CrosshairOverlayService.stop(context)
@@ -539,7 +540,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
             Tile(Icons.Filled.Bolt, "Quick\nBoost", "FREE") {
                 api.work {
                     val report = MemoryCleaner.boost(context)
-                    api.say(memoryText("Speed", report, context))
+                    api.say(memoryText("Pace", report, context))
                 }
             }
             Tile(Icons.Filled.NotificationsOff, "Do Not\nDisturb", "SILENT") {
@@ -557,7 +558,7 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
                 }
                 api.say(if (ok) "Do not disturb toggled" else "Grant DND access to GamersHub")
             }
-            Tile(Icons.Filled.Screenshot, "Display Grab", "SAVE") {
+            Tile(Icons.Filled.Screenshot, "Screen Grab", "KEEP") {
                 api.work {
                     val shot = withContext(Dispatchers.IO) { ScreenshotEngine.capture() }
                     api.say(
@@ -626,19 +627,19 @@ private fun HomePage(api: AxApi, stats: PanelStats, startedAt: Long, onQuit: () 
         MemoryKey("CLEAN", Icons.Filled.CleaningServices) {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say(memoryText("Sweep", report, context))
+                api.say(memoryText("Wipe", report, context))
             }
         }
         MemoryKey("BOOST", Icons.Filled.Bolt) {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say(memoryText("Speed", report, context))
+                api.say(memoryText("Pace", report, context))
             }
         }
         MemoryKey("DEEP CLEAN", Icons.Filled.Memory) {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say(memoryText("Full clean", report, context))
+                api.say(memoryText("Deep wipe", report, context))
             }
         }
     }
@@ -750,7 +751,7 @@ private fun PageHeader(api: AxApi, title: String) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AIcon(
                     Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = "Return",
                     tint = Color.White,
                     modifier = Modifier.size(13.dp)
                 )
@@ -798,7 +799,7 @@ private fun MenuPage(api: AxApi) {
                     .clickable { api.nav(item.first) }
                     .padding(horizontal = 10.dp, vertical = 7.dp)
             ) {
-                AIcon(item.second, contentDescription = item.first.title, tint = AX_RED, modifier = Modifier.size(15.dp))
+                AIcon(item.second, contentDescription = item.first.title, tint = accentNow(), modifier = Modifier.size(15.dp))
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.first.title, color = AX_TXT, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -810,7 +811,7 @@ private fun MenuPage(api: AxApi) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text("›", color = AX_RED, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("›", color = accentNow(), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -881,7 +882,7 @@ private fun GfxPage(api: AxApi) {
                     )
                 )
             }
-            api.say(log.firstOrNull() ?: "Done")
+            api.say(log.firstOrNull() ?: "Okay")
         }
     }
 
@@ -895,25 +896,25 @@ private fun GfxPage(api: AxApi) {
         Spacer(Modifier.height(6.dp))
 
         StepRow(
-            label = "LOSSLESS SCALING",
+            label = "NO-LOSS SCALE",
             value = if (st.lossless >= 100) "OFF" else "${st.lossless}%",
             onPlus = { st.lossless = (st.lossless + 10).coerceAtMost(100); applyNow() },
             onMinus = { st.lossless = (st.lossless - 10).coerceAtLeast(50); applyNow() }
         )
         StepRow(
-            label = "RENDER SCALE",
+            label = "DRAW SCALE",
             value = "${st.resolution}%",
             onPlus = { st.resolution = (st.resolution + 10).coerceAtMost(100); applyNow() },
             onMinus = { st.resolution = (st.resolution - 10).coerceAtLeast(50); applyNow() }
         )
         StepRow(
-            label = "FPS LIMIT",
+            label = "FPS CAP",
             value = if (st.fpsLimit == 0) "UNLIMITED" else "${st.fpsLimit}",
             onPlus = { st.fpsLimit = nextFps(st.fpsLimit, 1); applyNow() },
             onMinus = { st.fpsLimit = nextFps(st.fpsLimit, -1); applyNow() }
         )
         StepRow(
-            label = "GPU MODE",
+            label = "CHIP MODE",
             value = st.gpuMode.uppercase(),
             onPlus = {
                 st.gpuMode = when (st.gpuMode) {
@@ -933,19 +934,19 @@ private fun GfxPage(api: AxApi) {
             }
         )
         StepRow(
-            label = "TEXTURE QUALITY",
+            label = "SURFACE QUALITY",
             value = st.texture,
             onPlus = { st.texture = cycle(levels, st.texture, 1); applyNow() },
             onMinus = { st.texture = cycle(levels, st.texture, -1); applyNow() }
         )
         StepRow(
-            label = "SHADOW QUALITY",
+            label = "SHADE QUALITY",
             value = st.shadow,
             onPlus = { st.shadow = cycle(levels, st.shadow, 1); applyNow() },
             onMinus = { st.shadow = cycle(levels, st.shadow, -1); applyNow() }
         )
         StepRow(
-            label = "SHARPNESS",
+            label = "CRISP",
             value = "${st.sharpness}%",
             onPlus = { st.sharpness = (st.sharpness + 10).coerceAtMost(100); applyNow() },
             onMinus = { st.sharpness = (st.sharpness - 10).coerceAtLeast(0); applyNow() }
@@ -956,7 +957,7 @@ private fun GfxPage(api: AxApi) {
         }
 
         ActionRow("APPLY EVERYTHING NOW", "Runs the real commands and reads them back", "APPLY") { applyNow() }
-        ActionRow("RESTORE DEVICE", "wm size/density reset, GameMode reset, engine backup", "RESTORE") {
+        ActionRow("RESTORE DEVICE", "wm size/density reset, GameMode reset, engine backup", "PUT BACK") {
             api.work {
                 val report = withContext(Dispatchers.IO) { RenderEngine.restore(context, targetPkg) }
                 st.lastReport = report.details()
@@ -983,7 +984,7 @@ private fun GfxPage(api: AxApi) {
         SectionLabel("RENDERING SAFETY")
         ReadRow("STATUS", com.gamershub.core.GfxSafe.status())
         ActionRow(
-            title = "REPAIR RENDERING",
+            title = "FIX DRAWING",
             subtitle = "Clears every graphics override old builds left behind (they cause green/corrupt screens in other apps until reboot), resets display scaling and GameMode",
             button = "REPAIR"
         ) {
@@ -1023,7 +1024,7 @@ private fun DisplayPage(api: AxApi) {
         ReadRow("OVERRIDE", override.ifBlank { "none" })
         ReadRow("REFRESH NOW", rememberLive("--", 3000) { GfxEngine.refreshSummary(context) })
         StepRow(
-            label = "REFRESH RATE",
+            label = "HZ RATE",
             value = st.refresh,
             onPlus = {
                 st.refresh = cycle(listOf("AUTO", "60Hz", "90Hz", "120Hz", "144Hz"), st.refresh, 1)
@@ -1047,7 +1048,7 @@ private fun DisplayPage(api: AxApi) {
             }
         )
         StepRow(
-            label = "RENDER SCALE",
+            label = "DRAW SCALE",
             value = "${st.renderScale}%",
             onPlus = {
                 st.renderScale = (st.renderScale + 5).coerceAtMost(100)
@@ -1064,7 +1065,7 @@ private fun DisplayPage(api: AxApi) {
                 }
             }
         )
-        ActionRow("RESTORE STOCK SURFACE", "wm size reset + wm density reset", "RESET") {
+        ActionRow("RESTORE STOCK SURFACE", "wm size reset + wm density reset", "UNDO") {
             api.work {
                 val ok = withContext(Dispatchers.IO) { GfxEngine.resetRenderScale() }
                 api.say(if (ok) "Display restored" else Shell.reason())
@@ -1141,18 +1142,18 @@ private fun UpscalePage(api: AxApi) {
         ReadRow("LIVE", liveFps + if (measured.isNotBlank()) " · $measured" else "")
         ReadRow("FRAME TIME", frameTimes)
         StepRow(
-            label = "LOSSLESS SCALE",
+            label = "NO-LOSS SCALE",
             value = if (percent >= 100) "OFF" else "$percent%",
             onPlus = { applyScale(percent + 5) },
             onMinus = { applyScale(percent - 5) }
         )
         ReadRow("PIXELS", state?.summary() ?: "reading…")
-        ActionRow("NATIVE RESOLUTION", "wm size reset · back to the panel", "RESET") {
+        ActionRow("NATIVE RESOLUTION", "wm size reset · back to the panel", "UNDO") {
             applyScale(100)
         }
         SectionLabel("UPSCALER")
         StepRow(
-            label = "PRESET",
+            label = "LOOK",
             value = quality.label.uppercase(),
             onPlus = {
                 val all = UpscaleEngine.Quality.values()
@@ -1168,13 +1169,13 @@ private fun UpscalePage(api: AxApi) {
             }
         )
         StepRow(
-            label = "SHARPNESS",
+            label = "CRISP",
             value = "$sharpen%",
             onPlus = { sharpen = (sharpen + 5).coerceAtMost(100); persist() },
             onMinus = { sharpen = (sharpen - 5).coerceAtLeast(0); persist() }
         )
         SwitchRow(
-            title = "INTEGER SCALE",
+            title = "WHOLE SCALE",
             subtitle = "nearest-neighbour · pixel perfect, no blur",
             checked = integer,
             onClick = {
@@ -1184,7 +1185,7 @@ private fun UpscalePage(api: AxApi) {
             }
         )
         ActionRow(
-            title = "SHADER TEST",
+            title = "COLOUR TEST",
             subtitle = bench?.let { it.line() + " · " + it.quality.label } ?: "renders real frames on this GPU",
             button = "RUN"
         ) {
@@ -1201,9 +1202,9 @@ private fun UpscalePage(api: AxApi) {
                 api.say(bench?.line() ?: "no measurement")
             }
         }
-        SectionLabel("FRAME GENERATION")
+        SectionLabel("FRAME MAKING")
         SwitchRow(
-            title = "FRAME GENERATION",
+            title = "FRAME MAKING",
             subtitle = "optical flow + motion-compensated synthesis · generated frames are counted separately",
             checked = frameGen,
             onClick = {
@@ -1223,7 +1224,7 @@ private fun UpscalePage(api: AxApi) {
         SectionLabel("UPSCALE MIRROR")
         ReadRow("STATE", mirrorState)
         RunStopRow(
-            title = "GRAPHICS ENGINE",
+            title = "DRAW ENGINE",
             subtitle = if (UpscaleMirror.supported())
                 "GL upscale + sharpening on your game's frames · pick the game in the dialog"
             else UpscaleMirror.whyNot(),
@@ -1243,7 +1244,7 @@ private fun UpscalePage(api: AxApi) {
         )
         SectionLabel("PROFILES")
         ActionRow(
-            title = "MAX ULTRA",
+            title = "TOP MAX",
             subtitle = "native resolution · ULTRA preset · sharpness 70 · ultra engine cvars · max Hz",
             button = "ONE TAP"
         ) {
@@ -1278,7 +1279,7 @@ private fun UpscalePage(api: AxApi) {
             }
         }
         ActionRow(
-            title = "MAX FPS",
+            title = "TOP FPS",
             subtitle = "70% render scale · balanced upscale · frame generation · performance mode",
             button = "ONE TAP"
         ) {
@@ -1327,24 +1328,24 @@ private fun PerfPage(api: AxApi, stats: PanelStats) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
         ReadRow("RAM USED", "${stats.ram}%")
         ReadRow("AVAILABLE", "$available MB")
-        ReadRow("TEMPERATURE", stats.temp)
+        ReadRow("HEAT", stats.temp)
         ReadRow("THERMAL STATUS", if (thermal < 0) "--" else "$thermal / 6")
         ActionRow("CLEAN MEMORY", "am kill-all + pm trim-caches", "CLEAN") {
             api.work {
                 val report = MemoryCleaner.clean(context)
-                api.say(memoryText("Sweep", report, context))
+                api.say(memoryText("Wipe", report, context))
             }
         }
         ActionRow("BOOST MEMORY", "Sweep + page-cache drop", "BOOST") {
             api.work {
                 val report = MemoryCleaner.boost(context)
-                api.say(memoryText("Speed", report, context))
+                api.say(memoryText("Pace", report, context))
             }
         }
         ActionRow("DEEP CLEAN", "Also force-stops background apps", "DEEP") {
             api.work {
                 val report = MemoryCleaner.deepClean(context)
-                api.say(memoryText("Full clean", report, context))
+                api.say(memoryText("Deep wipe", report, context))
             }
         }
     }
@@ -1384,19 +1385,19 @@ private fun NetPage(api: AxApi, stats: PanelStats) {
                 api.say(if (ok) "Private DNS → Cloudflare" else Shell.reason())
             }
         }
-        ActionRow("RESTORE DNS", "Back to the carrier resolver", "RESET") {
+        ActionRow("RESTORE DNS", "Back to the carrier resolver", "UNDO") {
             api.work {
                 val ok = withContext(Dispatchers.IO) { PingEngine.resetPrivateDns() }
                 api.say(if (ok) "DNS restored" else Shell.reason())
             }
         }
-        ActionRow("RADIO TWEAKS", "TCP buffer + wifi scan interval", "APPLY") {
+        ActionRow("SIGNAL TWEAKS", "TCP buffer + wifi scan interval", "APPLY") {
             api.work {
                 val ok = withContext(Dispatchers.IO) { PingEngine.applyRadioTweaks() }
                 api.say(if (ok) "Radio tweaks applied" else Shell.reason())
             }
         }
-        ActionRow("RESTORE RADIO", "Undo the tweaks", "RESET") {
+        ActionRow("RESTORE RADIO", "Undo the tweaks", "UNDO") {
             api.work {
                 val ok = withContext(Dispatchers.IO) { PingEngine.restoreRadioTweaks() }
                 api.say(if (ok) "Radio restored" else Shell.reason())
@@ -1432,7 +1433,7 @@ private fun SpoofPage(api: AxApi) {
         ReadRow("MANUFACTURER", spoofStatus.manufacturer)
         ReadRow("REFRESH", refreshLine)
         StepRow(
-            label = "PRESET",
+            label = "LOOK",
             value = preset.name,
             onPlus = {
                 st.spoofIndex = (st.spoofIndex + 1) % DeviceSpoofer.presets.size
@@ -1461,7 +1462,7 @@ private fun SpoofPage(api: AxApi) {
                 api.say(if (result.first) "Identity → ${preset.model}" else result.second)
             }
         }
-        ActionRow("RESTORE EVERYTHING", "wm reset, real device name, refresh, props", "RESTORE") {
+        ActionRow("RESTORE EVERYTHING", "wm reset, real device name, refresh, props", "PUT BACK") {
             api.work {
                 val lines = withContext(Dispatchers.IO) { DeviceSpoofer.restore(context) }
                 api.say(lines.firstOrNull() ?: "Restored")
@@ -1478,9 +1479,9 @@ private fun RecPage(api: AxApi) {
     val url = prefs.getString("rtmp_url", "") ?: ""
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
-        ReadRow("RECORDER", if (Recorder.isRecording) "RECORDING" else "idle")
+        ReadRow("CAPTURE", if (Recorder.isRecording) "RECORDING" else "idle")
         RunStopRow(
-            title = "RECORDER",
+            title = "CAPTURE",
             subtitle = "${st.bitrateMbps} Mbps · ${FpsMeter.refreshRate(context)} fps",
             running = Recorder.isRecording,
             onRun = {
@@ -1501,7 +1502,7 @@ private fun RecPage(api: AxApi) {
             }
         )
         StepRow(
-            label = "BITRATE",
+            label = "DATA RATE",
             value = "${st.bitrateMbps} Mbps",
             onPlus = {
                 st.bitrateMbps = (st.bitrateMbps + 4).coerceAtMost(40)
@@ -1512,12 +1513,12 @@ private fun RecPage(api: AxApi) {
                 prefs.edit().putInt("ax_bitrate", st.bitrateMbps).apply()
             }
         )
-        SectionLabel("GO LIVE")
-        ReadRow("STREAM", if (Stream.isStreaming) "LIVE" else "offline")
+        SectionLabel("GO ON AIR")
+        ReadRow("BROADCAST", if (Stream.isStreaming) "LIVE" else "offline")
         ReadRow("RTMP URL", url.ifBlank { "not set in app" })
         RunStopRow(
-            title = "STREAM",
-            subtitle = "Uses the RTMP URL saved in the app",
+            title = "BROADCAST",
+            subtitle = "Uses the link saved in the app",
             running = Stream.isStreaming,
             onRun = {
                 if (Stream.isStreaming) {
@@ -1617,7 +1618,7 @@ private fun GyroPage(api: AxApi) {
             api.say("Gyro bias captured")
         }
         StepRow(
-            label = "SENSITIVITY",
+            label = "FEEL",
             value = String.format(Locale.US, "%.2fx", api.state.gyro.sens),
             onPlus = {
                 val config = api.state.gyro.copy(sens = (api.state.gyro.sens + 0.05f).coerceAtMost(3f))
@@ -1630,7 +1631,7 @@ private fun GyroPage(api: AxApi) {
                 api.state.gyro = config
             }
         )
-        SwitchRow("INVERT Y", "Flip the vertical axis", api.state.gyro.invertY) {
+        SwitchRow("FLIP Y", "Flip the vertical axis", api.state.gyro.invertY) {
             val config = api.state.gyro.copy(invertY = !api.state.gyro.invertY)
             GyroEngine.save(context, config)
             api.state.gyro = config
@@ -1650,7 +1651,7 @@ private fun InfoPage(api: AxApi, stats: PanelStats) {
         ReadRow("CPU LOAD", "${stats.cpu}%")
         ReadRow("CPU CLOCK", "${stats.ghz} GHz")
         ReadRow("RAM", "${stats.ram}%")
-        ReadRow("TEMPERATURE", stats.temp)
+        ReadRow("HEAT", stats.temp)
         ReadRow("PING", stats.ping)
         ReadRow("BATTERY", "${stats.batt}%")
         ReadRow("THERMAL", if (thermal < 0) "--" else "$thermal / 6")
@@ -1765,7 +1766,7 @@ private fun ActionRow(title: String, subtitle: String, button: String, onClick: 
         Box(
             Modifier
                 .clip(RoundedCornerShape(7.dp))
-                .background(AX_RED)
+                .background(accentNow())
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 5.dp)
         ) {
@@ -1795,7 +1796,7 @@ private fun RunStopRow(
         Column(Modifier.weight(1f)) {
             Text(
                 title + if (running) "  · RUNNING" else "  · STOPPED",
-                color = if (running) AX_RED else AX_TXT,
+                color = if (running) accentNow() else AX_TXT,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
@@ -1805,7 +1806,7 @@ private fun RunStopRow(
         Box(
             Modifier
                 .clip(RoundedCornerShape(7.dp))
-                .background(if (running) Color(0x33FFFFFF) else AX_RED)
+                .background(if (running) Color(0x33FFFFFF) else accentNow())
                 .clickable(onClick = onRun)
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         ) {
@@ -1815,11 +1816,11 @@ private fun RunStopRow(
         Box(
             Modifier
                 .clip(RoundedCornerShape(7.dp))
-                .background(if (running) AX_RED else Color(0x33FFFFFF))
+                .background(if (running) accentNow() else Color(0x33FFFFFF))
                 .clickable(onClick = onStop)
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         ) {
-            Text("STOP", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+            Text("HALT", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -1851,7 +1852,7 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onClick
                 .width(42.dp)
                 .height(18.dp)
                 .clip(RoundedCornerShape(50))
-                .background(if (checked) AX_RED else Color(0x33FFFFFF))
+                .background(if (checked) accentNow() else Color(0x33FFFFFF))
                 .padding(2.dp)
         ) {
             Box(
@@ -1883,7 +1884,7 @@ private fun TopTile(icon: ImageVector, label: String, state: String, onClick: ()
                 .border(1.dp, AX_EDGE, RoundedCornerShape(50)),
             contentAlignment = Alignment.Center
         ) {
-            AIcon(icon, contentDescription = label, tint = AX_RED, modifier = Modifier.size(17.dp))
+            AIcon(icon, contentDescription = label, tint = accentNow(), modifier = Modifier.size(17.dp))
         }
         Spacer(Modifier.height(3.dp))
         Text(
@@ -1895,7 +1896,7 @@ private fun TopTile(icon: ImageVector, label: String, state: String, onClick: ()
             fontWeight = FontWeight.SemiBold,
             maxLines = 2
         )
-        Text(state, color = AX_RED, fontSize = 7.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(state, color = accentNow(), fontSize = 7.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -1927,7 +1928,7 @@ private fun Tile(icon: ImageVector, label: String, state: String, onClick: () ->
             fontWeight = FontWeight.SemiBold,
             maxLines = 2
         )
-        Text(state, color = AX_RED, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(state, color = accentNow(), fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -1965,7 +1966,7 @@ private fun ChevronGauge(label: String, pct: Int, flip: Boolean) {
     Column(horizontalAlignment = if (flip) Alignment.End else Alignment.Start) {
         Text(
             label,
-            color = AX_RED,
+            color = accentNow(),
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -1980,7 +1981,7 @@ private fun ChevronGauge(label: String, pct: Int, flip: Boolean) {
                     Modifier
                         .width((30 - index * 7).dp)
                         .height(6.dp)
-                        .background(if (index < filled) AX_RED else Color(0x33FFFFFF))
+                        .background(if (index < filled) accentNow() else Color(0x33FFFFFF))
                 )
             }
         }
@@ -2000,7 +2001,7 @@ private fun QuickGfx(label: String, value: String, onClick: () -> Unit) {
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
         Text(label, color = AX_DIM, fontSize = 7.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        Text(value, color = AX_RED, fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(value, color = accentNow(), fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
     }
 }
 
@@ -2026,7 +2027,7 @@ private fun FooterKey(text: String, active: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(7.dp))
-            .background(if (active) AX_RED else Color(0x22FFFFFF))
+            .background(if (active) accentNow() else Color(0x22FFFFFF))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 5.dp)
     ) {

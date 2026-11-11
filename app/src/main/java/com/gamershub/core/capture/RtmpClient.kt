@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
  * Implements the C0/C1/C2 handshake, AMF0 `connect` / `createStream` /
  * `publish` commands, chunked message writing, and FLV video tag framing for
  * H.264 (AVC sequence header + AVCC NALUs). Bytes go straight to the ingest
- * server, so "Go Live" really publishes a stream.
+ * server, so "Go On Air" really publishes a stream.
  */
 class RtmpClient(private val url: String) {
 

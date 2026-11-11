@@ -191,6 +191,14 @@ object GC {
 
 /** Live accent color (Settings ▸ Theme Color). */
 val LocalAccent = staticCompositionLocalOf { GC.LightRed }
+
+/** The live accent, readable from any composable — including full-screen Game Space. */
+@Composable
+fun accentNow(): Color = LocalAccent.current
+
+/** The gradient partner of the live accent (rims, bars, glows). */
+@Composable
+fun accentPairNow(): Color = GC.accentPairFor(LocalAccentIdx.current)
 val LocalAccentIdx = staticCompositionLocalOf { 0 }
 
 @Composable

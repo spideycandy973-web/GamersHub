@@ -184,7 +184,7 @@ class UpscaleMirrorService : Service() {
         }
         val notification = android.app.Notification.Builder(this, CHANNEL)
             .setContentTitle("GamersHub upscale mirror")
-            .setContentText("Sharpening the screen in real time")
+            .setContentText("Sharpening the screen live")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .setOngoing(true)
             .build()

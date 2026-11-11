@@ -392,7 +392,7 @@ class FloatingPanelService : Service(), androidx.lifecycle.LifecycleOwner,
         }
         return builder
             .setContentTitle("GamersHub panel active")
-            .setContentText("Tap the bubble for the GamersHub panel")
+            .setContentText("Tap the bubble for the panel")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
     }

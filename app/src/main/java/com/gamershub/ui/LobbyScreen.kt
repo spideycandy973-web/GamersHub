@@ -71,7 +71,7 @@ fun LobbyScreen(
         // ---- Header ----
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Home", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+                Text("Base", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
                 Text(
                     com.gamershub.ui.components.Brand.BYLINE,
                     style = MaterialTheme.typography.labelMedium,
@@ -128,7 +128,7 @@ fun LobbyScreen(
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text("My Apps", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                        Text("My Picks", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("$libraryCount", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                             Text(" added", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
@@ -160,8 +160,8 @@ fun LobbyScreen(
                             .padding(start = 14.dp, end = 12.dp, top = 9.dp, bottom = 9.dp)
                     ) {
                         Column {
-                            Text("Game", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
-                            Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text("Play", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                            Text("Room", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                         }
                         Spacer(Modifier.width(8.dp))
                         AIcon(Icons.Filled.Rocket, contentDescription = null, tint = accent, modifier = Modifier.size(23.dp))
@@ -174,7 +174,7 @@ fun LobbyScreen(
 
         // ---- Library header ----
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Game Library", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+            Text("Game Shelf", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
             Spacer(Modifier.width(8.dp))
             Text("${library.size} / 10", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
             Spacer(Modifier.weight(1f))
@@ -186,7 +186,7 @@ fun LobbyScreen(
                     .clickable(onClick = onAddGames)
                     .padding(start = 15.dp, end = 7.dp, top = 6.dp, bottom = 6.dp)
             ) {
-                Text("Add Games", style = MaterialTheme.typography.labelMedium, color = GC.TextSoft, fontSize = 14.sp)
+                Text("Pick games", style = MaterialTheme.typography.labelMedium, color = GC.TextSoft, fontSize = 14.sp)
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.size(25.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
                     AIcon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
@@ -207,7 +207,7 @@ fun LobbyScreen(
             ) {
                 IconChip(Icons.Filled.Gamepad, size = 64)
                 Spacer(Modifier.height(13.dp))
-                Text("No Games / Apps Detected!", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
+                Text("Nothing found on this phone", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 20.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "Add prioritized applications to start Axeron Space.",
@@ -226,7 +226,7 @@ fun LobbyScreen(
                 ) {
                     AIcon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text("Add Games", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp)
+                    Text("Pick games", style = MaterialTheme.typography.labelLarge, color = Color.White, fontSize = 15.sp)
                 }
             }
         } else {

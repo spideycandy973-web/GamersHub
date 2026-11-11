@@ -61,6 +61,7 @@ import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.overlay.MonitorOverlayService
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
 import com.gamershub.ui.components.BigButton
 import com.gamershub.ui.components.CircleIconButton
 import com.gamershub.ui.components.StatusPill
@@ -115,8 +116,8 @@ fun RecordSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Display Capture", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("MP4 · H.264 · Movies/GamersHub", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text("Screen Grab", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("MP4 · saved in Movies/GamersHub", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -141,18 +142,18 @@ fun RecordSheet(onDismiss: () -> Unit) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        SliderRow("BITRATE", bitrate / 1_000_000f, 2f..40f, "${bitrate / 1_000_000}M") {
+        SliderRow("DATA RATE", bitrate / 1_000_000f, 2f..40f, "${bitrate / 1_000_000}M") {
             bitrate = (it * 1_000_000).toInt()
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("MICROPHONE", color = GC.TextSoft, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("MIC", color = GC.TextSoft, fontSize = 12.sp, modifier = Modifier.weight(1f))
             Chip(if (mic) "ON" else "OFF", mic) { mic = !mic }
         }
         Spacer(Modifier.height(12.dp))
 
         if (Recorder.isRecording) {
             BigButton(
-                text = "STOP & SAVE",
+                text = "HALT & KEEP",
                 onClick = { RecorderService.stop(context) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -164,7 +165,7 @@ fun RecordSheet(onDismiss: () -> Unit) {
             )
         } else {
             BigButton(
-                text = "START RECORDING",
+                text = "BEGIN CAPTURE",
                 onClick = {
                     val intent = RecorderService.captureIntent(context)
                     if (intent == null) {
@@ -179,18 +180,18 @@ fun RecordSheet(onDismiss: () -> Unit) {
         }
         if (permissionError.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(permissionError, color = Color(0xFFFFB4AE), fontSize = 12.sp)
+            Text(permissionError, color = accentNow(), fontSize = 12.sp)
         }
         if (Recorder.lastError.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text("Last error: ${Recorder.lastError}", color = Color(0xFFFFB4AE), fontSize = 11.sp)
+            Text("Last error: ${Recorder.lastError}", color = accentNow(), fontSize = 11.sp)
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("RECORDINGS · ${recordings.size}", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
+        Text("CLIPS · ${recordings.size}", color = GC.TextDim, fontSize = 11.sp, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
         if (recordings.isEmpty()) {
-            Text("Nothing recorded yet.", color = GC.TextDim, fontSize = 12.sp)
+            Text("No clips yet.", color = GC.TextDim, fontSize = 12.sp)
         } else {
             recordings.take(8).forEach { file ->
                 RecordingRow(context, file, accent)
@@ -216,7 +217,7 @@ private fun RecordingRow(context: Context, file: File, accent: Color) {
         }
         Icon(
             Icons.Filled.PlayArrow,
-            contentDescription = "Play",
+            contentDescription = "Run",
             tint = accent,
             modifier = Modifier
                 .size(20.dp)
@@ -238,7 +239,7 @@ private fun RecordingRow(context: Context, file: File, accent: Color) {
         Spacer(Modifier.width(12.dp))
         Icon(
             Icons.Filled.Share,
-            contentDescription = "Share",
+            contentDescription = "Pass along",
             tint = GC.TextSoft,
             modifier = Modifier
                 .size(18.dp)
@@ -261,7 +262,7 @@ private fun RecordingRow(context: Context, file: File, accent: Color) {
         Spacer(Modifier.width(12.dp))
         Icon(
             Icons.Filled.Delete,
-            contentDescription = "Delete",
+            contentDescription = "Erase",
             tint = GC.TextDim,
             modifier = Modifier
                 .size(18.dp)
@@ -317,8 +318,8 @@ fun LiveSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Go Live", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("Real RTMP publish · H.264", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text("Go On Air", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Real air · H.264", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -351,20 +352,20 @@ fun LiveSheet(onDismiss: () -> Unit) {
             Chip("1440p", height == 1440) { height = 1440 }
         }
         Spacer(Modifier.height(8.dp))
-        SliderRow("BITRATE", bitrate / 1_000_000f, 2f..20f, "${bitrate / 1_000_000}M") {
+        SliderRow("DATA RATE", bitrate / 1_000_000f, 2f..20f, "${bitrate / 1_000_000}M") {
             bitrate = (it * 1_000_000).toInt()
         }
         Spacer(Modifier.height(10.dp))
 
         if (Stream.isStreaming) {
             BigButton(
-                text = "END STREAM",
+                text = "END AIR",
                 onClick = { StreamService.stop(context) },
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
             BigButton(
-                text = "GO LIVE",
+                text = "GO ON AIR",
                 onClick = {
                     if (!com.gamershub.core.capture.RtmpClient.isValid(url)) {
                         message = "Enter a full rtmp:// URL including the stream key"
@@ -384,7 +385,7 @@ fun LiveSheet(onDismiss: () -> Unit) {
         }
         if (Stream.lastError.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(Stream.lastError, color = Color(0xFFFFB4AE), fontSize = 11.sp)
+            Text(Stream.lastError, color = accentNow(), fontSize = 11.sp)
         }
         Spacer(Modifier.height(10.dp))
         Text(
@@ -525,7 +526,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Look Booster", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("View Boost", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
                 Text(
                     if (engineOn) "Engine running · $engineState"
                     else if (shellReady) "Engine stopped · sliders are signed offsets"
@@ -544,7 +545,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
                 BigButton(text = "RUN", onClick = { run() }, modifier = Modifier.fillMaxWidth())
             }
             Box(Modifier.weight(1f)) {
-                BigButton(text = "STOP", onClick = { stop() }, modifier = Modifier.fillMaxWidth(), primary = false)
+                BigButton(text = "HALT", onClick = { stop() }, modifier = Modifier.fillMaxWidth(), primary = false)
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -562,7 +563,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         }
 
         Spacer(Modifier.height(12.dp))
-        Text("SIGNED OFFSETS · 0 = THE GAME'S OWN SETTING", color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.6.sp)
+        Text("SIGNED STEPS · 0 = THE GAME'S OWN", color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.6.sp)
         Spacer(Modifier.height(2.dp))
         Text(
             if (target != null) "Target: ${target.second}"
@@ -570,7 +571,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
             color = if (target != null) GC.TextSoft else GC.TextDim, fontSize = 11.sp
         )
         Spacer(Modifier.height(2.dp))
-        BiSliderRow("SHARPNESS", sharpen, -100, 100, signed(sharpen)) { sharpen = it }
+        BiSliderRow("CRISP", sharpen, -100, 100, signed(sharpen)) { sharpen = it }
         BiSliderRow("TEXTURE", tex, -3, 3, signed(tex)) { tex = it }
         BiSliderRow("SHADOW", shd, -3, 3, signed(shd)) { shd = it }
         BiSliderRow("EFFECTS", fx, -3, 3, signed(fx)) { fx = it }
@@ -578,7 +579,7 @@ fun GraphicsSheet(onDismiss: () -> Unit) {
         BiSliderRow("POST FX", post, -3, 3, signed(post)) { post = it }
 
         Spacer(Modifier.height(10.dp))
-        Text("DISPLAY & PACING", color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.6.sp)
+        Text("SCREEN & PACE", color = GC.TextDim, fontSize = 10.sp, letterSpacing = 1.6.sp)
         BiSliderRow("GAME SCALE", gameScale, 50, 100, if (gameScale >= 100) "NATIVE" else "$gameScale%") { gameScale = it }
         BiSliderRow("SCREEN SCALE", screenScale, 50, 100, if (screenScale >= 100) "NATIVE" else "$screenScale%") { screenScale = it }
         BiSliderRow("FPS CAP", fps, 0, 144, if (fps == 0) "DEFAULT" else "$fps") { fps = it }
@@ -641,8 +642,8 @@ fun SpoofSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Phone Swapping", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("Display · name · identity", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text("Phone Swap", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Screen · name · tags", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -691,7 +692,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
 
         Spacer(Modifier.height(8.dp))
         BigButton(
-            text = "APPLY SPOOF",
+            text = "USE MASK",
             onClick = {
                 val preset = DeviceSpoofer.presets[selected]
                 val applied = DeviceSpoofer.applySafe(context, preset)
@@ -712,7 +713,7 @@ fun SpoofSheet(onDismiss: () -> Unit) {
         )
         Spacer(Modifier.height(8.dp))
         BigButton(
-            text = "RESTORE STOCK",
+            text = "PUT STOCK BACK",
             onClick = {
                 val restored = DeviceSpoofer.restore(context)
                 log = if (restored.isEmpty()) "Needs Shizuku to restore." else restored.joinToString("\n") { "✓ $it" }
@@ -755,8 +756,8 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
     SheetFrame(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text("Floating Window", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
-                Text("GamersHub bubble + pop-up panel", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
+                Text("Floating Bubble", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 22.sp)
+                Text("Bubble and panel", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
             }
             CircleIconButton(Icons.Filled.Close, onClick = onDismiss)
         }
@@ -765,7 +766,7 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
             StatusPill(if (panelOn) "● Window live" else "● Window off")
             Spacer(Modifier.weight(1f))
             BigButton(
-                text = if (panelOn) "STOP" else "START",
+                text = if (panelOn) "HALT" else "GO",
                 onClick = {
                     if (panelOn) FloatingPanelService.stop(context) else FloatingPanelService.start(context)
                 },
@@ -775,7 +776,7 @@ fun OverlayHubSheet(onDismiss: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Tracker inside the panel", color = GC.Text, fontSize = 14.sp)
+                Text("Watcher inside the panel", color = GC.Text, fontSize = 14.sp)
                 Text(
                     if (monitorOn) "Fields: ${MonitorPrefs.fields(context).size} · live" else "Begin the floating monitor",
                     color = GC.TextDim,
