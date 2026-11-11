@@ -117,7 +117,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                 GameCornerTheme {
                     var edit by remember { mutableStateOf(MappingStore.editMode(this@MappingOverlayService)) }
                     var armed by remember { mutableStateOf(false) }
-                    val accent = runCatching { com.gamershub.theme.GC.accentFor(com.gamershub.data.AppRepo(this).accentIndex()).toArgb() }.getOrDefault(0xFFFF8A80)
+                    val accent = Color(toneArgb())
                     Box(
                         Modifier
                             .size(key.size.dp)
@@ -179,6 +179,16 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         }
     }
 
+    /** The chosen tone as an Int, so Compose and plain views both get it. */
+    private fun toneArgb(): Int = runCatching {
+        val c = com.gamershub.theme.GC.accentFor(com.gamershub.data.AppRepo(this).accentIndex())
+        android.graphics.Color.rgb(
+            (c.red * 255f).toInt().coerceIn(0, 255),
+            (c.green * 255f).toInt().coerceIn(0, 255),
+            (c.blue * 255f).toInt().coerceIn(0, 255)
+        )
+    }.getOrDefault(0xFFFF8A80)
+
     private fun buildBar() {
         val params = overlayParams().apply {
             x = 24
@@ -187,6 +197,7 @@ class MappingOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val cv = ComposeView(this)
         cv.setContent {
             GameCornerTheme {
+                val accent = Color(toneArgb())
                 var edit by remember { mutableStateOf(MappingStore.editMode(this@MappingOverlayService)) }
                 androidx.compose.foundation.layout.Row(
                     verticalAlignment = Alignment.CenterVertically,
