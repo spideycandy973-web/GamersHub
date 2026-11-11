@@ -14,66 +14,67 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.gamershub.R
 
 /** Game Corner design system — warm near-black, accent-driven, chunky display type. */
 object GC {
     /* ---- Pre-glass base restored: warm near-black charcoal, solid surfaces ---- */
-    val Bg = Color(0xFF100F0D)
+    val Bg = Color(0xFF05060A)
     /** Kept for the retired glass backdrop. */
-    val BgTop = Color(0xFF171512)
-    val Surface = Color(0xFF1C1917)
-    val SurfaceHi = Color(0xFF262220)
-    val BrownPill = Color(0xFF35291F)
-    val TagBg = Color(0xFF332012)
-    val Stroke = Color(0xFF332E2A)
-    val Text = Color(0xFFF0EFED)
-    val TextDim = Color(0xFF948B84)
-    val TextSoft = Color(0xFFB5ACA6)
+    val BgTop = Color(0xFF0D1017)
+    val Surface = Color(0xFF0D1017)
+    val SurfaceHi = Color(0xFF141926)
+    val BrownPill = Color(0xFF141926)
+    val TagBg = Color(0xFF1A2030)
+    val Stroke = Color(0xFF232B3D)
+    val Text = Color(0xFFF2F5FA)
+    val TextDim = Color(0xFF8A94A8)
+    val TextSoft = Color(0xFFB6BFD0)
 
     /* ---- Glass layer tokens (retired, kept so old references compile) ---- */
-    val GlassHi = Color(0x1FFFF0DC)
-    val GlassLo = Color(0x09FFF0DC)
-    val GlassEdgeHi = Color(0x5CFFE7CE)
-    val GlassEdgeLo = Color(0x0DFFFFFF)
+    val GlassHi = Color(0x1FF2F5FA)
+    val GlassLo = Color(0x09F2F5FA)
+    val GlassEdgeHi = Color(0x5C232B3D)
+    val GlassEdgeLo = Color(0x0D232B3D)
     /** Text/icon colour on top of a filled accent. */
-    val OnAccent = Color(0xFF17100A)
+    val OnAccent = Color(0xFF0A0A0A)
 
     /* ---- Game Space (in-game hub) palette — sampled from the reference console ---- */
-    val Void = Color(0xFF090607)
-    val VoidMid = Color(0xFF120A0B)
-    val InkPanel = Color(0xCC120C0D)
-    val InkPanelHi = Color(0xFF1C1315)
-    val InkStroke = Color(0x26FFFFFF)
-    val InkText = Color(0xFFF6F3F2)
-    val InkDim = Color(0xFF9C9294)
-    val InkSoft = Color(0xFFC8BEBF)
+    val Void = Color(0xFF05060A)
+    val VoidMid = Color(0xFF0A0D14)
+    val InkPanel = Color(0xCC0D1017)
+    val InkPanelHi = Color(0xFF141926)
+    val InkStroke = Color(0x26232B3D)
+    val InkText = Color(0xFFF2F5FA)
+    val InkDim = Color(0xFF8A94A8)
+    val InkSoft = Color(0xFFB6BFD0)
     /** Light red — the app's default accent, used here as the console accent too. */
-    val Signal = Color(0xFFFF8A80)
-    val SignalDeep = Color(0xFFB3352F)
-    val SignalGlow = Color(0xFFFFB4B0)
+    val Signal = Color(0xFFFF6900)
+    val SignalDeep = Color(0xFFD95300)
+    val SignalGlow = Color(0xFFFF8A3D)
 
     /* ---- Accents.  Index 0 is the default: "Molten Gold", the same amber the
        launcher gem is built from.  It splits into ember, exactly like the icon. ---- */
-    val Gold = Color(0xFFFFB03A)
-    val Ember = Color(0xFFFF6A2A)
-    val Crimson = Color(0xFFFF3B30)
-    val Jade = Color(0xFF2FD8A0)
+    val Gold = Color(0xFFFF8A3D)
+    val Ember = Color(0xFFFF6900)
+    val Crimson = Color(0xFFFF5C6C)
+    val Jade = Color(0xFF38E08B)
     /** Kept for legacy references. */
     val Iris = Gold
-    val Aqua = Color(0xFF5CC8FF)
+    val Aqua = Color(0xFF35E1F2)
     val Mint = Jade
     val Rose = Crimson
-    val Orange = Color(0xFFE25E20)
-    val OceanBlue = Color(0xFF5CC8FF)
+    val Orange = Color(0xFFD95300)
+    val OceanBlue = Color(0xFF35E1F2)
     val NeonTosca = Jade
     val CrimsonRed = Crimson
-    val Beige = Color(0xFFC9BCB0)
+    val Beige = Color(0xFFC7D2E0)
 
     /** Light red — the default look of the whole app. */
-    val LightRed = Color(0xFFFF8A80)
+    val LightRed = Color(0xFFFF6900)
     /** Deeper stop that pairs with [LightRed] in gradients and rims. */
-    val LightRedDeep = Color(0xFFFF5A5A)
+    val LightRedDeep = Color(0xFFFF8A3D)
 
     /** Sampled from the launcher emblem: ember red core, orange edge, violet circuitry. */
     val IconRed = Color(0xFFF6231C)
@@ -92,7 +93,7 @@ object GC {
     data class Tone(val name: String, val color: Color, val pair: Color, val bed: Color)
 
     val TONES: List<Tone> = listOf(
-        Tone("Light red", Color(0xFFFF8A80), Color(0xFFFF5A5A), Color(0xFF3E1818)),
+        Tone("Light red", Color(0xFFFF6900), Color(0xFFFF8A3D), Color(0xFF2A1608)),
         Tone("Rose red", Color(0xFFFF6B6B), Color(0xFFFF3B3B), Color(0xFF3D1416)),
         Tone("True red", Color(0xFFFF4D4D), Color(0xFFD32F2F), Color(0xFF3C1010)),
         Tone("Signal red", Color(0xFFFF2D2D), Color(0xFFB71C1C), Color(0xFF3A0D0D)),
@@ -161,7 +162,7 @@ object GC {
     }
 
     val HeroBrush = Brush.horizontalGradient(
-        listOf(Color(0xFF3A2A1E), Color(0xFF2B1F17), Color(0xFF241A13))
+        listOf(Color(0xFF0D1017), Color(0xFF0D1017), Color(0xFF0D1017))
     )
 
     /**
@@ -212,8 +213,8 @@ fun GameCornerTheme(
     GC.custom = customAccent
     val accent = customAccent ?: GC.accentFor(accentIndex)
     val scheme = darkColorScheme(
-        primary = accent, onPrimary = Color.White,
-        secondary = accent, background = GC.Bg, onBackground = GC.Text,
+        primary = accent, onPrimary = Color(0xFF0A0A0A),
+        secondary = Color(0xFF35E1F2), onSecondary = Color(0xFF0A0A0A), background = GC.Bg, onBackground = GC.Text,
         surface = GC.Surface, onSurface = GC.Text,
         surfaceVariant = GC.SurfaceHi, onSurfaceVariant = GC.TextDim,
         outline = GC.Stroke, error = GC.CrimsonRed
@@ -230,10 +231,10 @@ fun GameCornerTheme(
         titleSmall = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
         bodyLarge = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
         bodyMedium = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
-        bodySmall = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal),
-        labelLarge = TextStyle(fontFamily = GC.Display, fontWeight = FontWeight.SemiBold),
-        labelMedium = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Medium),
-        labelSmall = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Medium)
+        bodySmall = TextStyle(fontFamily = GC.Body, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 17.sp),
+        labelLarge = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.6.sp),
+        labelMedium = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.4.sp),
+        labelSmall = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, fontSize = 10.sp, letterSpacing = 0.4.sp)
     )
     androidx.compose.runtime.CompositionLocalProvider(
         LocalAccent provides accent,

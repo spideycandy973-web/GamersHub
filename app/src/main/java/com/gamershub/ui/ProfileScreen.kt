@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import android.content.Intent
 import android.net.Uri
 import com.gamershub.data.DeviceStats
+import androidx.compose.foundation.border
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.ui.components.Card
@@ -123,8 +125,9 @@ fun ProfileScreen(
             Column(
                 Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.Surface)
+                    .clip(RomKit.R18)
+                    .background(RomKit.Panel)
+                    .border(1.dp, RomKit.Stroke, RomKit.R18)
                     .padding(14.dp)
             ) {
                 Text("Phone Load", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
@@ -148,8 +151,9 @@ fun ProfileScreen(
             Column(
                 Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(GC.Surface)
+                    .clip(RomKit.R18)
+                    .background(RomKit.Panel)
+                    .border(1.dp, RomKit.Stroke, RomKit.R18)
                     .padding(14.dp)
             ) {
                 Text("Load Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
@@ -244,8 +248,9 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .clickable(onClick = onPrivilege)
                     .padding(12.dp)
             ) {

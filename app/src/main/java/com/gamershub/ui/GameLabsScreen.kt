@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamershub.core.MonitorPrefs
 import com.gamershub.data.DeviceStats
+import androidx.compose.foundation.border
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.theme.accentNow
@@ -129,8 +131,9 @@ fun GameLabsScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(horizontal = 11.dp, vertical = 7.dp)
             ) {
                 AIcon(Icons.Filled.Bolt, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
@@ -433,8 +436,9 @@ private fun DnsTunerCard(onToggle: (String, Boolean) -> Unit) {
                 Box(
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(GC.SurfaceHi)
+                        .clip(RomKit.R12)
+                        .background(RomKit.Panel2)
+                        .border(1.dp, RomKit.Stroke, RomKit.R12)
                         .clickable { applyProvider((provider + 1) % 4) }
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
@@ -463,8 +467,9 @@ private fun DnsTunerCard(onToggle: (String, Boolean) -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(6.dp)
             ) {
                 names.forEachIndexed { i, n ->
@@ -531,8 +536,9 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
                     .padding(horizontal = 12.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -600,8 +606,9 @@ private fun CheckRow(
         if (ramToggle) {
             Row(
                 Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(GC.SurfaceHi)
+                    .clip(RomKit.R12)
+                    .background(RomKit.Panel2)
+                    .border(1.dp, RomKit.Stroke, RomKit.R12)
             ) {
                 Box(
                     Modifier

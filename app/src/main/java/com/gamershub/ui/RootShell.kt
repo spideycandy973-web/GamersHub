@@ -91,6 +91,9 @@ import com.gamershub.GameSpaceActivity
 import com.gamershub.data.AppRepo
 import com.gamershub.data.DeviceStats
 import com.gamershub.data.InstalledApp
+import androidx.compose.foundation.border
+import com.gamershub.theme.RomKit
+import com.gamershub.theme.RomKitEase
 import com.gamershub.theme.GC
 import com.gamershub.theme.GameCornerTheme
 import com.gamershub.theme.LocalAccent
@@ -413,8 +416,10 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
             AnimatedContent(
                 targetState = tab,
                 transitionSpec = {
-                    (slideInHorizontally(tween(360)) { it / 6 } + fadeIn(tween(360)) + scaleIn(tween(360), initialScale = 0.97f))
-                        .togetherWith(slideOutHorizontally(tween(240)) { -it / 8 } + fadeOut(tween(240)))
+                    (slideInHorizontally(tween(RomKit.Emphasized, easing = RomKitEase)) { it / 8 } +
+                        fadeIn(tween(RomKit.Emphasized, easing = RomKitEase)))
+                        .togetherWith(slideOutHorizontally(tween(RomKit.Standard, easing = RomKitEase)) { -it / 10 } +
+                            fadeOut(tween(RomKit.Standard, easing = RomKitEase)))
                 },
                 label = "tab",
                 modifier = Modifier.fillMaxSize()
@@ -475,29 +480,29 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .clip(CutCornerShape(topStart = 15.dp, topEnd = 15.dp, bottomStart = 15.dp, bottomEnd = 15.dp))
-                        .background(GC.SurfaceHi)
-                        .padding(horizontal = 8.dp, vertical = 7.dp)
+                        .clip(RomKit.R18)
+                        .background(RomKit.Panel)
+                        .border(1.dp, RomKit.Stroke, RomKit.R18)
+                        .padding(3.dp)
                 ) {
                     Tab.entries.forEach { t ->
                         val selected = t == tab
                         val navBg by animateColorAsState(
-                            if (selected) GC.BrownPill else Color.Transparent, tween(220), label = "navBg"
+                            if (selected) RomKit.Panel2 else Color.Transparent, tween(RomKit.Micro), label = "navBg"
                         )
                         val navTint by animateColorAsState(
-                            if (selected) accent else GC.TextDim, tween(220), label = "navTint"
+                            if (selected) accent else RomKit.TextLo, tween(RomKit.Micro), label = "navTint"
                         )
                         val navInter = remember { MutableInteractionSource() }
                         val navPressed by navInter.collectIsPressedAsState()
-                        val navScale by animateFloatAsState(
-                            if (navPressed) 0.93f else 1f,
-                            spring(dampingRatio = 0.5f, stiffness = 900f), label = "navScale"
+                        val navAlpha by animateFloatAsState(
+                            if (navPressed) 0.80f else 1f, tween(RomKit.Micro), label = "navAlpha"
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .graphicsLayer { scaleX = navScale; scaleY = navScale }
-                                .clip(RoundedCornerShape(12.dp))
+                                .graphicsLayer { alpha = navAlpha }
+                                .clip(RomKit.R10)
                                 .background(navBg)
                                 .clickable(navInter, indication = null) { tab = t }
                                 .padding(horizontal = if (selected) 18.dp else 15.dp, vertical = 12.dp)
@@ -509,7 +514,11 @@ fun RootShell(repo: AppRepo, initialSheet: String? = null) {
                             )
                             if (selected) {
                                 Spacer(Modifier.width(9.dp))
-                                Text(t.label, style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 16.sp)
+                                Text(
+                                    t.label.uppercase(),
+                                    style = RomKit.Label.copy(fontSize = 11.sp, letterSpacing = 0.8.sp),
+                                    color = accent
+                                )
                             }
                         }
                     }
@@ -896,7 +905,9 @@ internal fun IntroAnimation(onDone: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(6500)
+        // Fallback only: the clip itself ends the intro through setOnCompletionListener,
+        // so a longer intro is never cut in half.
+        kotlinx.coroutines.delay(9000)
         finish()
     }
 

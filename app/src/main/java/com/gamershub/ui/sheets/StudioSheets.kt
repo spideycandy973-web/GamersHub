@@ -59,6 +59,8 @@ import com.gamershub.core.capture.StreamService
 import com.gamershub.core.shizuku.Shell
 import com.gamershub.overlay.FloatingPanelService
 import com.gamershub.overlay.MonitorOverlayService
+import androidx.compose.foundation.border
+import com.gamershub.theme.RomKit
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
 import com.gamershub.theme.accentNow
@@ -207,8 +209,9 @@ private fun RecordingRow(context: Context, file: File, accent: Color) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(GC.SurfaceHi)
+            .clip(RomKit.R12)
+            .background(RomKit.Panel2)
+            .border(1.dp, RomKit.Stroke, RomKit.R12)
             .padding(horizontal = 11.dp, vertical = 9.dp)
     ) {
         Column(Modifier.weight(1f)) {
