@@ -84,7 +84,7 @@ class GamersHubApp : Application() {
                 lastRecovery = now
                 // Put a usable screen back immediately, then leave the broken process.
                 runCatching {
-                    Toast.makeText(this, "That step failed — GamersHub reopened.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "A step broke — GamersHub reopened.", Toast.LENGTH_LONG).show()
                 }
                 runCatching {
                     startActivity(
@@ -114,7 +114,7 @@ class GamersHubApp : Application() {
     private fun copyToClipboard(text: String) {
         runCatching {
             val cm = getSystemService(ClipboardManager::class.java) ?: return
-            cm.setPrimaryClip(ClipData.newPlainText("GamersHub crash", text))
+            cm.setPrimaryClip(ClipData.newPlainText("GamersHub stop", text))
         }
     }
 

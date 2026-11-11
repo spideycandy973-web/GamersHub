@@ -40,7 +40,7 @@ object UpscaleEngine {
 
     /** Presets map 1:1 to shader uniforms, so the label always matches the maths. */
     enum class Quality(val label: String, val sharpen: Float, val detail: Float, val blurb: String) {
-        PERFORMANCE("Speed", 0.12f, 0.0f, "bilinear + light CAS"),
+        PERFORMANCE("Pace", 0.12f, 0.0f, "bilinear + light CAS"),
         BALANCED("Balanced", 0.28f, 0.0f, "bilinear + CAS"),
         QUALITY("Grade", 0.45f, 0.5f, "CAS + micro detail"),
         ULTRA("Ultra", 0.62f, 1.0f, "CAS + full micro detail")

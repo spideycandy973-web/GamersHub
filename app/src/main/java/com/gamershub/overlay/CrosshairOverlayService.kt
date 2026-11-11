@@ -108,7 +108,7 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                     }
                     Image(
                         painter = painterResource(resId),
-                        contentDescription = "Crosshair",
+                        contentDescription = "Aim Mark",
                         colorFilter = ColorFilter.tint(Color(color)),
                         modifier = Modifier
                             .size((165 * size).dp)
@@ -143,12 +143,12 @@ class CrosshairOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
     private fun buildNotification(): android.app.Notification {
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(NotificationChannel("cross", "Crosshair", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel("cross", "Aim Mark", NotificationManager.IMPORTANCE_LOW))
         }
         val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             android.app.Notification.Builder(this, "cross")
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
-        return b.setContentTitle("Crosshair active").setContentText("GamersHub crosshair overlay")
+        return b.setContentTitle("Aim mark on").setContentText("Aim mark window")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh).build()
     }
 

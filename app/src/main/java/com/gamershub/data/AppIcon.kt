@@ -21,7 +21,7 @@ object AppIcon {
 
     fun label(index: Int): String = when (index) {
         1 -> "Pad"
-        2 -> "Speed"
+        2 -> "Pace"
         3 -> "Mono"
         else -> "GH"
     }

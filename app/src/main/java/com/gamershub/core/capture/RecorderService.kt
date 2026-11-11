@@ -239,7 +239,7 @@ class RecorderService : Service() {
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
         return builder
             .setContentTitle("Capture the screen")
-            .setContentText("GamersHub · tap stop to save the MP4")
+            .setContentText("GamersHub · tap halt to keep the clip")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "End", stopIntent)
             .setOngoing(true)

@@ -62,6 +62,7 @@ import com.gamershub.overlay.MonitorOverlayService
 import com.gamershub.overlay.MouseCursorService
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
 import com.gamershub.ui.components.AIcon
 import com.gamershub.ui.components.StatusPill
 import kotlinx.coroutines.delay
@@ -169,7 +170,7 @@ fun ToolsScreen(
             ) {
                 Text(
                     "Display-over-apps is off — every overlay needs it. Tap to grant.",
-                    color = Color(0xFFFFB4AE),
+                    color = accentNow(),
                     fontSize = 13.sp
                 )
             }
@@ -194,13 +195,13 @@ fun ToolsScreen(
                     }
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
-                Text("STOP ALL OVERLAYS", color = Color(0xFFFFB4AE), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("HALT ALL WINDOWS", color = accentNow(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
         ToolRow(
             icon = Icons.Filled.Widgets,
-            title = "Floating Window",
-            subtitle = "GamersHub pop-up panel + bubble",
+            title = "Floating Bubble",
+            subtitle = "Bubble and panel",
             active = on("panel"),
             accent = accent,
             onToggle = { if (on("panel")) FloatingPanelService.stop(context) else FloatingPanelService.start(context) },
@@ -208,7 +209,7 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Speed,
-            title = "Information Tracker",
+            title = "Info Watcher",
             subtitle = "FPS · CPU · GPU · RAM · TEMP · PING",
             active = on("monitor"),
             accent = accent,
@@ -217,8 +218,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.GpsFixed,
-            title = "Crosshair",
-            subtitle = "7 styles · colour · opacity · rotation",
+            title = "Aim Mark",
+            subtitle = "7 styles · colour · fade · turn",
             active = on("crosshair"),
             accent = accent,
             onToggle = { if (on("crosshair")) CrosshairOverlayService.stop(context) else CrosshairOverlayService.start(context) },
@@ -226,8 +227,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Adjust,
-            title = "Mapping Editor",
-            subtitle = "Macro keys injected with shell identity",
+            title = "Key Mapper",
+            subtitle = "Key taps sent as the shell",
             active = on("mapping"),
             accent = accent,
             onToggle = { MappingOverlayService.toggle(context) },
@@ -235,8 +236,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.TouchApp,
-            title = "Mouse Cursor",
-            subtitle = if (on("mouseDevice")) "Pointer · mouse connected" else "Pointer · virtual trackpad",
+            title = "Mouse Pointer",
+            subtitle = if (on("mouseDevice")) "Mouse plugged in" else "Finger pad",
             active = on("mouse"),
             accent = accent,
             onToggle = { MouseCursorService.toggle(context) },
@@ -246,8 +247,8 @@ fun ToolsScreen(
         SectionHead("STUDIO")
         ToolRow(
             icon = Icons.Filled.Videocam,
-            title = if (on("recording")) "Capture…" else "Display Capture",
-            subtitle = "MP4 · H.264 · up to 4K · mic optional",
+            title = if (on("recording")) "Capture…" else "Screen Grab",
+            subtitle = "MP4 · up to 4K · mic off by default",
             active = on("recording"),
             accent = accent,
             onToggle = null,
@@ -256,8 +257,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Podcasts,
-            title = if (on("live")) "Live now" else "Go Live",
-            subtitle = "Real RTMP publish to YouTube / Twitch / any endpoint",
+            title = if (on("live")) "On air now" else "Go On Air",
+            subtitle = "Real air to any site link",
             active = on("live"),
             accent = accent,
             onToggle = null,
@@ -266,8 +267,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.AutoAwesome,
-            title = "Look Booster",
-            subtitle = "Render scale · Vulkan renderer · texture & shadow CVars",
+            title = "View Boost",
+            subtitle = "Draw scale · Vulkan · surface and shade keys",
             active = false,
             accent = accent,
             onToggle = null,
@@ -275,8 +276,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Smartphone,
-            title = "Phone Swapping",
-            subtitle = "Flagship presets · display, name, identity props",
+            title = "Phone Swap",
+            subtitle = "Phone looks · screen, name, tags",
             active = false,
             accent = accent,
             onToggle = null,
@@ -286,8 +287,8 @@ fun ToolsScreen(
         SectionHead("NETWORK")
         ToolRow(
             icon = Icons.Filled.CenterFocusStrong,
-            title = "Lag Fixer",
-            subtitle = "TCP latency · jitter · private DNS",
+            title = "Delay Fixer",
+            subtitle = "Net wait · jitter · private DNS",
             active = false,
             accent = accent,
             onToggle = null,
@@ -299,8 +300,8 @@ fun ToolsScreen(
 
         ToolRow(
             icon = Icons.Filled.CleaningServices,
-            title = "Free RAM",
-            subtitle = "Reclaim cached processes · trim app caches",
+            title = "Free Memory",
+            subtitle = "Free held apps · trim caches",
             active = false,
             accent = accent,
             onToggle = null,
@@ -315,8 +316,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Bolt,
-            title = "Speed RAM",
-            subtitle = "Sweep + drop page cache · instant free RAM",
+            title = "Quick Ram",
+            subtitle = "Wipe and drop cache · quick free memory",
             active = false,
             accent = accent,
             onToggle = null,
@@ -331,8 +332,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.DeleteSweep,
-            title = "Full Sweep",
-            subtitle = "Force-stop background apps · trim caches · drop cache",
+            title = "Deep wipe",
+            subtitle = "Kill hidden apps · trim · drop cache",
             active = false,
             accent = accent,
             onToggle = null,
@@ -351,8 +352,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.ScreenRotation,
-            title = "Tilt Setup",
-            subtitle = "Bias capture · sensitivity · live readout",
+            title = "Tilt Tune",
+            subtitle = "Tilt grab · feel · live read",
             active = false,
             accent = accent,
             onToggle = null,
@@ -360,8 +361,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Tune,
-            title = "Display Adjust",
-            subtitle = "Detail · DPI · refresh rate",
+            title = "Screen Tweak",
+            subtitle = "Crisp · DPI · HZ rate",
             active = false,
             accent = accent,
             onToggle = null,
@@ -371,7 +372,7 @@ fun ToolsScreen(
         SectionHead("CAPTURE & SPACE")
         ToolRow(
             icon = Icons.Filled.Screenshot,
-            title = "Display Grab",
+            title = "Screen Grab",
             subtitle = ScreenshotEngine.DIR,
             active = false,
             accent = accent,
@@ -391,8 +392,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Widgets,
-            title = "Play Hub",
-            subtitle = "Landscape in-game hub",
+            title = "Tool Shelf",
+            subtitle = "Sideways in-game hub",
             active = false,
             accent = accent,
             onToggle = null,
@@ -401,8 +402,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Tune,
-            title = "Setups",
-            subtitle = "Imported display profiles",
+            title = "Saved Looks",
+            subtitle = "Loaded screen looks",
             active = false,
             accent = accent,
             onToggle = null,
@@ -410,8 +411,8 @@ fun ToolsScreen(
         )
         ToolRow(
             icon = Icons.Filled.Bolt,
-            title = "Activation",
-            subtitle = if (on("shizuku")) "Shizuku connected" else "Connect Shizuku for full power",
+            title = "Power Up",
+            subtitle = if (on("shizuku")) "Shizuku linked" else "Link Shizuku for full power",
             active = on("shizuku"),
             accent = accent,
             onToggle = null,

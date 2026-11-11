@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import com.gamershub.data.DeviceStats
 import com.gamershub.theme.GC
 import com.gamershub.theme.LocalAccent
+import com.gamershub.theme.accentNow
 import com.gamershub.ui.components.Card
 import com.gamershub.ui.components.IconChip
 import com.gamershub.ui.components.Toggle
@@ -104,7 +105,7 @@ fun GameLabsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
-            Text("Play Lab", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
+            Text("Lab Bench", style = MaterialTheme.typography.displaySmall, color = GC.Text, fontSize = 33.sp)
             Spacer(Modifier.weight(1f))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -119,7 +120,7 @@ fun GameLabsScreen(
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
                 Spacer(Modifier.width(5.dp))
-                Text("Expert", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp)
+                Text("Pro", style = MaterialTheme.typography.labelLarge, color = GC.TextSoft, fontSize = 13.sp)
             }
         }
 
@@ -194,7 +195,7 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.Dialpad, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Turn Everything Off", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
+                            Text("Shut It All Down", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp)
                             Text(
                                 if (runningServices > 0) "$activeCount active now · $runningServices service(s) running"
                                 else "$activeCount feature(s) active — turn everything off",
@@ -218,7 +219,7 @@ fun GameLabsScreen(
                                 }
                                 .padding(horizontal = 22.dp, vertical = 11.dp)
                         ) {
-                            Text("End", style = MaterialTheme.typography.labelLarge, color = Color(0xFFFF8A80), fontSize = 15.sp)
+                            Text("End", style = MaterialTheme.typography.labelLarge, color = accentNow(), fontSize = 15.sp)
                         }
                     }
                 }
@@ -227,13 +228,13 @@ fun GameLabsScreen(
 
             // ---- Touch Settings ----
             if (tab != LabsTab.VISUAL) {
-                SectionLabel("Touch Preferences")
+                SectionLabel("Tap Likes")
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.TouchApp, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Magic Mapper Listener", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Magic Pad Mapper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
                                 if (toggleState("magic_mapper")) "Mapping overlay running" else "Turn on the mapping overlay",
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp
@@ -261,7 +262,7 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.TouchApp, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Touch Sampling", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Tap Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(
                                 touchRate,
                                 style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
@@ -274,14 +275,14 @@ fun GameLabsScreen(
 
             // ---- Display Settings ----
             if (tab != LabsTab.VISUAL) {
-                SectionLabel("Display Preferences")
+                SectionLabel("Screen Likes")
                 Card {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconChip(Icons.Filled.Dns, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Setup Keeper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
-                            Text("Save or load display configurations.", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
+                            Text("Setup Saver", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Keep or load screen looks.", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -294,7 +295,7 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.VideogameAsset, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Display Adjust", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Screen Tweak", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                             Text(displayInfo, style = MaterialTheme.typography.labelLarge, color = accent, fontSize = 14.sp)
                         }
                         SmallActionButton("Tune", Modifier.width(88.dp), primary = true, onClick = onTuneDisplay)
@@ -316,8 +317,8 @@ fun GameLabsScreen(
                         IconChip(Icons.Filled.Bolt, size = 46)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Game Ready", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
-                            Text("System health & stability index", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
+                            Text("Ready to Play", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                            Text("Phone health and steady score", style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp)
                         }
                         Toggle(on = toggleState("game_ready")) {
                             onToggle("game_ready", it)
@@ -370,7 +371,7 @@ private fun DnsTunerCard(on: Boolean, onToggle: (String, Boolean) -> Unit) {
             IconChip(Icons.Filled.Dns, size = 46)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("DNS & Latency Tuner", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                Text("Net Delay Fixer", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                 Text(
                     "Keep connection warm & reduce latency spikes",
                     style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
@@ -475,7 +476,7 @@ private fun SessionMonitorCard(on: Boolean, toggleState: (String) -> Boolean, on
             IconChip(Icons.Filled.GraphicEq, size = 46)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Run Tracker", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                Text("Run Watcher", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                 Text(
                     "Track device performance while you play",
                     style = MaterialTheme.typography.bodyMedium, color = GC.TextDim, fontSize = 13.sp, lineHeight = 18.sp
@@ -549,13 +550,13 @@ private fun CheckRow(
                         .background(if (checked) accent else Color.Transparent)
                         .clickable { onToggle(key, true) }
                         .padding(horizontal = 13.dp, vertical = 7.dp)
-                ) { Text("Used", style = MaterialTheme.typography.labelMedium, color = if (checked) Color.White else GC.TextSoft, fontSize = 12.sp) }
+                ) { Text("In use", style = MaterialTheme.typography.labelMedium, color = if (checked) Color.White else GC.TextSoft, fontSize = 12.sp) }
                 Box(
                     Modifier
                         .background(if (!checked) accent else Color.Transparent)
                         .clickable { onToggle(key, false) }
                         .padding(horizontal = 13.dp, vertical = 7.dp)
-                ) { Text("Available", style = MaterialTheme.typography.labelMedium, color = if (!checked) Color.White else GC.TextSoft, fontSize = 12.sp) }
+                ) { Text("Free", style = MaterialTheme.typography.labelMedium, color = if (!checked) Color.White else GC.TextSoft, fontSize = 12.sp) }
             }
         } else {
             Box(

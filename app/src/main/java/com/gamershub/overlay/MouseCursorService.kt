@@ -240,7 +240,7 @@ class MouseCursorService : Service(), androidx.lifecycle.LifecycleOwner,
             android.app.Notification.Builder(this, "cursor")
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
         return b.setContentTitle("Mouse cursor active")
-            .setContentText("GamersHub virtual pointer")
+            .setContentText("Fake mouse pointer")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
     }

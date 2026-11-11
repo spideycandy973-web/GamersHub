@@ -50,7 +50,7 @@ import com.gamershub.theme.GameCornerTheme
 import kotlinx.coroutines.delay
 
 /**
- * Floating monitor — the real "Information Tracker".
+ * Floating monitor — the real "Info Watcher".
  *
  * Every field is read from the device: FPS from the game's gfxinfo frame
  * counter, CPU from cpufreq, RAM from ActivityManager, temperature and battery
@@ -216,7 +216,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
                             ) {
                                 androidx.compose.foundation.Image(
                                     imageVector = Icons.Filled.Close,
-                                    contentDescription = "Close monitor",
+                                    contentDescription = "Shut watcher",
                                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
                                     modifier = Modifier.size((9 * scale).dp)
                                 )
@@ -265,7 +265,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
         val attached = runCatching { windowManager?.addView(cv, params) }.isSuccess
         if (!attached) {
             // No window = no monitor. Never leave the service "running" invisibly.
-            android.widget.Toast.makeText(this, "Tracker could not attach — check display-over-apps",
+            android.widget.Toast.makeText(this, "Watcher could not stick — check draw-over-apps",
                 android.widget.Toast.LENGTH_LONG).show()
             isRunning = false
             stopSelf()
@@ -293,7 +293,7 @@ class MonitorOverlayService : Service(), androidx.lifecycle.LifecycleOwner,
             android.app.Notification.Builder(this, "monitor")
         else @Suppress("DEPRECATION") android.app.Notification.Builder(this)
         return b.setContentTitle("Tracker active")
-            .setContentText("GamersHub live monitor")
+            .setContentText("Live watcher window")
             .setSmallIcon(com.gamershub.R.drawable.ic_stat_gh)
             .build()
     }

@@ -127,7 +127,7 @@ fun ProfileScreen(
                     .background(GC.Surface)
                     .padding(14.dp)
             ) {
-                Text("Environment Level", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                Text("Phone Load", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("$envLevel", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 26.sp)
                     Text(" / 3", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
@@ -152,7 +152,7 @@ fun ProfileScreen(
                     .background(GC.Surface)
                     .padding(14.dp)
             ) {
-                Text("Environment Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
+                Text("Load Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 11.sp)
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text("$envScore", style = MaterialTheme.typography.headlineMedium, color = accent, fontSize = 26.sp)
                     Text(" / 100", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 12.sp)
@@ -191,7 +191,7 @@ fun ProfileScreen(
                 fontSize = 28.sp
             )
             Spacer(Modifier.height(5.dp))
-            Text("Local profile · no cloud sync", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+            Text("Saved on this phone · no cloud", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
             Spacer(Modifier.height(4.dp))
             Text(
                 com.gamershub.ui.components.Brand.BYLINE,
@@ -209,7 +209,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconChip(Icons.Filled.Shield, size = 44)
                 Spacer(Modifier.width(12.dp))
-                Text("Access Helper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
+                Text("Door Helper", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 19.sp, modifier = Modifier.weight(1f))
                 StatusPill(if (envLevel >= 2) "Expert Tier" else if (envLevel >= 1) "Basic Tier" else "Not Activated")
             }
             Spacer(Modifier.height(12.dp))
@@ -217,7 +217,7 @@ fun ProfileScreen(
             Spacer(Modifier.height(13.dp))
             Row {
                 Column(Modifier.weight(1f)) {
-                    Text("Environment Level", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                    Text("Phone Load", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text("$envLevel", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
@@ -229,7 +229,7 @@ fun ProfileScreen(
                 Box(Modifier.width(1.dp).height(78.dp).background(GC.Stroke))
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Environment Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
+                    Text("Load Score", style = MaterialTheme.typography.labelMedium, color = GC.TextDim, fontSize = 13.sp)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text("$envScore", style = MaterialTheme.typography.headlineLarge, color = accent, fontSize = 28.sp)
@@ -275,7 +275,7 @@ fun ProfileScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconChip(Icons.Filled.Wifi, size = 36)
                 Spacer(Modifier.width(10.dp))
-                Text("Network", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Text("Net", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
                 StatusPill(if (ping in 0..120) "Good" else if (ping > 0) "Slow" else "Offline")
             }
             Spacer(Modifier.height(9.dp))
@@ -306,7 +306,7 @@ fun ProfileScreen(
                 IconChip(Icons.Filled.Campaign, size = 48)
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Join Official Channel", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
+                    Text("Join the Official Channel", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 18.sp)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Join official channels to keep track of updates, important information, and official announcements directly.",
@@ -379,7 +379,7 @@ private fun CpuCard(cpu: DeviceStats.Cpu, modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
     Card(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("CPU Speed", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text("CPU Pace", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
             IconChip(Icons.Filled.Speed, size = 36)
         }
         Spacer(Modifier.height(10.dp))
@@ -402,7 +402,7 @@ private fun RamCard(mem: DeviceStats.Mem, modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
     Card(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("RAM Usage", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text("RAM Use", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
             IconChip(Icons.Filled.Storage, size = 36)
         }
         Spacer(Modifier.height(8.dp))
@@ -422,7 +422,7 @@ private fun StorageCard(storage: DeviceStats.Storage, modifier: Modifier = Modif
     val accent = LocalAccent.current
     Card(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Space", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text("Room", style = MaterialTheme.typography.titleMedium, color = GC.Text, fontSize = 16.sp, modifier = Modifier.weight(1f))
             IconChip(Icons.Filled.Storage, size = 36, bg = GC.SurfaceHi)
         }
         Spacer(Modifier.height(8.dp))

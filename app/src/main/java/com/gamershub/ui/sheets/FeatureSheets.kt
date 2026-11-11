@@ -157,7 +157,7 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
     LaunchedEffect(Unit) { refresh() }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Lag Fixer", "Measured on this network, right now", onDismiss)
+        SheetTitle("Delay Fixer", "Measured on this network, right now", onDismiss)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (busy) "● Measuring" else "● ${PingEngine.currentPrivateDns().uppercase()} DNS")
@@ -178,7 +178,7 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Refresh, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text("RE-RUN", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("RUN AGAIN", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -242,7 +242,7 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
 
         Spacer(Modifier.height(6.dp))
         BigButton(
-            text = "OPTIMIZE NETWORK",
+            text = "FIX NETWORK",
             onClick = {
                 busy = true
                 scope.launch {
@@ -263,10 +263,10 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = "RESET DNS",
+                    text = "UNDO DNS",
                     onClick = {
                         val ok = PingEngine.resetPrivateDns()
-                        Toast.makeText(context, if (ok) "Private DNS off" else "Needs Shizuku", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (ok) "Private DNS is off" else "Needs the helper", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     primary = false
@@ -274,10 +274,10 @@ fun PingOptimizerSheet(onDismiss: () -> Unit) {
             }
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = "RADIO TWEAKS",
+                    text = "SIGNAL TWEAKS",
                     onClick = {
                         val ok = PingEngine.applyRadioTweaks()
-                        Toast.makeText(context, if (ok) "Scanning reduced" else "Needs Shizuku", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (ok) "Scan rate lowered" else "Needs the helper", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     primary = false
@@ -346,7 +346,7 @@ fun GyroCalibrationSheet(onDismiss: () -> Unit) {
 
     SheetFrame(onDismiss) {
         SheetTitle(
-            "Tilt Setup",
+            "Tilt Tune",
             if (sensor != null) "Live gyroscope · bias capture" else "No gyroscope detected",
             onDismiss
         )
@@ -368,25 +368,25 @@ fun GyroCalibrationSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         BigButton(
-            text = if (capturing) "HOLD THE PHONE STILL…" else "CALIBRATE (FLAT & STILL)",
+            text = if (capturing) "KEEP THE PHONE STILL…" else "TUNE (FLAT & STILL)",
             onClick = {
                 samples.clear()
                 sampleCount = 0
                 capturing = true
-                Toast.makeText(context, "Lay the phone flat and hold still", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Set the phone flat and keep still", Toast.LENGTH_SHORT).show()
             },
             modifier = Modifier.fillMaxWidth(),
             primary = !capturing
         )
         Spacer(Modifier.height(10.dp))
         SliderRow(
-            "SENSITIVITY",
+            "FEEL",
             config.sens,
             0.2f..3f,
             String.format(java.util.Locale.US, "%.2fx", config.sens)
         ) { config = config.copy(sens = it) }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("INVERT Y", color = GC.TextSoft, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("FLIP Y", color = GC.TextSoft, fontSize = 12.sp, modifier = Modifier.weight(1f))
             Chip(if (config.invertY) "ON" else "OFF", config.invertY) {
                 config = config.copy(invertY = !config.invertY)
             }
@@ -395,17 +395,17 @@ fun GyroCalibrationSheet(onDismiss: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = "SAVE",
+                    text = "KEEP",
                     onClick = {
                         GyroEngine.save(context, config)
-                        Toast.makeText(context, "Setup saved", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Look kept", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = "RESET",
+                    text = "UNDO",
                     onClick = {
                         config = GyroConfig()
                         samples.clear()
@@ -468,7 +468,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
     }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Mapping Editor", "${keys.size} keys · injected with shell identity", onDismiss)
+        SheetTitle("Key Mapper", "${keys.size} keys · injected with shell identity", onDismiss)
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (MappingOverlayService.isRunning) "● Popup live" else "● Popup off")
@@ -511,7 +511,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
                 }
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = "Erase",
                     tint = GC.TextDim,
                     modifier = Modifier
                         .size(18.dp)
@@ -527,7 +527,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
         OutlinedTextField(
             value = label,
             onValueChange = { label = it },
-            label = { Text("Key label") },
+            label = { Text("Key name") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -557,7 +557,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
         )
         Spacer(Modifier.height(9.dp))
         BigButton(
-            text = "ADD KEY",
+            text = "NEW KEY",
             onClick = {
                 val name = label.ifBlank { "KEY" }.uppercase().take(6)
                 val key = MacroKey(
@@ -580,7 +580,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = if (MappingOverlayService.isRunning) "STOP OVERLAY" else "START OVERLAY",
+                    text = if (MappingOverlayService.isRunning) "HIDE OVERLAY" else "SHOW OVERLAY",
                     onClick = { MappingOverlayService.toggle(context) },
                     modifier = Modifier.fillMaxWidth(),
                     leadingIcon = if (MappingOverlayService.isRunning) Icons.Filled.Close else Icons.Filled.PlayArrow
@@ -588,12 +588,12 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
             }
             Box(Modifier.weight(1f)) {
                 BigButton(
-                    text = "TEST TAP",
+                    text = "TRY TAP",
                     onClick = {
                         val ok = MappingOverlayService.testInject(context)
                         Toast.makeText(
                             context,
-                            if (ok) "Injection works" else "Needs Shizuku",
+                            if (ok) "Injection works" else "Needs the helper",
                             Toast.LENGTH_SHORT
                         ).show()
                     },
@@ -604,7 +604,7 @@ fun MappingEditorSheet(onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         BigButton(
-            text = "RESTORE DEFAULT LAYOUT",
+            text = "PUT LAYOUT BACK",
             onClick = {
                 MappingStore.save(context, MappingStore.defaults())
                 reload()
@@ -634,12 +634,12 @@ fun MonitorConfigSheet(onDismiss: () -> Unit) {
     var scale by remember { mutableFloatStateOf(MonitorPrefs.scale(context)) }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Information Tracker", "Pick what floats over your game", onDismiss)
+        SheetTitle("Info Watcher", "Pick what floats over your game", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (MonitorOverlayService.isRunning) "● Live" else "● Off")
             Spacer(Modifier.weight(1f))
             BigButton(
-                text = if (MonitorOverlayService.isRunning) "STOP" else "START",
+                text = if (MonitorOverlayService.isRunning) "HALT" else "GO",
                 onClick = { MonitorOverlayService.toggle(context) },
                 modifier = Modifier.width(130.dp),
                 primary = !MonitorOverlayService.isRunning
@@ -678,7 +678,7 @@ fun MonitorConfigSheet(onDismiss: () -> Unit) {
             fontSize = 11.sp
         )
         Spacer(Modifier.height(8.dp))
-        Text("Drag the monitor to move it · tap ✕ to close", color = accent, fontSize = 11.sp)
+        Text("Drag the watcher · tap ✕ to shut it", color = accent, fontSize = 11.sp)
     }
 }
 
@@ -689,7 +689,7 @@ fun MouseCursorSheet(onDismiss: () -> Unit) {
 
     SheetFrame(onDismiss) {
         SheetTitle(
-            "Mouse Cursor",
+            "Mouse Pointer",
             if (MouseCursorService.hasMouse()) "Physical mouse detected" else "Virtual trackpad mode",
             onDismiss
         )
@@ -697,14 +697,14 @@ fun MouseCursorSheet(onDismiss: () -> Unit) {
             StatusPill(if (MouseCursorService.isRunning) "● Pointer live" else "● Off")
             Spacer(Modifier.weight(1f))
             BigButton(
-                text = if (MouseCursorService.isRunning) "STOP" else "START",
+                text = if (MouseCursorService.isRunning) "HALT" else "GO",
                 onClick = { MouseCursorService.toggle(context) },
                 modifier = Modifier.width(130.dp),
                 primary = !MouseCursorService.isRunning
             )
         }
         Spacer(Modifier.height(12.dp))
-        SliderRow("SENSITIVITY", sens, 0.3f..3.5f, String.format(java.util.Locale.US, "%.1fx", sens)) {
+        SliderRow("FEEL", sens, 0.3f..3.5f, String.format(java.util.Locale.US, "%.1fx", sens)) {
             sens = it
             MouseCursorService.setSens(context, it)
         }
@@ -748,12 +748,12 @@ fun CrosshairConfigSheet(onDismiss: () -> Unit) {
     )
 
     SheetFrame(onDismiss) {
-        SheetTitle("Crosshair", "7 styles · size · opacity · rotation", onDismiss)
+        SheetTitle("Aim Mark", "7 styles · size · opacity · rotation", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (CrosshairOverlayService.isRunning) "● Live" else "● Off")
             Spacer(Modifier.weight(1f))
             BigButton(
-                text = if (CrosshairOverlayService.isRunning) "STOP" else "START",
+                text = if (CrosshairOverlayService.isRunning) "HALT" else "GO",
                 onClick = {
                     if (CrosshairOverlayService.isRunning) {
                         CrosshairOverlayService.stop(context)
@@ -834,7 +834,7 @@ fun CrosshairConfigSheet(onDismiss: () -> Unit) {
             persist()
         }
         Spacer(Modifier.height(6.dp))
-        Text("Tap START to apply size, opacity and rotation.", color = GC.TextDim, fontSize = 11.sp)
+        Text("Tap GO to set size, fade and turn.", color = GC.TextDim, fontSize = 11.sp)
     }
 }
 
@@ -846,7 +846,7 @@ fun ScreenshotSheet(onDismiss: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
 
     SheetFrame(onDismiss) {
-        SheetTitle("Display Grab", "screencap written to Pictures/GamersHub", onDismiss)
+        SheetTitle("Screen Grab", "screencap written to Pictures/GamersHub", onDismiss)
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (Shell.available()) "● Shell ready" else "● Needs Shizuku")
             Spacer(Modifier.weight(1f))
@@ -871,7 +871,7 @@ fun ScreenshotSheet(onDismiss: () -> Unit) {
             Spacer(Modifier.height(10.dp))
         }
         BigButton(
-            text = if (busy) "CAPTURING…" else "CAPTURE NOW",
+            text = if (busy) "GRABBING…" else "GRAB NOW",
             onClick = {
                 busy = true
                 val shot = ScreenshotEngine.capture()
@@ -880,14 +880,14 @@ fun ScreenshotSheet(onDismiss: () -> Unit) {
                     last = shot
                     Toast.makeText(context, "Saved ${shot.name}", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(context, "Capture failed — check Shizuku", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Grab failed — check Shizuku", Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         BigButton(
-            text = "OPEN GALLERY",
+            text = "OPEN PHOTOS",
             onClick = {
                 val intent = ScreenshotEngine.galleryIntent(context)
                 if (intent != null) {
