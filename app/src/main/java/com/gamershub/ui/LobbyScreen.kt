@@ -107,12 +107,13 @@ fun LobbyScreen(
                 .border(1.dp, RomKit.Stroke, RomKit.R18)
         ) {
             Image(
-                painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.axgc_new),
+                // The floating bubble's emblem, exactly as the launcher and overlay draw it.
+                painter = androidx.compose.ui.res.painterResource(com.gamershub.R.drawable.ic_float_emblem),
                 contentDescription = null,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 6.dp)
-                    .size(170.dp, 120.dp)
+                    .align(Alignment.TopEnd)
+                    .padding(top = 14.dp, end = 14.dp)
+                    .size(112.dp)
             )
             Column {
                 Column(Modifier.padding(start = 18.dp, top = 16.dp, bottom = 12.dp)) {
